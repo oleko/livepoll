@@ -1,15 +1,20 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { createOrganization } from "@/lib/actions/organizations";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 
 export default function OnboardingPage() {
-  const [state, action, isPending] = useActionState(
-    async (_: unknown, formData: FormData) => createOrganization(formData),
-    null
-  );
+  const router = useRouter();
+  const [state, action, isPending] = useActionState(createOrganization, null);
+
+  useEffect(() => {
+    if (state && "redirectTo" in state) {
+      router.push(state.redirectTo);
+    }
+  }, [state, router]);
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-slate-950 px-4">
@@ -25,7 +30,7 @@ export default function OnboardingPage() {
         </div>
 
         <div className="rounded-xl border border-slate-800 bg-slate-900 p-6">
-          {state?.error && (
+          {state && "error" in state && (
             <div className="mb-4 rounded-lg bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-red-400">
               {state.error}
             </div>

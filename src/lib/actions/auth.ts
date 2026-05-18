@@ -13,7 +13,6 @@ export async function signIn(formData: FormData) {
 
   if (error) return { error: error.message };
 
-  // Проверяем есть ли организация у пользователя
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "Не удалось получить пользователя" };
 
@@ -25,10 +24,10 @@ export async function signIn(formData: FormData) {
     .limit(1)
     .maybeSingle();
 
-  if (!member) redirect("/onboarding");
+  if (!member) return { redirectTo: "/onboarding" };
 
   const slug = (member as unknown as { organizations: { slug: string } }).organizations.slug;
-  redirect(`/org/${slug}`);
+  return { redirectTo: `/org/${slug}` };
 }
 
 export async function signUp(formData: FormData) {
@@ -44,7 +43,7 @@ export async function signUp(formData: FormData) {
 
   if (error) return { error: error.message };
 
-  redirect("/onboarding");
+  return { redirectTo: "/onboarding" };
 }
 
 export async function signOut() {

@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useActionState, Suspense } from "react";
+import { useActionState, useEffect, Suspense } from "react";
+import { useRouter } from "next/navigation";
 import { signIn, signInWithYandex } from "@/lib/actions/auth";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 
 function LoginForm() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const urlError = searchParams.get("error");
 
@@ -16,11 +18,17 @@ function LoginForm() {
     null
   );
 
+  useEffect(() => {
+    if (state && "redirectTo" in state && state.redirectTo) {
+      router.push(state.redirectTo);
+    }
+  }, [state, router]);
+
   return (
     <div className="rounded-xl border border-slate-800 bg-slate-900 p-6">
-      {(state?.error || urlError) && (
+      {((state && "error" in state && state.error) || urlError) && (
         <div className="mb-4 rounded-lg bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-red-400">
-          {state?.error ?? "Ошибка авторизации, попробуйте снова"}
+          {(state && "error" in state && state.error) ?? "Ошибка авторизации, попробуйте снова"}
         </div>
       )}
 
