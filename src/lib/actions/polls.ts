@@ -115,3 +115,34 @@ export async function submitVote(formData: FormData) {
 
   return { success: true };
 }
+
+export async function submitQuestion(formData: FormData) {
+  const admin = createAdminClient();
+
+  const sessionId = formData.get("session_id") as string;
+  const voterToken = formData.get("voter_token") as string;
+  const text = (formData.get("text") as string)?.trim();
+
+  if (!sessionId || !voterToken || !text) return { error: "Неверные данные" };
+  if (text.length > 300) return { error: "Вопрос слишком длинный" };
+
+  const { error } = await admin.from("questions").insert({
+    session_id: sessionId,
+    voter_token: voterToken,
+    text,
+  });
+
+  if (error) return { error: error.message };
+  return { success: true };
+}
+
+export async function updateQuestionStatus(
+  questionId: string,
+  status: "pending" | "answered" | "hidden",
+  sessionId: string,
+  orgSlug: string
+) {
+  const admin = createAdminClient();
+  await admin.from("questions").update({ status }).eq("id", questionId);
+  revalidatePath(`/org/${orgSlug}/sessions/${sessionId}`);
+}

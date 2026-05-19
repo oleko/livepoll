@@ -20,6 +20,13 @@ type SessionData = {
   join_code: string;
 };
 
+type QuestionRow = {
+  id: string;
+  text: string;
+  status: string;
+  upvotes: number;
+};
+
 const TEMP_LABELS = ["❄️", "🥶", "😐", "🌡️", "🔥"];
 const PLANNING_POKER_VALUES = ["1", "2", "3", "5", "8", "13", "21", "?", "☕"];
 
@@ -44,25 +51,28 @@ export function DisplayScreen({
   session,
   initialPoll,
   initialVotes,
+  initialQuestions,
   joinUrl,
 }: {
   session: SessionData;
   initialPoll: PollData;
   initialVotes: { value: string }[];
+  initialQuestions: QuestionRow[];
   joinUrl: string;
 }) {
   const [poll, setPoll] = useState<PollData>(initialPoll);
   const [votes, setVotes] = useState(initialVotes);
+  const [questions, setQuestions] = useState<QuestionRow[]>(initialQuestions);
   const supabase = useRef(createClient());
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(joinUrl)}&bgcolor=0f172a&color=ffffff&qzone=1`;
 
   useEffect(() => {
-    const channel = supabase.current
+    let channel = supabase.current
       .channel(`display-${session.id}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "polls", filter: `session_id=eq.${session.id}` },
-        async (payload) => {
+        (payload) => {
           const updated = payload.new as PollData;
           if (updated?.status === "active") {
             setPoll(updated);
@@ -74,18 +84,43 @@ export function DisplayScreen({
       )
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "votes" },
+        { event: "INSERT", schema: "public", table: "questions", filter: `session_id=eq.${session.id}` },
         (payload) => {
-          const newVote = payload.new as { poll_id: string; value: string };
-          if (poll && newVote.poll_id === poll.id) {
-            setVotes((prev) => [...prev, { value: newVote.value }]);
+          const q = payload.new as QuestionRow;
+          if (q.status !== "hidden") {
+            setQuestions((prev) => [q, ...prev]);
           }
         }
       )
-      .subscribe();
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "questions", filter: `session_id=eq.${session.id}` },
+        (payload) => {
+          const updated = payload.new as QuestionRow;
+          setQuestions((prev) =>
+            updated.status === "hidden"
+              ? prev.filter((q) => q.id !== updated.id)
+              : prev.map((q) => (q.id === updated.id ? updated : q))
+          );
+        }
+      );
+
+    if (poll) {
+      channel = channel.on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "votes", filter: `poll_id=eq.${poll.id}` },
+        (payload) => {
+          setVotes((prev) => [...prev, { value: (payload.new as { value: string }).value }]);
+        }
+      );
+    }
+
+    channel.subscribe((status) => {
+      console.log("[Realtime] status:", status);
+    });
 
     return () => { supabase.current.removeChannel(channel); };
-  }, [session.id, poll]);
+  }, [session.id, poll?.id]);
 
   const chartData = useMemo(() => {
     if (!poll) return [];
@@ -93,6 +128,10 @@ export function DisplayScreen({
   }, [votes, poll]);
 
   const totalVotes = votes.length;
+  const visibleQuestions = useMemo(
+    () => [...questions].filter((q) => q.status !== "hidden").sort((a, b) => b.upvotes - a.upvotes),
+    [questions]
+  );
 
   return (
     <main className="min-h-screen bg-slate-950 flex flex-col">
@@ -103,7 +142,7 @@ export function DisplayScreen({
           <span className="text-slate-500 text-sm">
             Код: <span className="font-mono text-white text-lg tracking-widest">{session.join_code}</span>
           </span>
-          {totalVotes > 0 && (
+          {totalVotes > 0 && poll?.type !== "qa" && (
             <span className="text-slate-500 text-sm">{totalVotes} голосов</span>
           )}
         </div>
@@ -167,7 +206,7 @@ export function DisplayScreen({
                 </div>
               )}
 
-              {(poll.type === "word_cloud" || poll.type === "emoji_cloud" || poll.type === "qa") && (
+              {(poll.type === "word_cloud" || poll.type === "emoji_cloud") && (
                 <div className="flex flex-wrap gap-3 justify-center max-h-72 overflow-y-auto">
                   {votes.map((v, i) => (
                     <span
@@ -179,6 +218,33 @@ export function DisplayScreen({
                   ))}
                   {votes.length === 0 && (
                     <p className="text-slate-500 text-lg">Ожидаем ответы...</p>
+                  )}
+                </div>
+              )}
+
+              {poll.type === "qa" && (
+                <div className="flex flex-col gap-3 max-h-96 overflow-y-auto">
+                  {visibleQuestions.length === 0 ? (
+                    <p className="text-slate-500 text-lg text-center">Ожидаем вопросы...</p>
+                  ) : (
+                    visibleQuestions.map((q) => (
+                      <div
+                        key={q.id}
+                        className={`rounded-xl border px-5 py-3 flex items-start gap-3 ${
+                          q.status === "answered"
+                            ? "border-green-500/30 bg-green-500/5"
+                            : "border-slate-700 bg-slate-800/50"
+                        }`}
+                      >
+                        <div className="flex-1 text-white text-base">{q.text}</div>
+                        {q.upvotes > 0 && (
+                          <span className="text-slate-400 text-sm shrink-0">+{q.upvotes}</span>
+                        )}
+                        {q.status === "answered" && (
+                          <span className="text-green-400 text-xs shrink-0">✓ Отвечен</span>
+                        )}
+                      </div>
+                    ))
                   )}
                 </div>
               )}

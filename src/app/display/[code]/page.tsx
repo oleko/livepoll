@@ -31,13 +31,20 @@ export default async function DisplayPage({
     .maybeSingle();
 
   let initialVotes: { value: string }[] = [];
-  if (activePoll) {
+  if (activePoll && activePoll.type !== "qa") {
     const { data } = await admin
       .from("votes")
       .select("value")
       .eq("poll_id", activePoll.id);
     initialVotes = data ?? [];
   }
+
+  const { data: initialQuestionsData } = await admin
+    .from("questions")
+    .select("id, text, status, upvotes")
+    .eq("session_id", session.id)
+    .neq("status", "hidden")
+    .order("upvotes", { ascending: false });
 
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
   const joinUrl = `${baseUrl}/join/${session.join_code}`;
@@ -47,6 +54,7 @@ export default async function DisplayPage({
       session={session}
       initialPoll={activePoll}
       initialVotes={initialVotes}
+      initialQuestions={initialQuestionsData ?? []}
       joinUrl={joinUrl}
     />
   );

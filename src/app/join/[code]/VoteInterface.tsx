@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { submitVote } from "@/lib/actions/polls";
+import { submitVote, submitQuestion } from "@/lib/actions/polls";
 import { Button } from "@/components/ui/Button";
 import type { PollType } from "@/types/database";
 
@@ -62,7 +62,9 @@ export function VoteInterface({
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log("[Realtime] VoteInterface status:", status);
+      });
 
     return () => { supabase.current.removeChannel(channel); };
   }, [sessionId, poll?.id]);
@@ -84,6 +86,28 @@ export function VoteInterface({
 
     if (result?.error) {
       setError(result.error === "Вы уже проголосовали" ? "Вы уже проголосовали" : "Ошибка, попробуйте снова");
+    } else {
+      setVoted(true);
+    }
+  }
+
+  async function handleSubmitQuestion(text: string) {
+    const voterToken = getVoterToken();
+    if (!voterToken || !text) return;
+
+    setIsPending(true);
+    setError(null);
+
+    const fd = new FormData();
+    fd.append("session_id", sessionId);
+    fd.append("voter_token", voterToken);
+    fd.append("text", text);
+
+    const result = await submitQuestion(fd);
+    setIsPending(false);
+
+    if (result?.error) {
+      setError("Ошибка, попробуйте снова");
     } else {
       setVoted(true);
     }
@@ -249,7 +273,7 @@ export function VoteInterface({
             className="w-full"
             onClick={() => {
               const input = document.getElementById("qa-input") as HTMLTextAreaElement;
-              if (input.value.trim()) handleVote(input.value.trim());
+              if (input.value.trim()) handleSubmitQuestion(input.value.trim());
             }}
             loading={isPending}
           >

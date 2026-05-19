@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { SessionControls } from "./SessionControls";
 import { PollList } from "./PollList";
 import { NewPollForm } from "./NewPollForm";
+import { QAPanel } from "./QAPanel";
 import type { Session } from "@/types/database";
 
 const STATUS_LABEL: Record<Session["status"], string> = {
@@ -55,6 +56,14 @@ export default async function SessionPage({
     acc[v.poll_id] = (acc[v.poll_id] ?? 0) + 1;
     return acc;
   }, {});
+
+  const { data: questions } = await admin
+    .from("questions")
+    .select("id, text, status, upvotes, created_at")
+    .eq("session_id", id)
+    .order("upvotes", { ascending: false });
+
+  const hasQA = polls?.some((p) => p.type === "qa") ?? false;
 
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
   const joinUrl = `${baseUrl}/join/${session.join_code}`;
@@ -108,15 +117,24 @@ export default async function SessionPage({
           />
         </div>
 
-        {/* Добавить опрос */}
-        {session.status !== "ended" && (
-          <div>
+        <div className="flex flex-col gap-6">
+          {/* Q&A панель */}
+          {hasQA && (
+            <QAPanel
+              sessionId={id}
+              orgSlug={slug}
+              initialQuestions={questions ?? []}
+            />
+          )}
+
+          {/* Добавить опрос */}
+          {session.status !== "ended" && (
             <div className="rounded-xl border border-slate-800 bg-slate-900 p-5">
               <h2 className="text-sm font-semibold text-white mb-4">Добавить опрос</h2>
               <NewPollForm sessionId={id} orgSlug={slug} />
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );
