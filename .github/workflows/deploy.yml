@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -28,11 +28,6 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           NEXT_PUBLIC_SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL }}
 
-  deploy:
-    runs-on: ubuntu-latest
-    needs: build
-    if: github.event_name == 'workflow_dispatch'
-    steps:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1
         with:
@@ -44,4 +39,5 @@ jobs:
             git pull origin main
             npm ci --omit=dev
             npm run build
-            pm2 reload livepoll --update-env
+            pm2 reload livepoll --update-env || pm2 start npm --name livepoll -- start
+            pm2 save
