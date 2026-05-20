@@ -32,16 +32,13 @@ const PLANNING_POKER_VALUES = ["1", "2", "3", "5", "8", "13", "21", "?", "☕"];
 
 function aggregateVotes(votes: { value: string }[], type: PollType, options: string[]) {
   const counts: Record<string, number> = {};
-
   if (type === "multiple_choice" || type === "planning_poker") {
     const keys = type === "multiple_choice" ? options : PLANNING_POKER_VALUES;
     keys.forEach((k) => (counts[k] = 0));
   }
-
   votes.forEach(({ value }) => {
     counts[value] = (counts[value] ?? 0) + 1;
   });
-
   return Object.entries(counts)
     .map(([name, count]) => ({ name, count }))
     .filter((e) => e.count > 0 || type === "multiple_choice");
@@ -64,11 +61,17 @@ export function DisplayScreen({
   const [votes, setVotes] = useState(initialVotes);
   const [questions, setQuestions] = useState<QuestionRow[]>(initialQuestions);
   const supabase = useRef(createClient());
+  // Ref позволяет читать текущий poll.id внутри стабильного callback без пересоздания канала
+  const activePollId = useRef<string | null>(initialPoll?.id ?? null);
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(joinUrl)}&bgcolor=0f172a&color=ffffff&qzone=1`;
 
+  // Синхронизируем ref при каждом рендере (без лишних эффектов)
+  activePollId.current = poll?.id ?? null;
+
   useEffect(() => {
-    let channel = supabase.current
-      .channel(`display-${session.id}`)
+    const sb = supabase.current;
+    const sessionCh = sb
+      .channel(`display-session-${session.id}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "polls", filter: `session_id=eq.${session.id}` },
@@ -77,8 +80,9 @@ export function DisplayScreen({
           if (updated?.status === "active") {
             setPoll(updated);
             setVotes([]);
-          } else if (payload.old && (payload.old as { id: string }).id === poll?.id) {
-            setPoll(null);
+          } else {
+            const closedId = (payload.old as { id: string } | undefined)?.id;
+            if (closedId) setPoll((prev) => (prev?.id === closedId ? null : prev));
           }
         }
       )
@@ -87,9 +91,7 @@ export function DisplayScreen({
         { event: "INSERT", schema: "public", table: "questions", filter: `session_id=eq.${session.id}` },
         (payload) => {
           const q = payload.new as QuestionRow;
-          if (q.status !== "hidden") {
-            setQuestions((prev) => [q, ...prev]);
-          }
+          if (q.status !== "hidden") setQuestions((prev) => [q, ...prev]);
         }
       )
       .on(
@@ -103,24 +105,25 @@ export function DisplayScreen({
               : prev.map((q) => (q.id === updated.id ? updated : q))
           );
         }
-      );
+      )
+      .subscribe((status) => console.log("[Realtime] polls/questions:", status));
 
-    if (poll) {
-      channel = channel.on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "votes", filter: `poll_id=eq.${poll.id}` },
-        (payload) => {
-          setVotes((prev) => [...prev, { value: (payload.new as { value: string }).value }]);
-        }
-      );
-    }
+    return () => { sb.removeChannel(sessionCh); };
+  }, [session.id]);
 
-    channel.subscribe((status) => {
-      console.log("[Realtime] status:", status);
-    });
+  // Broadcast-подписка на голоса — меняется при смене опроса
+  useEffect(() => {
+    if (!poll) return;
+    const sb = supabase.current;
+    const channel = sb
+      .channel(`poll-votes:${poll.id}`)
+      .on("broadcast", { event: "vote" }, ({ payload }) => {
+        setVotes((prev) => [...prev, { value: (payload as { value: string }).value }]);
+      })
+      .subscribe((status) => console.log("[Realtime] broadcast votes:", status));
 
-    return () => { supabase.current.removeChannel(channel); };
-  }, [session.id, poll?.id]);
+    return () => { sb.removeChannel(channel); };
+  }, [poll?.id]);
 
   const chartData = useMemo(() => {
     if (!poll) return [];
@@ -135,7 +138,6 @@ export function DisplayScreen({
 
   return (
     <main className="min-h-screen bg-slate-950 flex flex-col">
-      {/* Header */}
       <header className="flex items-center justify-between px-8 py-4 border-b border-slate-800">
         <span className="text-slate-400 text-sm">{session.title}</span>
         <div className="flex items-center gap-3">
@@ -149,7 +151,6 @@ export function DisplayScreen({
       </header>
 
       <div className="flex flex-1">
-        {/* Main content */}
         <div className="flex-1 flex flex-col items-center justify-center p-8">
           {!poll ? (
             <div className="text-center">
@@ -171,9 +172,7 @@ export function DisplayScreen({
                       itemStyle={{ color: "#818cf8" }}
                     />
                     <Bar dataKey="count" radius={[6, 6, 0, 0]}>
-                      {chartData.map((_, i) => (
-                        <Cell key={i} fill="#6366f1" />
-                      ))}
+                      {chartData.map((_, i) => <Cell key={i} fill="#6366f1" />)}
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
@@ -209,16 +208,11 @@ export function DisplayScreen({
               {(poll.type === "word_cloud" || poll.type === "emoji_cloud") && (
                 <div className="flex flex-wrap gap-3 justify-center max-h-72 overflow-y-auto">
                   {votes.map((v, i) => (
-                    <span
-                      key={i}
-                      className="rounded-full bg-indigo-600/20 border border-indigo-500/30 px-4 py-2 text-indigo-300 text-sm"
-                    >
+                    <span key={i} className="rounded-full bg-indigo-600/20 border border-indigo-500/30 px-4 py-2 text-indigo-300 text-sm">
                       {v.value}
                     </span>
                   ))}
-                  {votes.length === 0 && (
-                    <p className="text-slate-500 text-lg">Ожидаем ответы...</p>
-                  )}
+                  {votes.length === 0 && <p className="text-slate-500 text-lg">Ожидаем ответы...</p>}
                 </div>
               )}
 
@@ -228,21 +222,12 @@ export function DisplayScreen({
                     <p className="text-slate-500 text-lg text-center">Ожидаем вопросы...</p>
                   ) : (
                     visibleQuestions.map((q) => (
-                      <div
-                        key={q.id}
-                        className={`rounded-xl border px-5 py-3 flex items-start gap-3 ${
-                          q.status === "answered"
-                            ? "border-green-500/30 bg-green-500/5"
-                            : "border-slate-700 bg-slate-800/50"
-                        }`}
-                      >
+                      <div key={q.id} className={`rounded-xl border px-5 py-3 flex items-start gap-3 ${
+                        q.status === "answered" ? "border-green-500/30 bg-green-500/5" : "border-slate-700 bg-slate-800/50"
+                      }`}>
                         <div className="flex-1 text-white text-base">{q.text}</div>
-                        {q.upvotes > 0 && (
-                          <span className="text-slate-400 text-sm shrink-0">+{q.upvotes}</span>
-                        )}
-                        {q.status === "answered" && (
-                          <span className="text-green-400 text-xs shrink-0">✓ Отвечен</span>
-                        )}
+                        {q.upvotes > 0 && <span className="text-slate-400 text-sm shrink-0">+{q.upvotes}</span>}
+                        {q.status === "answered" && <span className="text-green-400 text-xs shrink-0">✓ Отвечен</span>}
                       </div>
                     ))
                   )}
@@ -252,7 +237,6 @@ export function DisplayScreen({
           )}
         </div>
 
-        {/* QR sidebar */}
         <div className="w-48 flex flex-col items-center justify-end p-6 border-l border-slate-800 gap-3">
           <img src={qrUrl} alt="QR" className="rounded-xl" width={160} height={160} />
           <p className="text-xs text-slate-500 text-center">Отсканируйте для участия</p>

@@ -113,6 +113,19 @@ export async function submitVote(formData: FormData) {
   if (error?.code === "23505") return { error: "Вы уже проголосовали" };
   if (error) return { error: error.message };
 
+  // Broadcast напрямую через Supabase Realtime REST API (обходит RLS)
+  await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/realtime/v1/api/broadcast`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+      "apikey": process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    },
+    body: JSON.stringify({
+      messages: [{ topic: `poll-votes:${pollId}`, event: "vote", payload: { value } }],
+    }),
+  }).catch(() => {});
+
   return { success: true };
 }
 
