@@ -7,6 +7,18 @@ import type { PollType } from "@/types/database";
 
 type PollState = { error: string } | { success: true } | null;
 
+async function realtimeBroadcast(messages: { topic: string; event: string; payload: unknown }[]) {
+  await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/realtime/v1/api/broadcast`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+      "apikey": process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    },
+    body: JSON.stringify({ messages }),
+  }).catch(() => {});
+}
+
 export async function createPoll(
   _prev: PollState,
   formData: FormData
@@ -34,7 +46,6 @@ export async function createPoll(
       .filter(Boolean);
   }
 
-  // Получаем текущий max sort_order
   const { data: last } = await admin
     .from("polls")
     .select("sort_order")
@@ -65,7 +76,14 @@ export async function activatePoll(
 ) {
   const admin = createAdminClient();
 
-  // Закрываем текущий активный опрос
+  // Закрываем текущий активный опрос и уведомляем
+  const { data: prevActive } = await admin
+    .from("polls")
+    .select("id")
+    .eq("session_id", sessionId)
+    .eq("status", "active")
+    .maybeSingle();
+
   await admin
     .from("polls")
     .update({ status: "closed", closed_at: new Date().toISOString() })
@@ -77,6 +95,30 @@ export async function activatePoll(
     .from("polls")
     .update({ status: "active" })
     .eq("id", pollId);
+
+  // Читаем данные активированного опроса для broadcast
+  const { data: activatedPoll } = await admin
+    .from("polls")
+    .select("id, title, type, options, status")
+    .eq("id", pollId)
+    .single();
+
+  const messages = [];
+  if (prevActive) {
+    messages.push({
+      topic: `session-polls:${sessionId}`,
+      event: "poll_change",
+      payload: { type: "closed", poll_id: prevActive.id },
+    });
+  }
+  if (activatedPoll) {
+    messages.push({
+      topic: `session-polls:${sessionId}`,
+      event: "poll_change",
+      payload: { type: "activated", poll: activatedPoll },
+    });
+  }
+  if (messages.length > 0) await realtimeBroadcast(messages);
 
   revalidatePath(`/org/${orgSlug}/sessions/${sessionId}`);
 }
@@ -91,6 +133,12 @@ export async function closePoll(
     .from("polls")
     .update({ status: "closed", closed_at: new Date().toISOString() })
     .eq("id", pollId);
+
+  await realtimeBroadcast([{
+    topic: `session-polls:${sessionId}`,
+    event: "poll_change",
+    payload: { type: "closed", poll_id: pollId },
+  }]);
 
   revalidatePath(`/org/${orgSlug}/sessions/${sessionId}`);
 }
@@ -113,18 +161,11 @@ export async function submitVote(formData: FormData) {
   if (error?.code === "23505") return { error: "Вы уже проголосовали" };
   if (error) return { error: error.message };
 
-  // Broadcast напрямую через Supabase Realtime REST API (обходит RLS)
-  await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/realtime/v1/api/broadcast`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
-      "apikey": process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    },
-    body: JSON.stringify({
-      messages: [{ topic: `poll-votes:${pollId}`, event: "vote", payload: { value } }],
-    }),
-  }).catch(() => {});
+  await realtimeBroadcast([{
+    topic: `poll-votes:${pollId}`,
+    event: "vote",
+    payload: { value },
+  }]);
 
   return { success: true };
 }
@@ -139,13 +180,20 @@ export async function submitQuestion(formData: FormData) {
   if (!sessionId || !voterToken || !text) return { error: "Неверные данные" };
   if (text.length > 300) return { error: "Вопрос слишком длинный" };
 
-  const { error } = await admin.from("questions").insert({
-    session_id: sessionId,
-    voter_token: voterToken,
-    text,
-  });
+  const { data, error } = await admin
+    .from("questions")
+    .insert({ session_id: sessionId, voter_token: voterToken, text })
+    .select("id, text, status, upvotes")
+    .single();
 
   if (error) return { error: error.message };
+
+  await realtimeBroadcast([{
+    topic: `session-questions:${sessionId}`,
+    event: "question_change",
+    payload: { type: "new", question: data },
+  }]);
+
   return { success: true };
 }
 
@@ -157,5 +205,20 @@ export async function updateQuestionStatus(
 ) {
   const admin = createAdminClient();
   await admin.from("questions").update({ status }).eq("id", questionId);
+
+  const { data: updated } = await admin
+    .from("questions")
+    .select("id, text, status, upvotes")
+    .eq("id", questionId)
+    .single();
+
+  if (updated) {
+    await realtimeBroadcast([{
+      topic: `session-questions:${sessionId}`,
+      event: "question_change",
+      payload: { type: "updated", question: updated },
+    }]);
+  }
+
   revalidatePath(`/org/${orgSlug}/sessions/${sessionId}`);
 }

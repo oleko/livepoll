@@ -46,25 +46,21 @@ export function VoteInterface({
 
   useEffect(() => {
     const channel = supabase.current
-      .channel(`session-${sessionId}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "polls", filter: `session_id=eq.${sessionId}` },
-        async (payload) => {
-          const updated = payload.new as PollData;
-          if (updated?.status === "active") {
-            setPoll(updated);
-            setVoted(false);
-            setError(null);
-          } else if (payload.old && (payload.old as { id: string }).id === poll?.id) {
-            setPoll(null);
-          }
+      .channel(`session-polls:${sessionId}`)
+      .on("broadcast", { event: "poll_change" }, ({ payload }) => {
+        const data = payload as { type: string; poll?: PollData; poll_id?: string };
+        if (data.type === "activated" && data.poll) {
+          setPoll(data.poll);
+          setVoted(false);
+          setError(null);
+        } else if (data.type === "closed") {
+          setPoll((prev) => (prev?.id === data.poll_id ? null : prev));
         }
-      )
+      })
       .subscribe();
 
     return () => { supabase.current.removeChannel(channel); };
-  }, [sessionId, poll?.id]);
+  }, [sessionId]);
 
   async function handleVote(value: string) {
     const voterToken = getVoterToken();

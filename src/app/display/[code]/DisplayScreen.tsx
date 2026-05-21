@@ -61,54 +61,53 @@ export function DisplayScreen({
   const [votes, setVotes] = useState(initialVotes);
   const [questions, setQuestions] = useState<QuestionRow[]>(initialQuestions);
   const supabase = useRef(createClient());
-  const activePollId = useRef<string | null>(initialPoll?.id ?? null);
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(joinUrl)}&bgcolor=0f172a&color=ffffff&qzone=1`;
 
-  activePollId.current = poll?.id ?? null;
-
+  // Broadcast: poll activated / closed
   useEffect(() => {
     const sb = supabase.current;
-    const sessionCh = sb
-      .channel(`display-session-${session.id}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "polls", filter: `session_id=eq.${session.id}` },
-        (payload) => {
-          const updated = payload.new as PollData;
-          if (updated?.status === "active") {
-            setPoll(updated);
-            setVotes([]);
-          } else {
-            const closedId = (payload.old as { id: string } | undefined)?.id;
-            if (closedId) setPoll((prev) => (prev?.id === closedId ? null : prev));
-          }
+    const channel = sb
+      .channel(`session-polls:${session.id}`)
+      .on("broadcast", { event: "poll_change" }, ({ payload }) => {
+        const data = payload as { type: string; poll?: PollData; poll_id?: string };
+        if (data.type === "activated" && data.poll) {
+          setPoll(data.poll);
+          setVotes([]);
+        } else if (data.type === "closed") {
+          setPoll((prev) => (prev?.id === data.poll_id ? null : prev));
         }
-      )
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "questions", filter: `session_id=eq.${session.id}` },
-        (payload) => {
-          const q = payload.new as QuestionRow;
-          if (q.status !== "hidden") setQuestions((prev) => [q, ...prev]);
-        }
-      )
-      .on(
-        "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "questions", filter: `session_id=eq.${session.id}` },
-        (payload) => {
-          const updated = payload.new as QuestionRow;
-          setQuestions((prev) =>
-            updated.status === "hidden"
-              ? prev.filter((q) => q.id !== updated.id)
-              : prev.map((q) => (q.id === updated.id ? updated : q))
-          );
-        }
-      )
+      })
       .subscribe();
 
-    return () => { sb.removeChannel(sessionCh); };
+    return () => { sb.removeChannel(channel); };
   }, [session.id]);
 
+  // Broadcast: new / updated questions
+  useEffect(() => {
+    const sb = supabase.current;
+    const channel = sb
+      .channel(`session-questions:${session.id}`)
+      .on("broadcast", { event: "question_change" }, ({ payload }) => {
+        const data = payload as { type: string; question: QuestionRow };
+        if (data.type === "new") {
+          if (data.question.status !== "hidden") {
+            setQuestions((prev) => [data.question, ...prev]);
+          }
+        } else if (data.type === "updated") {
+          const q = data.question;
+          setQuestions((prev) =>
+            q.status === "hidden"
+              ? prev.filter((item) => item.id !== q.id)
+              : prev.map((item) => (item.id === q.id ? q : item))
+          );
+        }
+      })
+      .subscribe();
+
+    return () => { sb.removeChannel(channel); };
+  }, [session.id]);
+
+  // Broadcast: vote counts for active poll
   useEffect(() => {
     if (!poll) return;
     const sb = supabase.current;
@@ -166,10 +165,8 @@ export function DisplayScreen({
                 <p className="text-3xl font-bold text-white mb-2">Присоединяйтесь к мероприятию</p>
                 <p className="text-slate-500 text-lg">Отсканируйте QR-код или введите код на экране</p>
               </div>
-              <div className="relative">
-                <div className="rounded-3xl border-2 border-slate-700 bg-slate-900 p-4 shadow-2xl">
-                  <img src={qrUrl} alt="QR-код для участия" className="rounded-xl block" width={220} height={220} />
-                </div>
+              <div className="rounded-3xl border-2 border-slate-700 bg-slate-900 p-4 shadow-2xl">
+                <img src={qrUrl} alt="QR-код для участия" className="rounded-xl block" width={220} height={220} />
               </div>
               <div className="flex flex-col items-center gap-1">
                 <p className="text-slate-500 text-sm">Введите код на</p>
@@ -184,7 +181,6 @@ export function DisplayScreen({
           ) : (
             /* Active poll */
             <div className="w-full max-w-3xl">
-              {/* Poll type badge */}
               <div className="flex justify-center mb-4">
                 <span className="text-xs text-slate-500 uppercase tracking-widest font-medium">
                   {poll.type === "multiple_choice" && "Множественный выбор"}

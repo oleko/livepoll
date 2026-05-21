@@ -32,22 +32,17 @@ export function QAPanel({
 
   useEffect(() => {
     const channel = supabase.current
-      .channel(`qa-panel-${sessionId}`)
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "questions", filter: `session_id=eq.${sessionId}` },
-        (payload) => {
-          setQuestions((prev) => [payload.new as Question, ...prev]);
+      .channel(`session-questions:${sessionId}`)
+      .on("broadcast", { event: "question_change" }, ({ payload }) => {
+        const data = payload as { type: string; question: Question };
+        if (data.type === "new") {
+          setQuestions((prev) => [data.question, ...prev]);
+        } else if (data.type === "updated") {
+          setQuestions((prev) =>
+            prev.map((q) => (q.id === data.question.id ? data.question : q))
+          );
         }
-      )
-      .on(
-        "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "questions", filter: `session_id=eq.${sessionId}` },
-        (payload) => {
-          const updated = payload.new as Question;
-          setQuestions((prev) => prev.map((q) => (q.id === updated.id ? updated : q)));
-        }
-      )
+      })
       .subscribe();
 
     return () => { supabase.current.removeChannel(channel); };
