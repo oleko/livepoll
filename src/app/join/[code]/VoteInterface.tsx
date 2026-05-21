@@ -44,7 +44,6 @@ export function VoteInterface({
   const [error, setError] = useState<string | null>(null);
   const supabase = useRef(createClient());
 
-  // Realtime подписка на смену активного опроса
   useEffect(() => {
     const channel = supabase.current
       .channel(`session-${sessionId}`)
@@ -62,9 +61,7 @@ export function VoteInterface({
           }
         }
       )
-      .subscribe((status) => {
-        console.log("[Realtime] VoteInterface status:", status);
-      });
+      .subscribe();
 
     return () => { supabase.current.removeChannel(channel); };
   }, [sessionId, poll?.id]);
@@ -115,29 +112,35 @@ export function VoteInterface({
 
   if (sessionStatus === "draft") {
     return (
-      <div className="text-center">
-        <p className="text-xl text-slate-300">Мероприятие ещё не началось</p>
-        <p className="text-slate-500 mt-2">Ожидайте начала...</p>
+      <div className="text-center px-6">
+        <div className="text-5xl mb-5">🕐</div>
+        <p className="text-2xl font-semibold text-white mb-2">Мероприятие ещё не началось</p>
+        <p className="text-slate-500">Ожидайте начала...</p>
       </div>
     );
   }
 
   if (!poll) {
     return (
-      <div className="text-center">
-        <div className="text-4xl mb-4">⏳</div>
-        <p className="text-xl text-slate-300">Ожидайте следующего вопроса</p>
-        <p className="text-slate-500 mt-2 text-sm">Страница обновится автоматически</p>
+      <div className="text-center px-6">
+        <div className="text-5xl mb-5">⏳</div>
+        <p className="text-2xl font-semibold text-white mb-2">Ожидайте вопроса</p>
+        <p className="text-slate-500 text-sm">Страница обновится автоматически</p>
       </div>
     );
   }
 
   if (voted) {
+    const isQA = poll?.type === "qa";
     return (
-      <div className="text-center">
-        <div className="text-5xl mb-4">✅</div>
-        <p className="text-xl text-white">Голос принят!</p>
-        <p className="text-slate-500 mt-2 text-sm">Ожидайте следующего вопроса</p>
+      <div className="text-center px-6">
+        <div className="text-6xl mb-5">{isQA ? "📩" : "✅"}</div>
+        <p className="text-2xl font-semibold text-white mb-2">
+          {isQA ? "Вопрос отправлен!" : "Голос принят!"}
+        </p>
+        <p className="text-slate-500 text-sm">
+          {isQA ? "Ведущий увидит ваш вопрос" : "Ожидайте следующего вопроса"}
+        </p>
       </div>
     );
   }
@@ -145,11 +148,14 @@ export function VoteInterface({
   const options = poll.options as string[];
 
   return (
-    <div className="w-full max-w-md">
-      <h2 className="text-xl font-semibold text-white text-center mb-6">{poll.title}</h2>
+    <div className="w-full max-w-sm">
+      {/* Poll title */}
+      <h2 className="text-2xl font-bold text-white text-center mb-8 leading-snug px-2">
+        {poll.title}
+      </h2>
 
       {error && (
-        <div className="mb-4 rounded-lg bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-red-400 text-center">
+        <div className="mb-5 rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-red-400 text-center">
           {error}
         </div>
       )}
@@ -157,49 +163,50 @@ export function VoteInterface({
       {poll.type === "multiple_choice" && (
         <div className="flex flex-col gap-3">
           {options.map((opt) => (
-            <Button
+            <button
               key={opt}
-              variant="secondary"
-              className="w-full text-left justify-start py-3 text-base"
               onClick={() => handleVote(opt)}
-              loading={isPending}
+              disabled={isPending}
+              className="w-full rounded-xl border border-slate-700 bg-slate-800 hover:border-indigo-500 hover:bg-indigo-600/10 text-white text-left px-5 py-4 text-base font-medium transition-colors disabled:opacity-50 active:scale-[0.98]"
             >
               {opt}
-            </Button>
+            </button>
           ))}
         </div>
       )}
 
       {poll.type === "temperature" && (
-        <div className="flex flex-col items-center gap-4">
-          <div className="flex gap-2">
+        <div className="flex flex-col items-center gap-6">
+          <div className="flex gap-4 justify-center">
             {["❄️", "🥶", "😐", "🌡️", "🔥"].map((emoji, i) => (
               <button
                 key={i}
                 onClick={() => handleVote(String(i + 1))}
                 disabled={isPending}
-                className="text-4xl hover:scale-125 transition-transform disabled:opacity-50"
+                className="text-5xl hover:scale-125 transition-transform disabled:opacity-50 active:scale-110"
               >
                 {emoji}
               </button>
             ))}
           </div>
-          <div className="flex justify-between w-full text-xs text-slate-500">
+          <div className="flex justify-between w-full text-sm text-slate-500 px-1">
             <span>Холодно</span><span>Горячо</span>
           </div>
         </div>
       )}
 
       {poll.type === "like_dislike" && (
-        <div className="flex justify-center gap-8">
+        <div className="flex justify-center gap-10">
           {[["👍", "like"], ["👎", "dislike"]].map(([emoji, val]) => (
             <button
               key={val}
               onClick={() => handleVote(val)}
               disabled={isPending}
-              className="text-6xl hover:scale-125 transition-transform disabled:opacity-50"
+              className="flex flex-col items-center gap-2 disabled:opacity-50"
             >
-              {emoji}
+              <span className="text-7xl hover:scale-125 transition-transform active:scale-110 inline-block">
+                {emoji}
+              </span>
             </button>
           ))}
         </div>
@@ -211,14 +218,14 @@ export function VoteInterface({
             type="text"
             maxLength={30}
             placeholder="Введите слово или фразу..."
-            className="rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-center text-lg"
+            className="rounded-xl border border-slate-700 bg-slate-800 px-5 py-4 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-center text-lg"
             onKeyDown={(e) => {
               if (e.key === "Enter") handleVote((e.target as HTMLInputElement).value.trim());
             }}
             id="word-input"
           />
           <Button
-            className="w-full"
+            className="w-full py-4 text-base"
             onClick={() => {
               const input = document.getElementById("word-input") as HTMLInputElement;
               if (input.value.trim()) handleVote(input.value.trim());
@@ -237,7 +244,7 @@ export function VoteInterface({
               key={emoji}
               onClick={() => handleVote(emoji)}
               disabled={isPending}
-              className="text-4xl hover:scale-125 transition-transform disabled:opacity-50 aspect-square flex items-center justify-center rounded-xl border border-slate-700 hover:border-slate-500"
+              className="text-4xl aspect-square flex items-center justify-center rounded-2xl border border-slate-700 bg-slate-800 hover:border-indigo-500 hover:bg-indigo-600/10 transition-colors disabled:opacity-50 active:scale-95"
             >
               {emoji}
             </button>
@@ -252,7 +259,7 @@ export function VoteInterface({
               key={val}
               onClick={() => handleVote(val)}
               disabled={isPending}
-              className="aspect-[2/3] rounded-xl border border-slate-700 bg-slate-800 text-2xl font-bold text-white hover:border-indigo-500 hover:bg-indigo-600/20 transition-colors disabled:opacity-50"
+              className="aspect-[2/3] rounded-2xl border border-slate-700 bg-slate-800 text-3xl font-bold text-white hover:border-indigo-500 hover:bg-indigo-600/20 transition-colors disabled:opacity-50 active:scale-95"
             >
               {val}
             </button>
@@ -263,14 +270,14 @@ export function VoteInterface({
       {poll.type === "qa" && (
         <div className="flex flex-col gap-3">
           <textarea
-            rows={3}
+            rows={4}
             maxLength={300}
             placeholder="Введите ваш вопрос..."
-            className="rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+            className="rounded-xl border border-slate-700 bg-slate-800 px-5 py-4 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none text-base"
             id="qa-input"
           />
           <Button
-            className="w-full"
+            className="w-full py-4 text-base"
             onClick={() => {
               const input = document.getElementById("qa-input") as HTMLTextAreaElement;
               if (input.value.trim()) handleSubmitQuestion(input.value.trim());
