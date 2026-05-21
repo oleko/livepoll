@@ -39,55 +39,55 @@ export default async function SettingsPage({
   return (
     <div className="max-w-2xl">
       <div className="mb-6">
-        <h1 className="text-xl font-semibold text-white">Настройки</h1>
+        <h1 className="text-xl font-semibold text-slate-900 dark:text-white">Настройки</h1>
       </div>
 
       <div className="flex flex-col gap-4">
-        {/* Информация об организации */}
-        <div className="rounded-xl border border-slate-800 bg-slate-900 p-6">
-          <h2 className="text-sm font-semibold text-white mb-4">Организация</h2>
+        {/* Org info */}
+        <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6">
+          <h2 className="text-sm font-semibold text-slate-900 dark:text-white mb-4">Организация</h2>
           <div className="flex flex-col gap-3 text-sm">
             <div className="flex justify-between">
-              <span className="text-slate-400">Название</span>
-              <span className="text-white">{org.name}</span>
+              <span className="text-slate-500">Название</span>
+              <span className="text-slate-900 dark:text-white">{org.name}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-slate-400">URL-адрес</span>
-              <span className="font-mono text-slate-300">/org/{org.slug}</span>
+              <span className="text-slate-500">URL-адрес</span>
+              <span className="font-mono text-slate-600 dark:text-slate-300">/org/{org.slug}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-slate-400">Создана</span>
-              <span className="text-slate-300">
+              <span className="text-slate-500">Создана</span>
+              <span className="text-slate-600 dark:text-slate-300">
                 {new Date(org.created_at).toLocaleDateString("ru-RU")}
               </span>
             </div>
           </div>
         </div>
 
-        {/* Тариф и лимиты */}
-        <div className="rounded-xl border border-slate-800 bg-slate-900 p-6">
+        {/* Plan & limits */}
+        <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-semibold text-white">Тариф</h2>
-            <span className="rounded-full bg-indigo-600/20 px-3 py-1 text-xs font-semibold text-indigo-400 uppercase">
+            <h2 className="text-sm font-semibold text-slate-900 dark:text-white">Тариф</h2>
+            <span className="rounded-full bg-indigo-600/20 px-3 py-1 text-xs font-semibold text-indigo-600 dark:text-indigo-400 uppercase">
               {PLAN_NAMES[org.plan]}
             </span>
           </div>
           <div className="flex flex-col gap-3 text-sm">
             <div className="flex justify-between">
-              <span className="text-slate-400">Активных мероприятий</span>
-              <span className="text-slate-300">{formatLimit(limits.sessions)}</span>
+              <span className="text-slate-500">Активных мероприятий</span>
+              <span className="text-slate-600 dark:text-slate-300">{formatLimit(limits.sessions)}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-slate-400">Участников на мероприятие</span>
-              <span className="text-slate-300">{formatLimit(limits.participants)}</span>
+              <span className="text-slate-500">Участников на мероприятие</span>
+              <span className="text-slate-600 dark:text-slate-300">{formatLimit(limits.participants)}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-slate-400">Опросов на мероприятие</span>
-              <span className="text-slate-300">{formatLimit(limits.pollsPerSession)}</span>
+              <span className="text-slate-500">Опросов на мероприятие</span>
+              <span className="text-slate-600 dark:text-slate-300">{formatLimit(limits.pollsPerSession)}</span>
             </div>
           </div>
           {org.plan === "free" && (
-            <div className="mt-4 rounded-lg bg-indigo-600/10 border border-indigo-600/20 px-4 py-3 text-sm text-indigo-400">
+            <div className="mt-4 rounded-lg bg-indigo-600/10 border border-indigo-600/20 px-4 py-3 text-sm text-indigo-600 dark:text-indigo-400">
               Для снятия ограничений перейдите на Pro тариф
             </div>
           )}

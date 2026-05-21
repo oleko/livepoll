@@ -28,19 +28,19 @@ export function NewPollForm({ sessionId, orgSlug }: { sessionId: string; orgSlug
       <input type="hidden" name="org_slug" value={orgSlug} />
 
       {state && "error" in state && (
-        <p className="text-xs text-red-400">{state.error}</p>
+        <p className="text-xs text-red-500 dark:text-red-400">{state.error}</p>
       )}
       {state && "success" in state && (
-        <p className="text-xs text-green-400">Опрос добавлен</p>
+        <p className="text-xs text-green-600 dark:text-green-400">Опрос добавлен</p>
       )}
 
       <div className="flex flex-col gap-1.5">
-        <label className="text-sm font-medium text-slate-300">Тип опроса</label>
+        <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Тип опроса</label>
         <select
           name="type"
           value={type}
           onChange={(e) => setType(e.target.value as PollType)}
-          className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
         >
           {POLL_TYPES.map((t) => (
             <option key={t.value} value={t.value}>{t.label}</option>
@@ -57,15 +57,15 @@ export function NewPollForm({ sessionId, orgSlug }: { sessionId: string; orgSlug
 
       {selectedType.hasOptions && (
         <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-slate-300">
+          <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
             Варианты ответов
-            <span className="text-slate-500 font-normal ml-1">(каждый с новой строки)</span>
+            <span className="text-slate-400 dark:text-slate-500 font-normal ml-1">(каждый с новой строки)</span>
           </label>
           <textarea
             name="options"
             rows={4}
             placeholder={"Вариант А\nВариант Б\nВариант В"}
-            className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+            className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
           />
         </div>
       )}

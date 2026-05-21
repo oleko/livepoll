@@ -12,9 +12,9 @@ const STATUS_LABEL: Record<Session["status"], string> = {
 };
 
 const STATUS_COLOR: Record<Session["status"], string> = {
-  draft:  "text-slate-400 bg-slate-800",
-  active: "text-green-400 bg-green-400/10",
-  ended:  "text-slate-500 bg-slate-800",
+  draft:  "text-slate-500 bg-slate-100 dark:text-slate-400 dark:bg-slate-800",
+  active: "text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-400/10",
+  ended:  "text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800",
 };
 
 export default async function OrgDashboardPage({
@@ -49,9 +49,9 @@ export default async function OrgDashboardPage({
     <div>
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-white">Мероприятия</h1>
+          <h1 className="text-xl font-semibold text-slate-900 dark:text-white">Мероприятия</h1>
           {activeSessions > 0 && (
-            <p className="mt-1 text-sm text-green-400">
+            <p className="mt-1 text-sm text-green-600 dark:text-green-400">
               {activeSessions} активных сейчас
             </p>
           )}
@@ -62,9 +62,9 @@ export default async function OrgDashboardPage({
       </div>
 
       {!sessions || sessions.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-slate-700 bg-slate-900/50 p-16 text-center">
-          <p className="text-slate-400 text-lg mb-2">Нет мероприятий</p>
-          <p className="text-slate-600 text-sm mb-6">
+        <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50 p-16 text-center">
+          <p className="text-slate-500 dark:text-slate-400 text-lg mb-2">Нет мероприятий</p>
+          <p className="text-slate-400 dark:text-slate-600 text-sm mb-6">
             Создайте первое мероприятие чтобы начать принимать голоса
           </p>
           <Link href={`/org/${slug}/sessions/new`}>
@@ -77,13 +77,13 @@ export default async function OrgDashboardPage({
             <Link
               key={session.id}
               href={`/org/${slug}/sessions/${session.id}`}
-              className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-900 px-5 py-4 hover:border-slate-700 hover:bg-slate-800/50 transition-colors"
+              className="flex items-center justify-between rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-5 py-4 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
             >
               <div className="flex items-center gap-4">
                 <div>
-                  <p className="font-medium text-white">{session.title}</p>
-                  <p className="text-sm text-slate-500 mt-0.5">
-                    Код: <span className="font-mono text-slate-400">{session.join_code}</span>
+                  <p className="font-medium text-slate-900 dark:text-white">{session.title}</p>
+                  <p className="text-sm text-slate-400 dark:text-slate-500 mt-0.5">
+                    Код: <span className="font-mono text-slate-500 dark:text-slate-400">{session.join_code}</span>
                     {" · "}
                     {new Date(session.created_at).toLocaleDateString("ru-RU")}
                   </p>

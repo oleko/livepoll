@@ -44,6 +44,7 @@ export function VoteInterface({
   const [error, setError] = useState<string | null>(null);
   const supabase = useRef(createClient());
 
+  // Subscribe to poll changes via broadcast
   useEffect(() => {
     const channel = supabase.current
       .channel(`session-polls:${sessionId}`)
@@ -110,7 +111,7 @@ export function VoteInterface({
     return (
       <div className="text-center px-6">
         <div className="text-5xl mb-5">🕐</div>
-        <p className="text-2xl font-semibold text-white mb-2">Мероприятие ещё не началось</p>
+        <p className="text-2xl font-semibold text-slate-900 dark:text-white mb-2">Мероприятие ещё не началось</p>
         <p className="text-slate-500">Ожидайте начала...</p>
       </div>
     );
@@ -120,7 +121,7 @@ export function VoteInterface({
     return (
       <div className="text-center px-6">
         <div className="text-5xl mb-5">⏳</div>
-        <p className="text-2xl font-semibold text-white mb-2">Ожидайте вопроса</p>
+        <p className="text-2xl font-semibold text-slate-900 dark:text-white mb-2">Ожидайте вопроса</p>
         <p className="text-slate-500 text-sm">Страница обновится автоматически</p>
       </div>
     );
@@ -131,7 +132,7 @@ export function VoteInterface({
     return (
       <div className="text-center px-6">
         <div className="text-6xl mb-5">{isQA ? "📩" : "✅"}</div>
-        <p className="text-2xl font-semibold text-white mb-2">
+        <p className="text-2xl font-semibold text-slate-900 dark:text-white mb-2">
           {isQA ? "Вопрос отправлен!" : "Голос принят!"}
         </p>
         <p className="text-slate-500 text-sm">
@@ -146,12 +147,12 @@ export function VoteInterface({
   return (
     <div className="w-full max-w-sm">
       {/* Poll title */}
-      <h2 className="text-2xl font-bold text-white text-center mb-8 leading-snug px-2">
+      <h2 className="text-2xl font-bold text-slate-900 dark:text-white text-center mb-8 leading-snug px-2">
         {poll.title}
       </h2>
 
       {error && (
-        <div className="mb-5 rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-red-400 text-center">
+        <div className="mb-5 rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-red-500 dark:text-red-400 text-center">
           {error}
         </div>
       )}
@@ -163,7 +164,7 @@ export function VoteInterface({
               key={opt}
               onClick={() => handleVote(opt)}
               disabled={isPending}
-              className="w-full rounded-xl border border-slate-700 bg-slate-800 hover:border-indigo-500 hover:bg-indigo-600/10 text-white text-left px-5 py-4 text-base font-medium transition-colors disabled:opacity-50 active:scale-[0.98]"
+              className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-600/10 text-slate-900 dark:text-white text-left px-5 py-4 text-base font-medium transition-colors disabled:opacity-50 active:scale-[0.98]"
             >
               {opt}
             </button>
@@ -214,7 +215,7 @@ export function VoteInterface({
             type="text"
             maxLength={30}
             placeholder="Введите слово или фразу..."
-            className="rounded-xl border border-slate-700 bg-slate-800 px-5 py-4 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-center text-lg"
+            className="rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-5 py-4 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-center text-lg"
             onKeyDown={(e) => {
               if (e.key === "Enter") handleVote((e.target as HTMLInputElement).value.trim());
             }}
@@ -240,7 +241,7 @@ export function VoteInterface({
               key={emoji}
               onClick={() => handleVote(emoji)}
               disabled={isPending}
-              className="text-4xl aspect-square flex items-center justify-center rounded-2xl border border-slate-700 bg-slate-800 hover:border-indigo-500 hover:bg-indigo-600/10 transition-colors disabled:opacity-50 active:scale-95"
+              className="text-4xl aspect-square flex items-center justify-center rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-600/10 transition-colors disabled:opacity-50 active:scale-95"
             >
               {emoji}
             </button>
@@ -255,7 +256,7 @@ export function VoteInterface({
               key={val}
               onClick={() => handleVote(val)}
               disabled={isPending}
-              className="aspect-[2/3] rounded-2xl border border-slate-700 bg-slate-800 text-3xl font-bold text-white hover:border-indigo-500 hover:bg-indigo-600/20 transition-colors disabled:opacity-50 active:scale-95"
+              className="aspect-[2/3] rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-3xl font-bold text-slate-900 dark:text-white hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-600/20 transition-colors disabled:opacity-50 active:scale-95"
             >
               {val}
             </button>
@@ -269,7 +270,7 @@ export function VoteInterface({
             rows={4}
             maxLength={300}
             placeholder="Введите ваш вопрос..."
-            className="rounded-xl border border-slate-700 bg-slate-800 px-5 py-4 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none text-base"
+            className="rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-5 py-4 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none text-base"
             id="qa-input"
           />
           <Button

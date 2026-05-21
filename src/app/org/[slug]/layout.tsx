@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { signOut } from "@/lib/actions/auth";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default async function OrgLayout({
   children,
@@ -45,25 +46,26 @@ export default async function OrgLayout({
   ];
 
   return (
-    <div className="min-h-screen bg-slate-950">
-      <header className="border-b border-slate-800 bg-slate-900">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+      <header className="border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3">
           <div className="flex items-center gap-8">
-            <span className="font-semibold text-white">{org.name}</span>
+            <span className="font-semibold text-slate-900 dark:text-white">{org.name}</span>
             <nav className="flex gap-1">
               {navLinks.map((link) => (
                 <Link
                   key={link.href}
                   href={link.href}
-                  className="rounded-md px-3 py-1.5 text-sm text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
+                  className="rounded-md px-3 py-1.5 text-sm text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-colors"
                 >
                   {link.label}
                 </Link>
               ))}
             </nav>
           </div>
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-slate-500 uppercase font-medium">{org.plan}</span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-slate-400 dark:text-slate-500 uppercase font-medium">{org.plan}</span>
+            <ThemeToggle />
             <form action={signOut}>
               <Button type="submit" variant="ghost" className="text-sm py-1.5 px-3">
                 Выйти

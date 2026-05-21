@@ -56,17 +56,17 @@ export function QAPanel({
 
   if (questions.length === 0) {
     return (
-      <div className="rounded-xl border border-slate-800 bg-slate-900 p-5">
-        <h2 className="text-sm font-semibold text-white mb-4">Q&A</h2>
-        <p className="text-slate-500 text-sm text-center py-4">Вопросов пока нет</p>
+      <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
+        <h2 className="text-sm font-semibold text-slate-900 dark:text-white mb-4">Q&A</h2>
+        <p className="text-slate-400 dark:text-slate-500 text-sm text-center py-4">Вопросов пока нет</p>
       </div>
     );
   }
 
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900 p-5">
-      <h2 className="text-sm font-semibold text-white mb-4">
-        Q&A <span className="text-slate-500 font-normal">({questions.length})</span>
+    <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
+      <h2 className="text-sm font-semibold text-slate-900 dark:text-white mb-4">
+        Q&A <span className="text-slate-400 dark:text-slate-500 font-normal">({questions.length})</span>
       </h2>
       <div className="flex flex-col gap-2 max-h-96 overflow-y-auto">
         {sorted.map((q) => (
@@ -76,17 +76,17 @@ export function QAPanel({
               q.status === "answered"
                 ? "border-green-500/30 bg-green-500/5"
                 : q.status === "hidden"
-                ? "border-slate-700 opacity-50"
-                : "border-slate-700 bg-slate-800/50"
+                ? "border-slate-200 dark:border-slate-700 opacity-50"
+                : "border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50"
             }`}
           >
             <div className="flex items-start gap-2">
               <div className="flex-1">
-                <p className="text-sm text-white">{q.text}</p>
+                <p className="text-sm text-slate-900 dark:text-white">{q.text}</p>
                 <div className="flex items-center gap-2 mt-1">
-                  <span className="text-xs text-slate-500">{STATUS_LABEL[q.status]}</span>
+                  <span className="text-xs text-slate-400 dark:text-slate-500">{STATUS_LABEL[q.status]}</span>
                   {q.upvotes > 0 && (
-                    <span className="text-xs text-slate-500">+{q.upvotes}</span>
+                    <span className="text-xs text-slate-400 dark:text-slate-500">+{q.upvotes}</span>
                   )}
                 </div>
               </div>
@@ -94,7 +94,7 @@ export function QAPanel({
                 {q.status !== "answered" && q.status !== "hidden" && (
                   <button
                     onClick={() => handleStatus(q, "answered")}
-                    className="rounded px-2 py-1 text-xs text-green-400 hover:bg-green-400/10 transition-colors"
+                    className="rounded px-2 py-1 text-xs text-green-600 dark:text-green-400 hover:bg-green-500/10 transition-colors"
                   >
                     ✓
                   </button>
@@ -102,14 +102,14 @@ export function QAPanel({
                 {q.status !== "hidden" ? (
                   <button
                     onClick={() => handleStatus(q, "hidden")}
-                    className="rounded px-2 py-1 text-xs text-slate-500 hover:bg-slate-700 transition-colors"
+                    className="rounded px-2 py-1 text-xs text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
                   >
                     Скрыть
                   </button>
                 ) : (
                   <button
                     onClick={() => handleStatus(q, "pending")}
-                    className="rounded px-2 py-1 text-xs text-slate-500 hover:bg-slate-700 transition-colors"
+                    className="rounded px-2 py-1 text-xs text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
                   >
                     Показать
                   </button>

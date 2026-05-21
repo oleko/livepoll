@@ -16,9 +16,9 @@ const STATUS_LABEL: Record<Session["status"], string> = {
 };
 
 const STATUS_COLOR: Record<Session["status"], string> = {
-  draft:  "text-slate-400 bg-slate-800",
-  active: "text-green-400 bg-green-400/10",
-  ended:  "text-slate-500 bg-slate-800",
+  draft:  "text-slate-500 bg-slate-100 dark:text-slate-400 dark:bg-slate-800",
+  active: "text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-400/10",
+  ended:  "text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800",
 };
 
 export default async function SessionPage({
@@ -71,21 +71,21 @@ export default async function SessionPage({
 
   return (
     <div>
-      {/* Шапка сессии */}
+      {/* Session header */}
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
           <div className="flex items-center gap-3 mb-1">
-            <Link href={`/org/${slug}`} className="text-slate-500 hover:text-slate-300 text-sm">
+            <Link href={`/org/${slug}`} className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 text-sm">
               ← Мероприятия
             </Link>
           </div>
-          <h1 className="text-xl font-semibold text-white">{session.title}</h1>
+          <h1 className="text-xl font-semibold text-slate-900 dark:text-white">{session.title}</h1>
           <div className="flex items-center gap-3 mt-2">
             <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_COLOR[session.status]}`}>
               {STATUS_LABEL[session.status]}
             </span>
-            <span className="text-sm text-slate-500">
-              Код: <span className="font-mono text-slate-300 text-base tracking-widest">{session.join_code}</span>
+            <span className="text-sm text-slate-400 dark:text-slate-500">
+              Код: <span className="font-mono text-slate-600 dark:text-slate-300 text-base tracking-widest">{session.join_code}</span>
             </span>
           </div>
         </div>
@@ -106,7 +106,7 @@ export default async function SessionPage({
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        {/* Список опросов */}
+        {/* Poll list */}
         <div className="lg:col-span-2">
           <PollList
             polls={polls ?? []}
@@ -118,7 +118,7 @@ export default async function SessionPage({
         </div>
 
         <div className="flex flex-col gap-6">
-          {/* Q&A панель */}
+          {/* Q&A panel */}
           {hasQA && (
             <QAPanel
               sessionId={id}
@@ -127,10 +127,10 @@ export default async function SessionPage({
             />
           )}
 
-          {/* Добавить опрос */}
+          {/* New poll form */}
           {session.status !== "ended" && (
-            <div className="rounded-xl border border-slate-800 bg-slate-900 p-5">
-              <h2 className="text-sm font-semibold text-white mb-4">Добавить опрос</h2>
+            <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
+              <h2 className="text-sm font-semibold text-slate-900 dark:text-white mb-4">Добавить опрос</h2>
               <NewPollForm sessionId={id} orgSlug={slug} />
             </div>
           )}

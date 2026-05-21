@@ -41,9 +41,9 @@ export function PollList({
 }) {
   if (polls.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-slate-700 bg-slate-900/50 p-12 text-center">
-        <p className="text-slate-400">Нет опросов</p>
-        <p className="text-slate-600 text-sm mt-1">Добавьте первый опрос справа</p>
+      <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50 p-12 text-center">
+        <p className="text-slate-500 dark:text-slate-400">Нет опросов</p>
+        <p className="text-slate-400 dark:text-slate-600 text-sm mt-1">Добавьте первый опрос справа</p>
       </div>
     );
   }
@@ -62,8 +62,8 @@ export function PollList({
               isActive
                 ? "border-green-500/40 bg-green-500/5 shadow-[0_0_20px_rgba(34,197,94,0.05)]"
                 : isClosed
-                  ? "border-slate-800 bg-slate-900 opacity-60"
-                  : "border-slate-800 bg-slate-900"
+                  ? "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 opacity-60"
+                  : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
             }`}
           >
             {/* Icon */}
@@ -71,21 +71,21 @@ export function PollList({
 
             {/* Info */}
             <div className="flex-1 min-w-0">
-              <p className={`font-medium text-sm truncate ${isClosed ? "text-slate-400" : "text-white"}`}>
+              <p className={`font-medium text-sm truncate ${isClosed ? "text-slate-400 dark:text-slate-500" : "text-slate-900 dark:text-white"}`}>
                 {poll.title}
               </p>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
                 {TYPE_LABEL[poll.type]}
                 {voteCount !== undefined && voteCount > 0 && (
-                  <span className="text-slate-600"> · {voteCount} голосов</span>
+                  <span className="text-slate-300 dark:text-slate-600"> · {voteCount} голосов</span>
                 )}
               </p>
             </div>
 
             {/* Status indicator */}
             {isActive && (
-              <span className="flex items-center gap-1.5 text-xs font-semibold text-green-400 shrink-0">
-                <span className="h-1.5 w-1.5 rounded-full bg-green-400 animate-pulse" />
+              <span className="flex items-center gap-1.5 text-xs font-semibold text-green-600 dark:text-green-400 shrink-0">
+                <span className="h-1.5 w-1.5 rounded-full bg-green-500 dark:bg-green-400 animate-pulse" />
                 Идёт
               </span>
             )}
