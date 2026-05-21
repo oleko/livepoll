@@ -11,7 +11,7 @@ export default async function DisplayPage({
 
   const { data: session } = await admin
     .from("sessions")
-    .select("id, title, status, join_code")
+    .select("id, title, status, join_code, organization_id")
     .eq("join_code", code.toUpperCase())
     .single();
 
@@ -23,9 +23,13 @@ export default async function DisplayPage({
     );
   }
 
+  const { data: org } = session
+    ? await admin.from("organizations").select("slug").eq("id", session.organization_id).single()
+    : { data: null };
+
   const { data: activePoll } = await admin
     .from("polls")
-    .select("id, title, type, options, status")
+    .select("id, title, type, options, status, settings")
     .eq("session_id", session.id)
     .eq("status", "active")
     .maybeSingle();
@@ -56,6 +60,7 @@ export default async function DisplayPage({
       initialVotes={initialVotes}
       initialQuestions={initialQuestionsData ?? []}
       joinUrl={joinUrl}
+      orgSlug={org?.slug ?? ""}
     />
   );
 }

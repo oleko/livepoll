@@ -44,6 +44,17 @@ export default async function JoinPage({
     .eq("status", "active")
     .maybeSingle();
 
+  const initialQuestions = activePoll?.type === "qa"
+    ? (await admin
+        .from("questions")
+        .select("id, text, status, upvotes")
+        .eq("session_id", session.id)
+        .neq("status", "hidden")
+        .order("upvotes", { ascending: false })
+        .order("created_at", { ascending: false })
+      ).data ?? []
+    : [];
+
   return (
     <main className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col">
       <header className="border-b border-slate-200 dark:border-slate-800 px-6 py-4">
@@ -55,6 +66,7 @@ export default async function JoinPage({
           joinCode={code.toUpperCase()}
           initialPoll={activePoll}
           sessionStatus={session.status}
+          initialQuestions={initialQuestions}
         />
       </div>
     </main>

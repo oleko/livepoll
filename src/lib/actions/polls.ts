@@ -54,12 +54,19 @@ export async function createPoll(
     .limit(1)
     .maybeSingle();
 
+  const durationSec = parseInt(formData.get("duration") as string) || 0;
+  const voteLimit = parseInt(formData.get("vote_limit") as string) || 0;
+  const settings: Record<string, unknown> = {};
+  if (durationSec > 0) settings.duration = durationSec;
+  if (voteLimit > 0) settings.vote_limit = voteLimit;
+
   const { error } = await admin.from("polls").insert({
     session_id: sessionId,
     created_by: user.id,
     title,
     type,
     options,
+    settings,
     sort_order: (last?.sort_order ?? -1) + 1,
   });
 
@@ -90,16 +97,23 @@ export async function activatePoll(
     .eq("session_id", sessionId)
     .eq("status", "active");
 
-  // Активируем новый
+  // Активируем новый — сохраняем activated_at в settings
+  const { data: pollForActivation } = await admin
+    .from("polls")
+    .select("settings")
+    .eq("id", pollId)
+    .single();
+
+  const existingSettings = (pollForActivation?.settings ?? {}) as Record<string, unknown>;
   await admin
     .from("polls")
-    .update({ status: "active" })
+    .update({ status: "active", settings: { ...existingSettings, activated_at: new Date().toISOString() } })
     .eq("id", pollId);
 
   // Читаем данные активированного опроса для broadcast
   const { data: activatedPoll } = await admin
     .from("polls")
-    .select("id, title, type, options, status")
+    .select("id, title, type, options, status, settings")
     .eq("id", pollId)
     .single();
 
@@ -167,6 +181,34 @@ export async function submitVote(formData: FormData) {
     payload: { value },
   }]);
 
+  // Проверяем лимит голосов
+  const { data: pollData } = await admin
+    .from("polls")
+    .select("settings, session_id")
+    .eq("id", pollId)
+    .single();
+
+  const voteLimit = (pollData?.settings as { vote_limit?: number } | null)?.vote_limit;
+  if (voteLimit && voteLimit > 0 && pollData?.session_id) {
+    const { count } = await admin
+      .from("votes")
+      .select("*", { count: "exact", head: true })
+      .eq("poll_id", pollId);
+
+    if (count !== null && count >= voteLimit) {
+      await admin
+        .from("polls")
+        .update({ status: "closed", closed_at: new Date().toISOString() })
+        .eq("id", pollId);
+
+      await realtimeBroadcast([{
+        topic: `session-polls:${pollData.session_id}`,
+        event: "poll_change",
+        payload: { type: "closed", poll_id: pollId },
+      }]);
+    }
+  }
+
   return { success: true };
 }
 
@@ -193,6 +235,53 @@ export async function submitQuestion(formData: FormData) {
     event: "question_change",
     payload: { type: "new", question: data },
   }]);
+
+  return { success: true };
+}
+
+export async function pinQuestion(
+  question: { id: string; text: string; status: string; upvotes: number } | null,
+  sessionId: string
+) {
+  await realtimeBroadcast([{
+    topic: `session-questions:${sessionId}`,
+    event: "question_change",
+    payload: { type: "pinned", pinned: question },
+  }]);
+}
+
+export async function upvoteQuestion(questionId: string, voterToken: string, sessionId: string) {
+  const admin = createAdminClient();
+
+  const { error: dupError } = await admin
+    .from("question_upvotes")
+    .insert({ question_id: questionId, voter_token: voterToken });
+
+  if (dupError?.code === "23505") return { error: "already_upvoted" };
+  if (dupError) return { error: dupError.message };
+
+  const { data: current } = await admin
+    .from("questions")
+    .select("upvotes")
+    .eq("id", questionId)
+    .single();
+
+  if (!current) return { error: "not_found" };
+
+  const { data: updated } = await admin
+    .from("questions")
+    .update({ upvotes: current.upvotes + 1 })
+    .eq("id", questionId)
+    .select("id, text, status, upvotes")
+    .single();
+
+  if (updated) {
+    await realtimeBroadcast([{
+      topic: `session-questions:${sessionId}`,
+      event: "question_change",
+      payload: { type: "updated", question: updated },
+    }]);
+  }
 
   return { success: true };
 }

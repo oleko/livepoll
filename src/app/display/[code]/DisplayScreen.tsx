@@ -3,7 +3,14 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
+import { closePoll } from "@/lib/actions/polls";
 import type { PollType } from "@/types/database";
+
+type PollSettings = {
+  duration?: number;
+  activated_at?: string;
+  vote_limit?: number;
+};
 
 type PollData = {
   id: string;
@@ -11,6 +18,7 @@ type PollData = {
   type: PollType;
   options: unknown[];
   status: string;
+  settings?: PollSettings;
 } | null;
 
 type SessionData = {
@@ -50,16 +58,21 @@ export function DisplayScreen({
   initialVotes,
   initialQuestions,
   joinUrl,
+  orgSlug,
 }: {
   session: SessionData;
   initialPoll: PollData;
   initialVotes: { value: string }[];
   initialQuestions: QuestionRow[];
   joinUrl: string;
+  orgSlug: string;
 }) {
   const [poll, setPoll] = useState<PollData>(initialPoll);
   const [votes, setVotes] = useState(initialVotes);
   const [questions, setQuestions] = useState<QuestionRow[]>(initialQuestions);
+  const [pinnedQuestion, setPinnedQuestion] = useState<QuestionRow | null>(null);
+  const [timeLeft, setTimeLeft] = useState<number | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const supabase = useRef(createClient());
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(joinUrl)}&bgcolor=0f172a&color=ffffff&qzone=1`;
 
@@ -82,24 +95,53 @@ export function DisplayScreen({
     return () => { sb.removeChannel(channel); };
   }, [session.id]);
 
-  // Broadcast: new / updated questions
+  // Countdown timer — auto-close when duration expires
+  useEffect(() => {
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+    setTimeLeft(null);
+
+    if (!poll) return;
+    const { duration, activated_at } = poll.settings ?? {};
+    if (!duration || !activated_at) return;
+
+    const endTime = new Date(activated_at).getTime() + duration * 1000;
+
+    const tick = () => {
+      const remaining = Math.max(0, Math.ceil((endTime - Date.now()) / 1000));
+      setTimeLeft(remaining);
+      if (remaining === 0) {
+        clearInterval(timerRef.current!);
+        timerRef.current = null;
+        closePoll(poll.id, session.id, orgSlug);
+      }
+    };
+
+    tick();
+    timerRef.current = setInterval(tick, 1000);
+    return () => { if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; } };
+  }, [poll?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Broadcast: new / updated questions + pinned question for display
   useEffect(() => {
     const sb = supabase.current;
     const channel = sb
       .channel(`session-questions:${session.id}`)
       .on("broadcast", { event: "question_change" }, ({ payload }) => {
-        const data = payload as { type: string; question: QuestionRow };
-        if (data.type === "new") {
+        const data = payload as { type: string; question?: QuestionRow; pinned?: QuestionRow | null };
+        if (data.type === "new" && data.question) {
           if (data.question.status !== "hidden") {
-            setQuestions((prev) => [data.question, ...prev]);
+            setQuestions((prev) => [data.question!, ...prev]);
           }
-        } else if (data.type === "updated") {
+        } else if (data.type === "updated" && data.question) {
           const q = data.question;
           setQuestions((prev) =>
             q.status === "hidden"
               ? prev.filter((item) => item.id !== q.id)
               : prev.map((item) => (item.id === q.id ? q : item))
           );
+          setPinnedQuestion((prev) => prev?.id === q.id ? q : prev);
+        } else if (data.type === "pinned") {
+          setPinnedQuestion(data.pinned ?? null);
         }
       })
       .subscribe();
@@ -134,10 +176,31 @@ export function DisplayScreen({
 
   return (
     <main className="min-h-screen bg-slate-950 flex flex-col">
+      {/* Timer progress bar */}
+      {timeLeft !== null && poll?.settings?.duration && (
+        <div className="h-1 bg-slate-800 w-full shrink-0">
+          <div
+            className={`h-full transition-all duration-1000 ${
+              timeLeft / poll.settings.duration > 0.5 ? "bg-green-500" :
+              timeLeft / poll.settings.duration > 0.2 ? "bg-amber-500" :
+              "bg-red-500 animate-pulse"
+            }`}
+            style={{ width: `${Math.max(0, (timeLeft / poll.settings.duration) * 100)}%` }}
+          />
+        </div>
+      )}
+
       {/* Header */}
       <header className="flex items-center justify-between px-8 py-4 border-b border-slate-800">
         <span className="text-slate-400 text-sm font-medium">{session.title}</span>
         <div className="flex items-center gap-4">
+          {timeLeft !== null && (
+            <span className={`text-sm font-mono font-bold tabular-nums ${timeLeft <= 10 ? "text-red-400 animate-pulse" : "text-slate-300"}`}>
+              {timeLeft >= 60
+                ? `${Math.floor(timeLeft / 60)}:${String(timeLeft % 60).padStart(2, "0")}`
+                : `${timeLeft}с`}
+            </span>
+          )}
           {poll && poll.type !== "qa" && totalVotes > 0 && (
             <span className="text-2xl font-bold text-white tabular-nums">{totalVotes}</span>
           )}
@@ -239,44 +302,95 @@ export function DisplayScreen({
                 </div>
               )}
 
-              {(poll.type === "word_cloud" || poll.type === "emoji_cloud") && (
-                <div className="flex flex-wrap gap-3 justify-center max-h-80 overflow-y-auto">
-                  {votes.map((v, i) => (
-                    <span
-                      key={i}
-                      className="rounded-full bg-indigo-600/20 border border-indigo-500/30 px-5 py-2.5 text-indigo-300 text-base"
-                      style={{ fontSize: poll.type === "emoji_cloud" ? "1.75rem" : undefined }}
-                    >
-                      {v.value}
-                    </span>
-                  ))}
-                  {votes.length === 0 && <p className="text-slate-500 text-xl">Ожидаем ответы...</p>}
-                </div>
-              )}
+              {poll.type === "word_cloud" && (() => {
+                const freq: Record<string, number> = {};
+                votes.forEach(v => {
+                  const key = v.value.toLowerCase().trim();
+                  if (key) freq[key] = (freq[key] ?? 0) + 1;
+                });
+                if (Object.keys(freq).length === 0) {
+                  return <p className="text-slate-500 text-xl text-center">Ожидаем ответы...</p>;
+                }
+                const vals = Object.values(freq);
+                const max = Math.max(...vals);
+                const min = Math.min(...vals);
+                return (
+                  <div className="flex flex-wrap gap-x-6 gap-y-3 justify-center items-center max-h-80 overflow-y-auto p-4">
+                    {Object.entries(freq)
+                      .sort((a, b) => b[1] - a[1])
+                      .map(([word, count]) => {
+                        const scale = max === min ? 0.5 : (count - min) / (max - min);
+                        return (
+                          <span
+                            key={word}
+                            style={{ fontSize: `${(1.5 + scale * 3.5).toFixed(2)}rem`, opacity: 0.55 + scale * 0.45 }}
+                            className="text-indigo-300 font-bold leading-tight"
+                          >
+                            {word}
+                          </span>
+                        );
+                      })}
+                  </div>
+                );
+              })()}
+
+              {poll.type === "emoji_cloud" && (() => {
+                const freq: Record<string, number> = {};
+                votes.forEach(v => { if (v.value) freq[v.value] = (freq[v.value] ?? 0) + 1; });
+                if (Object.keys(freq).length === 0) {
+                  return <p className="text-slate-500 text-xl text-center">Ожидаем ответы...</p>;
+                }
+                const max = Math.max(...Object.values(freq));
+                const sorted = Object.entries(freq).sort((a, b) => b[1] - a[1]).slice(0, 12);
+                return (
+                  <>
+                    <style>{`@keyframes emojiFloat{0%,100%{transform:translateY(0) rotate(-4deg)}50%{transform:translateY(-14px) rotate(4deg)}}`}</style>
+                    <div className="flex flex-wrap gap-6 justify-center items-center min-h-40 py-4">
+                      {sorted.map(([emoji, count], i) => {
+                        const scale = max <= 1 ? 0.4 : (count - 1) / (max - 1);
+                        return (
+                          <span
+                            key={emoji}
+                            title={`${count}`}
+                            style={{
+                              fontSize: `${(3 + scale * 5).toFixed(2)}rem`,
+                              animation: `emojiFloat ${(2.2 + (i % 5) * 0.4).toFixed(1)}s ease-in-out infinite`,
+                              animationDelay: `${((i * 0.25) % 1.5).toFixed(2)}s`,
+                              display: "inline-block",
+                              lineHeight: 1,
+                            }}
+                          >
+                            {emoji}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </>
+                );
+              })()}
 
               {poll.type === "qa" && (
-                <div className="flex flex-col gap-3 max-h-[28rem] overflow-y-auto">
-                  {visibleQuestions.length === 0 ? (
-                    <p className="text-slate-500 text-xl text-center">Ожидаем вопросы от аудитории...</p>
+                <div className="flex items-center justify-center min-h-40">
+                  {!pinnedQuestion ? (
+                    <p className="text-slate-500 text-xl text-center">Ведущий выберет вопрос для отображения</p>
                   ) : (
-                    visibleQuestions.map((q) => (
-                      <div
-                        key={q.id}
-                        className={`rounded-xl border px-6 py-4 flex items-start gap-4 ${
-                          q.status === "answered"
-                            ? "border-green-500/30 bg-green-500/5"
-                            : "border-slate-700 bg-slate-800/50"
-                        }`}
-                      >
-                        <div className="flex-1 text-white text-lg leading-snug">{q.text}</div>
-                        {q.upvotes > 0 && (
-                          <span className="text-indigo-400 text-sm font-semibold shrink-0">+{q.upvotes}</span>
-                        )}
-                        {q.status === "answered" && (
-                          <span className="text-green-400 text-sm shrink-0">✓ Отвечен</span>
-                        )}
+                    <div className="w-full max-w-2xl">
+                      <div className={`rounded-2xl border px-10 py-8 text-center ${
+                        pinnedQuestion.status === "answered"
+                          ? "border-green-500/40 bg-green-500/5"
+                          : "border-indigo-500/40 bg-indigo-500/5"
+                      }`}>
+                        <p className="text-white text-3xl font-medium leading-relaxed">{pinnedQuestion.text}</p>
+                        <div className="flex items-center justify-center gap-4 mt-5">
+                          {pinnedQuestion.upvotes > 0 && (
+                            <span className="text-indigo-400 text-base">▲ {pinnedQuestion.upvotes}</span>
+                          )}
+                          {pinnedQuestion.status === "answered" && (
+                            <span className="text-green-400 text-base">✓ Отвечен</span>
+                          )}
+                        </div>
                       </div>
-                    ))
+                    </div>
                   )}
                 </div>
               )}

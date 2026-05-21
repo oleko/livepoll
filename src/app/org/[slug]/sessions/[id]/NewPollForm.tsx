@@ -70,6 +70,38 @@ export function NewPollForm({ sessionId, orgSlug }: { sessionId: string; orgSlug
         </div>
       )}
 
+      <div className="grid grid-cols-2 gap-2">
+        <div className="flex flex-col gap-1.5">
+          <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Таймер</label>
+          <select
+            name="duration"
+            defaultValue="0"
+            className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          >
+            <option value="0">Без таймера</option>
+            <option value="30">30 секунд</option>
+            <option value="60">1 минута</option>
+            <option value="120">2 минуты</option>
+            <option value="180">3 минуты</option>
+            <option value="300">5 минут</option>
+            <option value="600">10 минут</option>
+          </select>
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+            Лимит голосов
+            <span className="text-slate-400 dark:text-slate-500 font-normal ml-1">(0 = без лимита)</span>
+          </label>
+          <input
+            name="vote_limit"
+            type="number"
+            min="0"
+            defaultValue="0"
+            className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+        </div>
+      </div>
+
       <Button type="submit" loading={isPending} className="w-full mt-1">
         Добавить опрос
       </Button>
