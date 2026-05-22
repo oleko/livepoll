@@ -3,20 +3,30 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
-import type { PollType } from "@/types/database";
+import type { PollType, OrgPlan } from "@/types/database";
+import { getLimits } from "@/lib/limits";
+import { getAuthUser, assertSessionMember } from "@/lib/actions/guards";
 
 type PollState = { error: string } | { success: true } | null;
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+function isValidUUID(s: string) { return UUID_RE.test(s); }
+
 async function realtimeBroadcast(messages: { topic: string; event: string; payload: unknown }[]) {
-  await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/realtime/v1/api/broadcast`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
-      "apikey": process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    },
-    body: JSON.stringify({ messages }),
-  }).catch(() => {});
+  try {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/realtime/v1/api/broadcast`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+        "apikey": process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      },
+      body: JSON.stringify({ messages }),
+    });
+    if (!res.ok) console.error("[broadcast] failed:", res.status);
+  } catch (err) {
+    console.error("[broadcast] network error:", (err as Error).message);
+  }
 }
 
 export async function createPoll(
@@ -37,13 +47,42 @@ export async function createPoll(
 
   if (!title) return { error: "Введите вопрос" };
   if (!type) return { error: "Выберите тип опроса" };
+  if (title.length > 300) return { error: "Вопрос слишком длинный" };
 
   let options: string[] = [];
   if (optionsRaw) {
-    options = optionsRaw
-      .split("\n")
-      .map((o) => o.trim())
-      .filter(Boolean);
+    options = optionsRaw.split("\n").map((o) => o.trim()).filter(Boolean);
+    if (options.length > 20) return { error: "Максимум 20 вариантов ответа" };
+    if (options.some((o) => o.length > 200)) return { error: "Вариант ответа слишком длинный" };
+  }
+
+  // Проверяем что пользователь — участник организации, владеющей сессией
+  try {
+    await assertSessionMember(user.id, sessionId, admin);
+  } catch {
+    return { error: "Нет доступа к этому мероприятию" };
+  }
+
+  // Проверяем лимит опросов по тарифу
+  const { data: session } = await admin
+    .from("sessions")
+    .select("organization_id, organizations(plan)")
+    .eq("id", sessionId)
+    .single();
+
+  if (session) {
+    const plan = (session.organizations as { plan: OrgPlan } | null)?.plan ?? "free";
+    const limits = getLimits(plan);
+    const { count } = await admin
+      .from("polls")
+      .select("id", { count: "exact", head: true })
+      .eq("session_id", sessionId);
+
+    if ((count ?? 0) >= limits.pollsPerSession) {
+      return {
+        error: `Лимит опросов в мероприятии исчерпан (${limits.pollsPerSession}). Перейдите на более высокий тариф.`,
+      };
+    }
   }
 
   const { data: last } = await admin
@@ -81,9 +120,9 @@ export async function activatePoll(
   sessionId: string,
   orgSlug: string
 ) {
-  const admin = createAdminClient();
+  const { user, admin } = await getAuthUser();
+  await assertSessionMember(user.id, sessionId, admin);
 
-  // Закрываем текущий активный опрос и уведомляем
   const { data: prevActive } = await admin
     .from("polls")
     .select("id")
@@ -97,7 +136,6 @@ export async function activatePoll(
     .eq("session_id", sessionId)
     .eq("status", "active");
 
-  // Активируем новый — сохраняем activated_at в settings
   const { data: pollForActivation } = await admin
     .from("polls")
     .select("settings")
@@ -110,7 +148,6 @@ export async function activatePoll(
     .update({ status: "active", settings: { ...existingSettings, activated_at: new Date().toISOString() } })
     .eq("id", pollId);
 
-  // Читаем данные активированного опроса для broadcast
   const { data: activatedPoll } = await admin
     .from("polls")
     .select("id, title, type, options, status, settings")
@@ -142,7 +179,9 @@ export async function closePoll(
   sessionId: string,
   orgSlug: string
 ) {
-  const admin = createAdminClient();
+  const { user, admin } = await getAuthUser();
+  await assertSessionMember(user.id, sessionId, admin);
+
   await admin
     .from("polls")
     .update({ status: "closed", closed_at: new Date().toISOString() })
@@ -162,9 +201,11 @@ export async function submitVote(formData: FormData) {
 
   const pollId = formData.get("poll_id") as string;
   const voterToken = formData.get("voter_token") as string;
-  const value = formData.get("value") as string;
+  const value = (formData.get("value") as string)?.trim();
 
   if (!pollId || !voterToken || !value) return { error: "Неверные данные" };
+  if (!isValidUUID(voterToken)) return { error: "Неверные данные" };
+  if (value.length > 500) return { error: "Слишком длинный ответ" };
 
   const { error } = await admin.from("votes").insert({
     poll_id: pollId,
@@ -181,7 +222,6 @@ export async function submitVote(formData: FormData) {
     payload: { value },
   }]);
 
-  // Проверяем лимит голосов
   const { data: pollData } = await admin
     .from("polls")
     .select("settings, session_id")
@@ -220,6 +260,7 @@ export async function submitQuestion(formData: FormData) {
   const text = (formData.get("text") as string)?.trim();
 
   if (!sessionId || !voterToken || !text) return { error: "Неверные данные" };
+  if (!isValidUUID(voterToken)) return { error: "Неверные данные" };
   if (text.length > 300) return { error: "Вопрос слишком длинный" };
 
   const { data, error } = await admin
@@ -243,6 +284,9 @@ export async function pinQuestion(
   question: { id: string; text: string; status: string; upvotes: number } | null,
   sessionId: string
 ) {
+  const { user, admin } = await getAuthUser();
+  await assertSessionMember(user.id, sessionId, admin);
+
   await realtimeBroadcast([{
     topic: `session-questions:${sessionId}`,
     event: "question_change",
@@ -292,7 +336,9 @@ export async function updateQuestionStatus(
   sessionId: string,
   orgSlug: string
 ) {
-  const admin = createAdminClient();
+  const { user, admin } = await getAuthUser();
+  await assertSessionMember(user.id, sessionId, admin);
+
   await admin.from("questions").update({ status }).eq("id", questionId);
 
   const { data: updated } = await admin

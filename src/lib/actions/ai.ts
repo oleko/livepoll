@@ -47,8 +47,8 @@ export async function summarizeQuestions(texts: string[]): Promise<{ summary?: s
 
     if (!res.ok) {
       const err = await res.text();
-      console.error("Yandex AI error:", err);
-      return { error: "Ошибка AI-сервиса" };
+      console.error("Yandex AI error:", res.status, err);
+      return { error: "Ошибка AI-сервиса. Попробуйте позже." };
     }
 
     const data = await res.json() as {

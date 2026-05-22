@@ -24,17 +24,129 @@ const TYPE_ICON: Record<Poll["type"], string> = {
   planning_poker:  "🃏",
 };
 
-type PollRow = Pick<Poll, "id" | "title" | "type" | "status" | "sort_order">;
+type PollRow = Pick<Poll, "id" | "title" | "type" | "status" | "sort_order"> & {
+  options: unknown[];
+};
+
+function PollResults({
+  poll,
+  valueCounts,
+  total,
+}: {
+  poll: PollRow;
+  valueCounts: Record<string, number>;
+  total: number;
+}) {
+  if (total === 0) {
+    return <p className="text-xs text-slate-400 dark:text-slate-600 mt-2">Голосов нет</p>;
+  }
+
+  if (poll.type === "qa") {
+    return (
+      <p className="text-xs text-slate-400 dark:text-slate-600 mt-2">
+        Вопросов получено: {total}
+      </p>
+    );
+  }
+
+  if (poll.type === "temperature") {
+    const sum = Object.entries(valueCounts).reduce(
+      (s, [v, c]) => s + parseFloat(v) * c, 0
+    );
+    const avg = (sum / total).toFixed(1);
+    return (
+      <div className="mt-3 flex items-center gap-3">
+        <div className="flex-1 h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+          <div
+            className="h-full rounded-full bg-indigo-500"
+            style={{ width: `${(parseFloat(avg) / 10) * 100}%` }}
+          />
+        </div>
+        <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 shrink-0">
+          {avg} / 10
+        </span>
+      </div>
+    );
+  }
+
+  if (poll.type === "word_cloud") {
+    const sorted = Object.entries(valueCounts).sort((a, b) => b[1] - a[1]).slice(0, 12);
+    return (
+      <div className="mt-2 flex flex-wrap gap-1.5">
+        {sorted.map(([word, count]) => (
+          <span
+            key={word}
+            className="inline-flex items-center gap-1 rounded-full bg-indigo-50 dark:bg-indigo-950/40 px-2.5 py-0.5 text-xs text-indigo-700 dark:text-indigo-300"
+          >
+            {word}
+            <span className="font-semibold">{count}</span>
+          </span>
+        ))}
+      </div>
+    );
+  }
+
+  if (poll.type === "emoji_cloud") {
+    const sorted = Object.entries(valueCounts).sort((a, b) => b[1] - a[1]);
+    return (
+      <div className="mt-2 flex flex-wrap gap-2">
+        {sorted.map(([emoji, count]) => (
+          <span key={emoji} className="flex items-center gap-1 text-sm">
+            {emoji}
+            <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">{count}</span>
+          </span>
+        ))}
+      </div>
+    );
+  }
+
+  // multiple_choice, like_dislike, planning_poker — bar chart
+  const options = poll.type === "multiple_choice" && Array.isArray(poll.options) && poll.options.length > 0
+    ? (poll.options as string[])
+    : Object.keys(valueCounts).sort((a, b) => (valueCounts[b] ?? 0) - (valueCounts[a] ?? 0));
+
+  const max = Math.max(...options.map((o) => valueCounts[o] ?? 0), 1);
+
+  return (
+    <div className="mt-3 flex flex-col gap-2">
+      {options.map((option) => {
+        const count = valueCounts[option] ?? 0;
+        const pct = Math.round((count / total) * 100);
+        const barPct = Math.round((count / max) * 100);
+        return (
+          <div key={option} className="flex items-center gap-2">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between mb-0.5">
+                <span className="text-xs text-slate-600 dark:text-slate-400 truncate pr-2">{option}</span>
+                <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 shrink-0">
+                  {count} <span className="text-slate-400 dark:text-slate-500 font-normal">({pct}%)</span>
+                </span>
+              </div>
+              <div className="h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-indigo-500 transition-all"
+                  style={{ width: `${barPct}%` }}
+                />
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 export function PollList({
   polls,
   votesByPoll,
+  votesDataByPoll,
   sessionId,
   orgSlug,
   sessionStatus,
 }: {
   polls: PollRow[];
   votesByPoll: Record<string, number>;
+  votesDataByPoll: Record<string, Record<string, number>>;
   sessionId: string;
   orgSlug: string;
   sessionStatus: SessionStatus;
@@ -48,69 +160,79 @@ export function PollList({
     );
   }
 
+  const isEnded = sessionStatus === "ended";
+
   return (
     <div className="flex flex-col gap-2">
       {polls.map((poll) => {
         const isActive = poll.status === "active";
         const isClosed = poll.status === "closed";
-        const voteCount = votesByPoll[poll.id];
+        const voteCount = votesByPoll[poll.id] ?? 0;
+        const valueCounts = votesDataByPoll[poll.id] ?? {};
+        const showResults = isEnded || isClosed;
 
         return (
           <div
             key={poll.id}
-            className={`flex items-center gap-4 rounded-xl border px-4 py-3.5 transition-colors ${
+            className={`rounded-xl border px-4 py-3.5 transition-colors ${
               isActive
                 ? "border-green-500/40 bg-green-500/5 shadow-[0_0_20px_rgba(34,197,94,0.05)]"
-                : isClosed
+                : isClosed && !isEnded
                   ? "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 opacity-60"
                   : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
             }`}
           >
-            {/* Icon */}
-            <span className="text-xl shrink-0">{TYPE_ICON[poll.type]}</span>
+            <div className="flex items-center gap-4">
+              {/* Icon */}
+              <span className="text-xl shrink-0">{TYPE_ICON[poll.type]}</span>
 
-            {/* Info */}
-            <div className="flex-1 min-w-0">
-              <p className={`font-medium text-sm truncate ${isClosed ? "text-slate-400 dark:text-slate-500" : "text-slate-900 dark:text-white"}`}>
-                {poll.title}
-              </p>
-              <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
-                {TYPE_LABEL[poll.type]}
-                {voteCount !== undefined && voteCount > 0 && (
-                  <span className="text-slate-300 dark:text-slate-600"> · {voteCount} голосов</span>
-                )}
-              </p>
+              {/* Info */}
+              <div className="flex-1 min-w-0">
+                <p className={`font-medium text-sm truncate ${isClosed && !isEnded ? "text-slate-400 dark:text-slate-500" : "text-slate-900 dark:text-white"}`}>
+                  {poll.title}
+                </p>
+                <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
+                  {TYPE_LABEL[poll.type]}
+                  {voteCount > 0 && (
+                    <span className="text-slate-300 dark:text-slate-600"> · {voteCount} голосов</span>
+                  )}
+                </p>
+              </div>
+
+              {/* Status indicator */}
+              {isActive && (
+                <span className="flex items-center gap-1.5 text-xs font-semibold text-green-600 dark:text-green-400 shrink-0">
+                  <span className="h-1.5 w-1.5 rounded-full bg-green-500 dark:bg-green-400 animate-pulse" />
+                  Идёт
+                </span>
+              )}
+
+              {/* Actions */}
+              {sessionStatus === "active" && (
+                <div className="flex gap-2 shrink-0">
+                  {!isActive && !isClosed && (
+                    <Button
+                      className="text-xs py-1.5 px-3"
+                      onClick={() => activatePoll(poll.id, sessionId, orgSlug)}
+                    >
+                      Запустить
+                    </Button>
+                  )}
+                  {isActive && (
+                    <Button
+                      variant="secondary"
+                      className="text-xs py-1.5 px-3"
+                      onClick={() => closePoll(poll.id, sessionId, orgSlug)}
+                    >
+                      Остановить
+                    </Button>
+                  )}
+                </div>
+              )}
             </div>
 
-            {/* Status indicator */}
-            {isActive && (
-              <span className="flex items-center gap-1.5 text-xs font-semibold text-green-600 dark:text-green-400 shrink-0">
-                <span className="h-1.5 w-1.5 rounded-full bg-green-500 dark:bg-green-400 animate-pulse" />
-                Идёт
-              </span>
-            )}
-
-            {/* Actions */}
-            {sessionStatus === "active" && (
-              <div className="flex gap-2 shrink-0">
-                {!isActive && !isClosed && (
-                  <Button
-                    className="text-xs py-1.5 px-3"
-                    onClick={() => activatePoll(poll.id, sessionId, orgSlug)}
-                  >
-                    Запустить
-                  </Button>
-                )}
-                {isActive && (
-                  <Button
-                    variant="secondary"
-                    className="text-xs py-1.5 px-3"
-                    onClick={() => closePoll(poll.id, sessionId, orgSlug)}
-                  >
-                    Остановить
-                  </Button>
-                )}
-              </div>
+            {showResults && (
+              <PollResults poll={poll} valueCounts={valueCounts} total={voteCount} />
             )}
           </div>
         );

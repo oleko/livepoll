@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
-import { getLimits, formatLimit } from "@/lib/limits";
+import { getLimits, formatLimit, PLAN_DISPLAY_NAME } from "@/lib/limits";
 
 export default async function SettingsPage({
   params,
@@ -34,7 +34,6 @@ export default async function SettingsPage({
 
   const limits = getLimits(org.plan);
 
-  const PLAN_NAMES = { free: "Бесплатный", pro: "Pro", team: "Team" } as const;
 
   return (
     <div className="max-w-2xl">
@@ -69,21 +68,21 @@ export default async function SettingsPage({
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-semibold text-slate-900 dark:text-white">Тариф</h2>
             <span className="rounded-full bg-indigo-600/20 px-3 py-1 text-xs font-semibold text-indigo-600 dark:text-indigo-400 uppercase">
-              {PLAN_NAMES[org.plan]}
+              {PLAN_DISPLAY_NAME[org.plan]}
             </span>
           </div>
           <div className="flex flex-col gap-3 text-sm">
             <div className="flex justify-between">
-              <span className="text-slate-500">Активных мероприятий</span>
-              <span className="text-slate-600 dark:text-slate-300">{formatLimit(limits.sessions)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-500">Участников на мероприятие</span>
-              <span className="text-slate-600 dark:text-slate-300">{formatLimit(limits.participants)}</span>
+              <span className="text-slate-500">Мероприятий в месяц</span>
+              <span className="text-slate-600 dark:text-slate-300">{formatLimit(limits.sessionsPerMonth)}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-slate-500">Опросов на мероприятие</span>
               <span className="text-slate-600 dark:text-slate-300">{formatLimit(limits.pollsPerSession)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-500">Участников в команде</span>
+              <span className="text-slate-600 dark:text-slate-300">{formatLimit(limits.members)}</span>
             </div>
           </div>
           {org.plan === "free" && (

@@ -1,9 +1,16 @@
 import type { OrgPlan } from "@/types/database";
 
-const PLAN_LIMITS: Record<OrgPlan, { sessions: number; participants: number; pollsPerSession: number }> = {
-  free:  { sessions: 1,        participants: 50,       pollsPerSession: 5  },
-  pro:   { sessions: Infinity, participants: Infinity, pollsPerSession: Infinity },
-  team:  { sessions: Infinity, participants: Infinity, pollsPerSession: Infinity },
+// DB plan values: free → Бесплатный, pro → Стандарт, team → Про
+const PLAN_LIMITS: Record<OrgPlan, { sessionsPerMonth: number; pollsPerSession: number; members: number }> = {
+  free: { sessionsPerMonth: 3,  pollsPerSession: 5,  members: 1  },
+  pro:  { sessionsPerMonth: 5,  pollsPerSession: 15, members: 5  },
+  team: { sessionsPerMonth: 20, pollsPerSession: 30, members: 10 },
+};
+
+export const PLAN_DISPLAY_NAME: Record<OrgPlan, string> = {
+  free: "Бесплатный",
+  pro:  "Стандарт",
+  team: "Про",
 };
 
 export function getLimits(plan: OrgPlan) {

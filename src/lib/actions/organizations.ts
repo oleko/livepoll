@@ -15,6 +15,48 @@ function toSlug(name: string): string {
     .slice(0, 48) || "org";
 }
 
+export async function ensureUserOrg(userId: string, displayName?: string): Promise<string | null> {
+  const admin = createAdminClient();
+
+  const { data: existing } = await admin
+    .from("organization_members")
+    .select("organizations(slug)")
+    .eq("user_id", userId)
+    .limit(1)
+    .maybeSingle();
+
+  const slug = (existing?.organizations as { slug: string } | null)?.slug;
+  if (slug) return slug;
+
+  const name = displayName?.trim() || "Мои мероприятия";
+  let orgSlug = toSlug(name);
+  if (!orgSlug) orgSlug = "org";
+
+  const { data: taken } = await admin
+    .from("organizations")
+    .select("slug")
+    .eq("slug", orgSlug)
+    .maybeSingle();
+  if (taken) orgSlug = `${orgSlug}-${Date.now().toString(36)}`;
+
+  const { data: org, error } = await admin
+    .from("organizations")
+    .insert({ name, slug: orgSlug })
+    .select("id, slug")
+    .single();
+
+  if (error || !org) return null;
+
+  await admin.from("organization_members").insert({
+    organization_id: org.id,
+    user_id: userId,
+    role: "owner",
+    accepted_at: new Date().toISOString(),
+  });
+
+  return org.slug;
+}
+
 export async function createOrganization(
   _prevState: OrgState,
   formData: FormData
@@ -46,8 +88,8 @@ export async function createOrganization(
     .single();
 
   if (orgError) {
-    console.error("Org create error:", orgError);
-    return { error: `Ошибка: ${orgError.message}` };
+    console.error("[org] create failed:", orgError.code);
+    return { error: "Не удалось создать организацию. Попробуйте позже." };
   }
 
   const { error: memberError } = await admin
@@ -60,9 +102,9 @@ export async function createOrganization(
     });
 
   if (memberError) {
-    console.error("Member create error:", memberError);
+    console.error("[org] member insert failed:", memberError.code);
     await admin.from("organizations").delete().eq("id", org.id);
-    return { error: `Ошибка добавления участника: ${memberError.message}` };
+    return { error: "Не удалось добавить участника. Попробуйте позже." };
   }
 
   return { redirectTo: `/org/${org.slug}` };

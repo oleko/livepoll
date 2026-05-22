@@ -75,6 +75,7 @@ export function DisplayScreen({
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const supabase = useRef(createClient());
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(joinUrl)}&bgcolor=0f172a&color=ffffff&qzone=1`;
+  const qrUrlLarge = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(joinUrl)}&bgcolor=0f172a&color=ffffff&qzone=2`;
 
   // Broadcast: poll activated / closed
   useEffect(() => {
@@ -175,7 +176,7 @@ export function DisplayScreen({
   );
 
   return (
-    <main className="min-h-screen bg-slate-950 flex flex-col">
+    <main className="h-screen overflow-hidden bg-slate-950 flex flex-col">
       {/* Timer progress bar */}
       {timeLeft !== null && poll?.settings?.duration && (
         <div className="h-1 bg-slate-800 w-full shrink-0">
@@ -222,20 +223,35 @@ export function DisplayScreen({
         {/* Main content area */}
         <div className="flex-1 flex flex-col items-center justify-center p-10">
           {!poll ? (
-            /* Waiting screen — QR code front and center */
-            <div className="flex flex-col items-center gap-8 text-center">
-              <div>
-                <p className="text-3xl font-bold text-white mb-2">Присоединяйтесь к мероприятию</p>
-                <p className="text-slate-500 text-lg">Отсканируйте QR-код или введите код на экране</p>
+            /* Waiting screen — fully responsive, no scroll */
+            <div className="flex flex-col items-center justify-center h-full w-full text-center"
+                 style={{ gap: "clamp(8px, 2.5vh, 32px)", padding: "clamp(8px, 2vh, 24px)" }}>
+              <p className="shrink-0 font-semibold text-slate-300 tracking-wide"
+                 style={{ fontSize: "clamp(0.9rem, 2.5vh, 1.5rem)" }}>
+                Отсканируйте, чтобы присоединиться
+              </p>
+              <div className="shrink-0 rounded-3xl border-2 border-slate-700 bg-slate-900 shadow-2xl shadow-black/60"
+                   style={{ padding: "clamp(8px, 1.5vh, 20px)" }}>
+                <img
+                  src={qrUrlLarge}
+                  alt="QR-код для участия"
+                  className="rounded-2xl block"
+                  style={{
+                    width:  "clamp(140px, 44vh, 420px)",
+                    height: "clamp(140px, 44vh, 420px)",
+                  }}
+                />
               </div>
-              <div className="rounded-3xl border-2 border-slate-700 bg-slate-900 p-4 shadow-2xl">
-                <img src={qrUrl} alt="QR-код для участия" className="rounded-xl block" width={220} height={220} />
-              </div>
-              <div className="flex flex-col items-center gap-1">
-                <p className="text-slate-500 text-sm">Введите код на</p>
-                <p className="text-slate-300 text-base font-medium">{joinUrl.replace(/^https?:\/\//, "")}</p>
-                <div className="mt-3 rounded-2xl border border-indigo-500/30 bg-indigo-500/10 px-8 py-4">
-                  <span className="font-mono text-white text-5xl font-bold tracking-[0.2em]">
+              <div className="shrink-0 flex flex-col items-center"
+                   style={{ gap: "clamp(4px, 1vh, 12px)" }}>
+                <p className="text-slate-500 tracking-wide"
+                   style={{ fontSize: "clamp(0.65rem, 1.4vh, 0.875rem)" }}>
+                  {joinUrl.replace(/^https?:\/\//, "")}
+                </p>
+                <div className="rounded-2xl border border-indigo-500/30 bg-indigo-500/10"
+                     style={{ padding: "clamp(8px, 1.5vh, 16px) clamp(16px, 4vh, 40px)" }}>
+                  <span className="font-mono text-white font-bold tracking-[0.25em]"
+                        style={{ fontSize: "clamp(1.5rem, 7vh, 4rem)" }}>
                     {session.join_code}
                   </span>
                 </div>

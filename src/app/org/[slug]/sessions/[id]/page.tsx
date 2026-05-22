@@ -7,6 +7,7 @@ import { SessionControls } from "./SessionControls";
 import { PollList } from "./PollList";
 import { NewPollForm } from "./NewPollForm";
 import { QAPanel } from "./QAPanel";
+import { SharePanel } from "./SharePanel";
 import type { Session } from "@/types/database";
 
 const STATUS_LABEL: Record<Session["status"], string> = {
@@ -47,15 +48,24 @@ export default async function SessionPage({
     .eq("session_id", id)
     .order("sort_order");
 
-  const { data: voteCounts } = await admin
+  const { data: voteRows } = await admin
     .from("votes")
-    .select("poll_id")
+    .select("poll_id, value")
     .in("poll_id", polls?.map((p) => p.id) ?? []);
 
-  const votesByPoll = (voteCounts ?? []).reduce<Record<string, number>>((acc, v) => {
+  const votesByPoll = (voteRows ?? []).reduce<Record<string, number>>((acc, v) => {
     acc[v.poll_id] = (acc[v.poll_id] ?? 0) + 1;
     return acc;
   }, {});
+
+  const votesDataByPoll = (voteRows ?? []).reduce<Record<string, Record<string, number>>>(
+    (acc, v) => {
+      if (!acc[v.poll_id]) acc[v.poll_id] = {};
+      acc[v.poll_id][v.value] = (acc[v.poll_id][v.value] ?? 0) + 1;
+      return acc;
+    },
+    {}
+  );
 
   const { data: questions } = await admin
     .from("questions")
@@ -88,15 +98,22 @@ export default async function SessionPage({
               Код: <span className="font-mono text-slate-600 dark:text-slate-300 text-base tracking-widest">{session.join_code}</span>
             </span>
           </div>
+          {session.status !== "ended" && (
+            <SharePanel joinUrl={joinUrl} joinCode={session.join_code} />
+          )}
         </div>
 
-        <div className="flex gap-2">
-          <Link href={displayUrl} target="_blank">
-            <Button variant="secondary" className="text-sm">Экран</Button>
-          </Link>
-          <Link href={joinUrl} target="_blank">
-            <Button variant="ghost" className="text-sm">Открыть как участник</Button>
-          </Link>
+        <div className="flex gap-2 shrink-0">
+          {session.status !== "ended" && (
+            <>
+              <Link href={displayUrl} target="_blank">
+                <Button variant="secondary" className="text-sm">Экран</Button>
+              </Link>
+              <Link href={joinUrl} target="_blank">
+                <Button variant="ghost" className="text-sm">Открыть как участник</Button>
+              </Link>
+            </>
+          )}
           <SessionControls
             sessionId={session.id}
             status={session.status}
@@ -111,6 +128,7 @@ export default async function SessionPage({
           <PollList
             polls={polls ?? []}
             votesByPoll={votesByPoll}
+            votesDataByPoll={votesDataByPoll}
             sessionId={id}
             orgSlug={slug}
             sessionStatus={session.status}

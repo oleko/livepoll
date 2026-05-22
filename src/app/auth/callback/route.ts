@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { ensureUserOrg } from "@/lib/actions/organizations";
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
@@ -12,16 +13,7 @@ export async function GET(request: Request) {
     if (!error) {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const { data: member } = await supabase
-          .from("organization_members")
-          .select("organization_id, organizations!inner(slug)")
-          .eq("user_id", user.id)
-          .limit(1)
-          .maybeSingle();
-
-        const slug = member
-          ? (member as unknown as { organizations: { slug: string } }).organizations.slug
-          : null;
+        const slug = await ensureUserOrg(user.id, user.user_metadata?.full_name);
         return NextResponse.redirect(slug ? `${origin}/org/${slug}` : `${origin}/onboarding`);
       }
     }
