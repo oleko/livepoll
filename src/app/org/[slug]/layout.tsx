@@ -52,6 +52,7 @@ export default async function OrgLayout({
     ...(isOwner ? [{ href: `/org/${slug}/members`, label: "Команда" }] : []),
     ...(isOwner ? [{ href: `/org/${slug}/settings`, label: "Настройки" }] : []),
     ...(isPlatformAdmin ? [{ href: "/admin", label: "⚙ Платформа" }] : []),
+    { href: "/help", label: "Помощь" },
   ];
 
   return (

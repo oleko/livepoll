@@ -405,8 +405,8 @@ export default async function Home() {
           <span className="font-bold text-slate-900 dark:text-white">LivePoll AI</span>
           <p className="text-xs text-slate-400 dark:text-slate-600">© 2025 LivePoll AI. Все права защищены.</p>
           <div className="flex gap-6 text-xs text-slate-400 dark:text-slate-600">
-            <a href="#" className="hover:text-slate-600 dark:hover:text-slate-400 transition-colors">Политика конфиденциальности</a>
-            <a href="#" className="hover:text-slate-600 dark:hover:text-slate-400 transition-colors">Условия использования</a>
+            <Link href="/help" className="hover:text-slate-600 dark:hover:text-slate-400 transition-colors">Помощь</Link>
+            <Link href="/docs/privacy" className="hover:text-slate-600 dark:hover:text-slate-400 transition-colors">Политика конфиденциальности</Link>
           </div>
         </div>
       </footer>
