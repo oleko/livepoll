@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { NAV_ITEMS } from "./HelpNav";
+import { NAV_ITEMS } from "./nav-items";
 
 export const metadata = { title: "Центр помощи | LivePoll AI" };
 
