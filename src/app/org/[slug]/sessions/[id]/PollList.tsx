@@ -1,8 +1,87 @@
 "use client";
 
-import { activatePoll, closePoll } from "@/lib/actions/polls";
+import { useState, useRef, useEffect } from "react";
+import { activatePoll, closePoll, copyPoll } from "@/lib/actions/polls";
 import { Button } from "@/components/ui/Button";
 import type { Poll, SessionStatus } from "@/types/database";
+
+type CopyTarget = { id: string; title: string; status: string };
+
+function CopyPollButton({
+  pollId,
+  orgSlug,
+  targets,
+}: {
+  pollId: string;
+  orgSlug: string;
+  targets: CopyTarget[];
+}) {
+  const [open, setOpen] = useState(false);
+  const [pending, setPending] = useState<string | null>(null);
+  const [done, setDone] = useState<string | null>(null);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function onClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, []);
+
+  async function handle(targetId: string) {
+    setPending(targetId);
+    await copyPoll(pollId, targetId, orgSlug);
+    setPending(null);
+    setDone(targetId);
+    setTimeout(() => { setDone(null); setOpen(false); }, 1200);
+  }
+
+  const STATUS_LABEL: Record<string, string> = { draft: "Черновик", active: "Идёт" };
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        title="Скопировать в другое мероприятие"
+        className="rounded-lg border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 bg-white dark:bg-slate-900 px-2 py-1.5 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors text-xs"
+      >
+        ⎘
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-full mt-1 z-20 w-60 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl shadow-slate-200/40 dark:shadow-slate-950/60 overflow-hidden">
+          <p className="px-3 py-2 text-[11px] font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800">
+            Скопировать в:
+          </p>
+          {targets.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              disabled={!!pending}
+              onClick={() => handle(t.id)}
+              className="w-full flex items-center justify-between px-3 py-2.5 text-left hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors disabled:opacity-50"
+            >
+              <span className="text-sm text-slate-700 dark:text-slate-300 truncate pr-2">
+                {t.title}
+              </span>
+              {done === t.id ? (
+                <span className="text-xs font-semibold text-green-500 shrink-0">✓</span>
+              ) : pending === t.id ? (
+                <span className="text-xs text-slate-400 shrink-0">…</span>
+              ) : (
+                <span className="text-[11px] text-slate-400 shrink-0">
+                  {STATUS_LABEL[t.status] ?? t.status}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 const TYPE_LABEL: Record<Poll["type"], string> = {
   multiple_choice: "Множественный выбор",
@@ -143,6 +222,7 @@ export function PollList({
   sessionId,
   orgSlug,
   sessionStatus,
+  copyTargets,
 }: {
   polls: PollRow[];
   votesByPoll: Record<string, number>;
@@ -150,6 +230,7 @@ export function PollList({
   sessionId: string;
   orgSlug: string;
   sessionStatus: SessionStatus;
+  copyTargets: CopyTarget[];
 }) {
   if (polls.length === 0) {
     return (
@@ -208,27 +289,32 @@ export function PollList({
               )}
 
               {/* Actions */}
-              {sessionStatus === "active" && (
-                <div className="flex gap-2 shrink-0">
-                  {!isActive && !isClosed && (
-                    <Button
-                      className="text-xs py-1.5 px-3"
-                      onClick={() => activatePoll(poll.id, sessionId, orgSlug)}
-                    >
-                      Запустить
-                    </Button>
-                  )}
-                  {isActive && (
-                    <Button
-                      variant="secondary"
-                      className="text-xs py-1.5 px-3"
-                      onClick={() => closePoll(poll.id, sessionId, orgSlug)}
-                    >
-                      Остановить
-                    </Button>
-                  )}
-                </div>
-              )}
+              <div className="flex items-center gap-2 shrink-0">
+                {sessionStatus === "active" && (
+                  <>
+                    {!isActive && !isClosed && (
+                      <Button
+                        className="text-xs py-1.5 px-3"
+                        onClick={() => activatePoll(poll.id, sessionId, orgSlug)}
+                      >
+                        Запустить
+                      </Button>
+                    )}
+                    {isActive && (
+                      <Button
+                        variant="secondary"
+                        className="text-xs py-1.5 px-3"
+                        onClick={() => closePoll(poll.id, sessionId, orgSlug)}
+                      >
+                        Остановить
+                      </Button>
+                    )}
+                  </>
+                )}
+                {copyTargets.length > 0 && (
+                  <CopyPollButton pollId={poll.id} orgSlug={orgSlug} targets={copyTargets} />
+                )}
+              </div>
             </div>
 
             {showResults && (

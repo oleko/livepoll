@@ -330,6 +330,43 @@ export async function upvoteQuestion(questionId: string, voterToken: string, ses
   return { success: true };
 }
 
+export async function copyPoll(
+  pollId: string,
+  targetSessionId: string,
+  orgSlug: string
+) {
+  const { user, admin } = await getAuthUser();
+  await assertSessionMember(user.id, targetSessionId, admin);
+
+  const { data: poll } = await admin
+    .from("polls")
+    .select("title, type, options")
+    .eq("id", pollId)
+    .single();
+
+  if (!poll) throw new Error("Опрос не найден");
+
+  const { data: last } = await admin
+    .from("polls")
+    .select("sort_order")
+    .eq("session_id", targetSessionId)
+    .order("sort_order", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  await admin.from("polls").insert({
+    session_id: targetSessionId,
+    created_by: user.id,
+    title: poll.title,
+    type: poll.type,
+    options: poll.options,
+    settings: {},
+    sort_order: (last?.sort_order ?? -1) + 1,
+  });
+
+  revalidatePath(`/org/${orgSlug}/sessions/${targetSessionId}`);
+}
+
 export async function updateQuestionStatus(
   questionId: string,
   status: "pending" | "answered" | "hidden",

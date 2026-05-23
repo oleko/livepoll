@@ -75,6 +75,15 @@ export default async function SessionPage({
 
   const hasQA = polls?.some((p) => p.type === "qa") ?? false;
 
+  const { data: otherSessions } = await admin
+    .from("sessions")
+    .select("id, title, status")
+    .eq("organization_id", session.organization_id)
+    .neq("id", id)
+    .in("status", ["draft", "active"])
+    .order("created_at", { ascending: false })
+    .limit(20);
+
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
   const joinUrl = `${baseUrl}/join/${session.join_code}`;
   const displayUrl = `${baseUrl}/display/${session.join_code}`;
@@ -132,6 +141,7 @@ export default async function SessionPage({
             sessionId={id}
             orgSlug={slug}
             sessionStatus={session.status}
+            copyTargets={otherSessions ?? []}
           />
         </div>
 
