@@ -77,6 +77,25 @@ export async function createSession(
 
   if (error) return { error: error.message };
 
+  // Создаём опросы из шаблона
+  const templateId = (formData.get("template_id") as string) || "";
+  if (templateId) {
+    const { getTemplate } = await import("@/lib/templates");
+    const template = getTemplate(templateId);
+    if (template && template.polls.length > 0) {
+      const pollsToInsert = template.polls.map((p, i) => ({
+        session_id: session.id,
+        created_by: user.id,
+        title: p.title,
+        type: p.type,
+        options: p.options,
+        settings: {},
+        sort_order: i,
+      }));
+      await admin.from("polls").insert(pollsToInsert);
+    }
+  }
+
   return { redirectTo: `/org/${orgSlug}/sessions/${session.id}` };
 }
 
