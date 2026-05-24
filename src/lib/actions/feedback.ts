@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { sendFeedbackEmail } from "@/lib/email";
 
 type FeedbackResult = { success: true } | { error: string };
 
@@ -35,6 +36,14 @@ export async function submitFeedback(
     console.error("[feedback] insert error:", error.message);
     return { error: "Не удалось отправить. Попробуйте позже." };
   }
+
+  // Отправляем уведомление — не блокируем ответ если упадёт
+  sendFeedbackEmail({
+    type,
+    text,
+    userEmail: user?.email ?? null,
+    pageUrl,
+  }).catch(() => {});
 
   return { success: true };
 }
