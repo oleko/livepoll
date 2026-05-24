@@ -5,6 +5,7 @@ import { signOut } from "@/lib/actions/auth";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { FeedbackWidget } from "@/components/FeedbackWidget";
 
 export default async function OrgLayout({
   children,
@@ -88,6 +89,7 @@ export default async function OrgLayout({
       <main className="mx-auto max-w-6xl px-6 py-8">
         {children}
       </main>
+      <FeedbackWidget />
     </div>
   );
 }

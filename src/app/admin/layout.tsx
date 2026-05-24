@@ -30,8 +30,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const orgSlug = (membership?.organizations as { slug: string } | null)?.slug;
 
   const navLinks = [
-    { href: "/admin", label: "Организации" },
-    { href: "/admin/users", label: "Пользователи" },
+    { href: "/admin",          label: "Организации" },
+    { href: "/admin/users",    label: "Пользователи" },
+    { href: "/admin/feedback", label: "Обратная связь" },
   ];
 
   return (
