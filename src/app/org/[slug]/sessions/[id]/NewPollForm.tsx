@@ -41,21 +41,7 @@ export function NewPollForm({
       <input type="hidden" name="session_id" value={sessionId} />
       <input type="hidden" name="org_slug" value={orgSlug} />
 
-      {sections.length > 0 && (
-        <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Секция</label>
-          <select
-            name="section_id"
-            defaultValue=""
-            className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          >
-            <option value="">— без секции —</option>
-            {sections.map((s) => (
-              <option key={s.id} value={s.id}>{s.title}</option>
-            ))}
-          </select>
-        </div>
-      )}
+
 
       {state && "error" in state && (
         <p className="text-xs text-red-500 dark:text-red-400">{state.error}</p>
