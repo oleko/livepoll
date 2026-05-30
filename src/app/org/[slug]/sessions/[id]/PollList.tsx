@@ -546,25 +546,24 @@ export function PollList({
         );
       })}
 
-      {/* Unsectioned polls */}
-      {(unsectioned.length > 0 || (draggingId && sorted.length > 0)) && (
-        <div>
-          {sorted.length > 0 && (
+      {sorted.length === 0 ? (
+        /* No sections — flat list */
+        <div className="flex flex-col gap-2">
+          {optimisticPolls.map(poll => <PollCard key={poll.id} poll={poll} {...cardProps} />)}
+        </div>
+      ) : (
+        /* Has sections — show unsectioned zone only when needed */
+        (unsectioned.length > 0 || draggingId) && (
+          <div>
             <div className="flex items-center gap-3 mb-2 px-1">
               <span className="text-xs font-semibold text-slate-400 dark:text-slate-600 uppercase tracking-wide whitespace-nowrap">
                 Без секции
               </span>
               <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
             </div>
-          )}
-          <SectionDropZone sectionId={null} polls={unsectioned} />
-        </div>
-      )}
-
-      {sorted.length === 0 && (
-        <div className="flex flex-col gap-2">
-          {optimisticPolls.map(poll => <PollCard key={poll.id} poll={poll} {...cardProps} />)}
-        </div>
+            <SectionDropZone sectionId={null} polls={unsectioned} />
+          </div>
+        )
       )}
     </div>
   );
