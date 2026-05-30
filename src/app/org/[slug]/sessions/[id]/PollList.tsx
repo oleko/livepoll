@@ -123,36 +123,43 @@ function SlideLineupCard({
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
-  const [deleting, setDeleting] = useState(false);
+  const [pending, setPending] = useState(false);
   const meta = SLIDE_TYPE_META[slide.type];
 
   async function handleShow() {
+    setPending(true);
     await showSlide(slide.id, sessionId, orgSlug);
     router.refresh();
+    setPending(false);
   }
 
   async function handleHide() {
+    setPending(true);
     await hideSlide(sessionId, orgSlug);
     router.refresh();
+    setPending(false);
   }
 
   async function handleDelete() {
     if (!confirm(`Удалить «${slidePreview(slide)}»?`)) return;
-    setDeleting(true);
+    setPending(true);
     await deleteSlide(slide.id, sessionId, orgSlug);
     router.refresh();
   }
 
   return (
-    <div className={`rounded-xl border px-4 py-3.5 transition-colors ${
-      isActive
-        ? "border-purple-400/60 bg-purple-500/10 dark:bg-purple-500/10 shadow-[0_0_16px_rgba(168,85,247,0.08)]"
-        : "border-purple-200/50 dark:border-purple-800/40 bg-purple-50/40 dark:bg-purple-950/20"
-    }`}>
+    <div className={`rounded-xl border px-4 py-3.5 transition-all select-none
+      ${isActive
+        ? "border-purple-500/40 bg-purple-500/5 shadow-[0_0_20px_rgba(168,85,247,0.06)]"
+        : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
+      }`}
+    >
       <div className="flex items-center gap-3">
+        {/* drag handle — same position as poll cards */}
+        <span className="text-slate-300 dark:text-slate-600 text-base leading-none shrink-0 cursor-grab select-none" title="Перетащить">⠿</span>
         <span className="text-xl shrink-0">{meta.icon}</span>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{slidePreview(slide)}</p>
+          <p className="font-medium text-sm truncate text-slate-900 dark:text-white">{slidePreview(slide)}</p>
           <p className="text-xs text-purple-500 dark:text-purple-400 mt-0.5">{meta.label}</p>
         </div>
         {isActive && (
@@ -160,22 +167,22 @@ function SlideLineupCard({
             <span className="h-1.5 w-1.5 rounded-full bg-purple-500 animate-pulse" />На экране
           </span>
         )}
-        <div className="flex items-center gap-1.5 shrink-0">
-          {isActive ? (
-            <button type="button" onClick={handleHide}
-              className="rounded-md border border-purple-200 dark:border-purple-800 px-2 py-1 text-xs text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors"
-            >Убрать</button>
-          ) : (
-            <button type="button" onClick={handleShow}
-              className="rounded-md bg-purple-600 hover:bg-purple-500 text-white px-2 py-1 text-xs font-medium transition-colors"
-            >Показать</button>
-          )}
+        <div className="flex items-center gap-2 shrink-0">
           <button type="button" onClick={() => setEditing(v => !v)}
-            className="rounded-md border border-slate-200 dark:border-slate-700 p-1.5 text-slate-400 hover:text-purple-500 transition-colors"
-          ><EditIcon size={12} /></button>
-          <button type="button" onClick={handleDelete} disabled={deleting}
-            className="rounded-md border border-slate-200 dark:border-slate-700 p-1.5 text-slate-300 dark:text-slate-600 hover:text-red-400 transition-colors disabled:opacity-50"
-          >{deleting ? "…" : "✕"}</button>
+            className="rounded-lg border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 bg-white dark:bg-slate-900 px-2 py-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+          ><EditIcon size={13} /></button>
+          {isActive ? (
+            <Button variant="secondary" className="text-xs py-1.5 px-3" onClick={handleHide} disabled={pending}>
+              Убрать
+            </Button>
+          ) : (
+            <Button className="text-xs py-1.5 px-3" onClick={handleShow} disabled={pending}>
+              Показать
+            </Button>
+          )}
+          <button type="button" onClick={handleDelete} disabled={pending}
+            className="rounded-lg border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 bg-white dark:bg-slate-900 px-2 py-1.5 text-slate-300 dark:text-slate-600 hover:text-red-400 dark:hover:text-red-500 transition-colors disabled:opacity-50"
+          >✕</button>
         </div>
       </div>
 
