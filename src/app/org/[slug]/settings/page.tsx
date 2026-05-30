@@ -2,6 +2,8 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 import { getLimits, formatLimit, PLAN_DISPLAY_NAME } from "@/lib/limits";
+import { BrandingForm } from "./BrandingForm";
+import type { BrandingSettings } from "@/lib/actions/branding";
 
 export default async function SettingsPage({
   params,
@@ -17,7 +19,7 @@ export default async function SettingsPage({
 
   const { data: org } = await admin
     .from("organizations")
-    .select("id, name, slug, plan, plan_expires_at, created_at")
+    .select("id, name, slug, plan, plan_expires_at, settings, created_at")
     .eq("slug", slug)
     .single();
 
@@ -33,7 +35,7 @@ export default async function SettingsPage({
   if (member?.role !== "owner") redirect(`/org/${slug}`);
 
   const limits = getLimits(org.plan);
-
+  const branding = (org.settings as BrandingSettings | null) ?? {};
 
   return (
     <div className="max-w-2xl">
@@ -91,6 +93,8 @@ export default async function SettingsPage({
             </div>
           )}
         </div>
+
+        <BrandingForm orgSlug={slug} initial={branding} orgPlan={org.plan} />
       </div>
     </div>
   );

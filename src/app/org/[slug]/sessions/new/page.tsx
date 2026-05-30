@@ -21,12 +21,12 @@ export default async function NewSessionPage({
   return (
     <div className="max-w-lg">
       <div className="mb-6">
-        <h1 className="text-xl font-semibold text-white">Новое мероприятие</h1>
+        <h1 className="text-xl font-semibold text-slate-900 dark:text-white">Новое мероприятие</h1>
         <p className="mt-1 text-sm text-slate-500">
           После создания добавьте опросы и активируйте мероприятие
         </p>
       </div>
-      <div className="rounded-xl border border-slate-800 bg-slate-900 p-6">
+      <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6">
         <NewSessionForm orgId={org.id} orgSlug={slug} />
       </div>
     </div>

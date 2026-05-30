@@ -8,6 +8,10 @@ import { PollList } from "./PollList";
 import { NewPollForm } from "./NewPollForm";
 import { QAPanel } from "./QAPanel";
 import { SharePanel } from "./SharePanel";
+import { AttendeesInput } from "./AttendeesInput";
+import { AnnouncementForm } from "./AnnouncementForm";
+import { ExportButton } from "./ExportButton";
+import { SectionManager } from "./SectionManager";
 import type { Session } from "@/types/database";
 
 const STATUS_LABEL: Record<Session["status"], string> = {
@@ -36,15 +40,22 @@ export default async function SessionPage({
 
   const { data: session } = await admin
     .from("sessions")
-    .select("id, title, join_code, status, organization_id")
+    .select("id, title, join_code, status, organization_id, total_attendees")
     .eq("id", id)
     .single();
+  const totalAttendees = (session as unknown as { total_attendees?: number })?.total_attendees ?? 0;
 
   if (!session) redirect(`/org/${slug}`);
 
   const { data: polls } = await admin
     .from("polls")
-    .select("id, title, type, status, sort_order, options")
+    .select("id, title, type, status, sort_order, section_id, options, created_at")
+    .eq("session_id", id)
+    .order("sort_order");
+
+  const { data: sections } = await admin
+    .from("session_sections")
+    .select("id, title, sort_order")
     .eq("session_id", id)
     .order("sort_order");
 
@@ -61,7 +72,10 @@ export default async function SessionPage({
   const votesDataByPoll = (voteRows ?? []).reduce<Record<string, Record<string, number>>>(
     (acc, v) => {
       if (!acc[v.poll_id]) acc[v.poll_id] = {};
-      acc[v.poll_id][v.value] = (acc[v.poll_id][v.value] ?? 0) + 1;
+      let vals: string[];
+      try { vals = v.value.startsWith("[") ? (JSON.parse(v.value) as string[]) : [v.value]; }
+      catch { vals = [v.value]; }
+      vals.forEach((val) => { acc[v.poll_id][val] = (acc[v.poll_id][val] ?? 0) + 1; });
       return acc;
     },
     {}
@@ -99,20 +113,27 @@ export default async function SessionPage({
             </Link>
           </div>
           <h1 className="text-xl font-semibold text-slate-900 dark:text-white">{session.title}</h1>
-          <div className="flex items-center gap-3 mt-2">
+          <div className="flex items-center gap-3 mt-2 flex-wrap">
             <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_COLOR[session.status]}`}>
               {STATUS_LABEL[session.status]}
             </span>
             <span className="text-sm text-slate-400 dark:text-slate-500">
               Код: <span className="font-mono text-slate-600 dark:text-slate-300 text-base tracking-widest">{session.join_code}</span>
             </span>
+            {session.status !== "ended" && (
+              <AttendeesInput
+                sessionId={session.id}
+                orgSlug={slug}
+                initial={totalAttendees}
+              />
+            )}
           </div>
           {session.status !== "ended" && (
             <SharePanel joinUrl={joinUrl} joinCode={session.join_code} />
           )}
         </div>
 
-        <div className="flex gap-2 shrink-0">
+        <div className="flex gap-2 shrink-0 flex-wrap">
           {session.status !== "ended" && (
             <>
               <Link href={displayUrl} target="_blank">
@@ -122,6 +143,22 @@ export default async function SessionPage({
                 <Button variant="ghost" className="text-sm">Открыть как участник</Button>
               </Link>
             </>
+          )}
+          {(polls?.length ?? 0) > 0 && (
+            <ExportButton
+              session={{ title: session.title, join_code: session.join_code }}
+              polls={(polls ?? []).map((p) => ({
+                id: p.id,
+                title: p.title,
+                type: p.type,
+                options: Array.isArray(p.options) ? (p.options as string[]) : [],
+                section_id: (p as unknown as { section_id?: string | null }).section_id ?? null,
+              }))}
+              sections={sections ?? []}
+              votesByPoll={votesByPoll}
+              votesDataByPoll={votesDataByPoll}
+              questions={(questions ?? []).map((q) => ({ text: q.text, status: q.status }))}
+            />
           )}
           <SessionControls
             sessionId={session.id}
@@ -135,13 +172,17 @@ export default async function SessionPage({
         {/* Poll list */}
         <div className="lg:col-span-2">
           <PollList
-            polls={polls ?? []}
+            polls={(polls ?? []).map((p) => ({
+              ...p,
+              section_id: (p as unknown as { section_id?: string | null }).section_id ?? null,
+            }))}
             votesByPoll={votesByPoll}
             votesDataByPoll={votesDataByPoll}
             sessionId={id}
             orgSlug={slug}
             sessionStatus={session.status}
             copyTargets={otherSessions ?? []}
+            sections={sections ?? []}
           />
         </div>
 
@@ -155,11 +196,28 @@ export default async function SessionPage({
             />
           )}
 
+          {/* Announcement */}
+          {session.status === "active" && (
+            <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
+              <h2 className="text-sm font-semibold text-slate-900 dark:text-white mb-4">📢 Объявление</h2>
+              <AnnouncementForm sessionId={id} orgSlug={slug} />
+            </div>
+          )}
+
+          {/* Section manager */}
+          {session.status !== "ended" && (
+            <SectionManager
+              sessionId={id}
+              orgSlug={slug}
+              initialSections={sections ?? []}
+            />
+          )}
+
           {/* New poll form */}
           {session.status !== "ended" && (
             <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
               <h2 className="text-sm font-semibold text-slate-900 dark:text-white mb-4">Добавить опрос</h2>
-              <NewPollForm sessionId={id} orgSlug={slug} />
+              <NewPollForm sessionId={id} orgSlug={slug} sections={sections ?? []} />
             </div>
           )}
         </div>

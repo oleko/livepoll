@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { activatePoll, closePoll, copyPoll } from "@/lib/actions/polls";
+import { useState, useTransition, useEffect, useRef } from "react";
+import { activatePoll, closePoll, copyPoll, updatePoll } from "@/lib/actions/polls";
+import { movePollSection } from "@/lib/actions/sections";
 import { Button } from "@/components/ui/Button";
 import type { Poll, SessionStatus } from "@/types/database";
 
 type CopyTarget = { id: string; title: string; status: string };
+type SectionItem = { id: string; title: string; sort_order: number };
 
 function CopyPollButton({
   pollId,
@@ -83,6 +85,49 @@ function CopyPollButton({
   );
 }
 
+function SectionSelect({
+  pollId,
+  currentSectionId,
+  sections,
+  sessionId,
+  orgSlug,
+}: {
+  pollId: string;
+  currentSectionId: string | null;
+  sections: SectionItem[];
+  sessionId: string;
+  orgSlug: string;
+}) {
+  const [value, setValue] = useState(currentSectionId ?? "");
+  const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    setValue(currentSectionId ?? "");
+  }, [currentSectionId]);
+
+  function handleChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    const newVal = e.target.value;
+    setValue(newVal);
+    startTransition(async () => {
+      await movePollSection(pollId, newVal || null, sessionId, orgSlug);
+    });
+  }
+
+  return (
+    <select
+      value={value}
+      onChange={handleChange}
+      disabled={isPending}
+      className="rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 py-1 text-xs text-slate-600 dark:text-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50"
+    >
+      <option value="">— без секции —</option>
+      {sections.map((s) => (
+        <option key={s.id} value={s.id}>{s.title}</option>
+      ))}
+    </select>
+  );
+}
+
 const TYPE_LABEL: Record<Poll["type"], string> = {
   multiple_choice: "Множественный выбор",
   temperature:     "Шкала температуры",
@@ -103,8 +148,12 @@ const TYPE_ICON: Record<Poll["type"], string> = {
   planning_poker:  "🃏",
 };
 
+const EDIT_WINDOW_MS = 10 * 60 * 1000;
+
 type PollRow = Pick<Poll, "id" | "title" | "type" | "status" | "sort_order"> & {
   options: unknown[];
+  created_at: string;
+  section_id: string | null;
 };
 
 function PollResults({
@@ -179,7 +228,6 @@ function PollResults({
     );
   }
 
-  // multiple_choice, like_dislike, planning_poker — bar chart
   const options = poll.type === "multiple_choice" && Array.isArray(poll.options) && poll.options.length > 0
     ? (poll.options as string[])
     : Object.keys(valueCounts).sort((a, b) => (valueCounts[b] ?? 0) - (valueCounts[a] ?? 0));
@@ -215,6 +263,163 @@ function PollResults({
   );
 }
 
+function PollCard({
+  poll,
+  votesByPoll,
+  votesDataByPoll,
+  sessionId,
+  orgSlug,
+  sessionStatus,
+  copyTargets,
+  sections,
+  editingId,
+  editTitle,
+  editOptions,
+  editSaving,
+  editError,
+  onStartEdit,
+  onSaveEdit,
+  onCancelEdit,
+  onEditTitleChange,
+  onEditOptionsChange,
+}: {
+  poll: PollRow;
+  votesByPoll: Record<string, number>;
+  votesDataByPoll: Record<string, Record<string, number>>;
+  sessionId: string;
+  orgSlug: string;
+  sessionStatus: SessionStatus;
+  copyTargets: CopyTarget[];
+  sections: SectionItem[];
+  editingId: string | null;
+  editTitle: string;
+  editOptions: string;
+  editSaving: boolean;
+  editError: string | null;
+  onStartEdit: (poll: PollRow) => void;
+  onSaveEdit: (poll: PollRow) => void;
+  onCancelEdit: () => void;
+  onEditTitleChange: (v: string) => void;
+  onEditOptionsChange: (v: string) => void;
+}) {
+  const isActive = poll.status === "active";
+  const isClosed = poll.status === "closed";
+  const isEnded = sessionStatus === "ended";
+  const voteCount = votesByPoll[poll.id] ?? 0;
+  const valueCounts = votesDataByPoll[poll.id] ?? {};
+  const showResults = isEnded || isClosed;
+  const isEditing = editingId === poll.id;
+  const canEdit = !isEnded && Date.now() - new Date(poll.created_at).getTime() < EDIT_WINDOW_MS;
+
+  return (
+    <div
+      className={`rounded-xl border px-4 py-3.5 transition-colors ${
+        isActive
+          ? "border-green-500/40 bg-green-500/5 shadow-[0_0_20px_rgba(34,197,94,0.05)]"
+          : isClosed && !isEnded
+            ? "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 opacity-60"
+            : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
+      }`}
+    >
+      {isEditing ? (
+        <div className="flex flex-col gap-2">
+          <input
+            value={editTitle}
+            onChange={(e) => onEditTitleChange(e.target.value)}
+            className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            placeholder="Вопрос"
+            autoFocus
+          />
+          {poll.type === "multiple_choice" && (
+            <textarea
+              value={editOptions}
+              onChange={(e) => onEditOptionsChange(e.target.value)}
+              rows={3}
+              className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+              placeholder={"Вариант А\nВариант Б"}
+            />
+          )}
+          {editError && <p className="text-xs text-red-500">{editError}</p>}
+          <div className="flex gap-2">
+            <Button className="text-xs py-1.5 px-3" loading={editSaving} onClick={() => onSaveEdit(poll)}>
+              Сохранить
+            </Button>
+            <Button variant="ghost" className="text-xs py-1.5 px-3" onClick={onCancelEdit}>
+              Отмена
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="flex items-center gap-4">
+            <span className="text-xl shrink-0">{TYPE_ICON[poll.type]}</span>
+            <div className="flex-1 min-w-0">
+              <p className={`font-medium text-sm truncate ${isClosed && !isEnded ? "text-slate-400 dark:text-slate-500" : "text-slate-900 dark:text-white"}`}>
+                {poll.title}
+              </p>
+              <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
+                {TYPE_LABEL[poll.type]}
+                {voteCount > 0 && (
+                  <span className="text-slate-300 dark:text-slate-600"> · {voteCount} голосов</span>
+                )}
+              </p>
+            </div>
+            {isActive && (
+              <span className="flex items-center gap-1.5 text-xs font-semibold text-green-600 dark:text-green-400 shrink-0">
+                <span className="h-1.5 w-1.5 rounded-full bg-green-500 dark:bg-green-400 animate-pulse" />
+                Идёт
+              </span>
+            )}
+            <div className="flex items-center gap-2 shrink-0">
+              {canEdit && (
+                <button
+                  onClick={() => onStartEdit(poll)}
+                  title="Редактировать (доступно 10 мин после создания)"
+                  className="rounded-lg border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 bg-white dark:bg-slate-900 px-2 py-1.5 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors text-xs"
+                >
+                  ✏
+                </button>
+              )}
+              {sessionStatus === "active" && (
+                <>
+                  {!isActive && !isClosed && (
+                    <Button className="text-xs py-1.5 px-3" onClick={() => activatePoll(poll.id, sessionId, orgSlug)}>
+                      Запустить
+                    </Button>
+                  )}
+                  {isActive && (
+                    <Button variant="secondary" className="text-xs py-1.5 px-3" onClick={() => closePoll(poll.id, sessionId, orgSlug)}>
+                      Остановить
+                    </Button>
+                  )}
+                </>
+              )}
+              {copyTargets.length > 0 && (
+                <CopyPollButton pollId={poll.id} orgSlug={orgSlug} targets={copyTargets} />
+              )}
+            </div>
+          </div>
+          {showResults && (
+            <PollResults poll={poll} valueCounts={valueCounts} total={voteCount} />
+          )}
+          {sections.length > 0 && !isEnded && (
+            <div className="flex items-center gap-2 mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <span className="text-xs text-slate-400 dark:text-slate-500 shrink-0">Секция:</span>
+              <SectionSelect
+                pollId={poll.id}
+                currentSectionId={poll.section_id}
+                sections={sections}
+                sessionId={sessionId}
+                orgSlug={orgSlug}
+              />
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
 export function PollList({
   polls,
   votesByPoll,
@@ -223,6 +428,7 @@ export function PollList({
   orgSlug,
   sessionStatus,
   copyTargets,
+  sections,
 }: {
   polls: PollRow[];
   votesByPoll: Record<string, number>;
@@ -231,7 +437,34 @@ export function PollList({
   orgSlug: string;
   sessionStatus: SessionStatus;
   copyTargets: CopyTarget[];
+  sections: SectionItem[];
 }) {
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editOptions, setEditOptions] = useState("");
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+
+  function startEdit(poll: PollRow) {
+    setEditingId(poll.id);
+    setEditTitle(poll.title);
+    setEditOptions((poll.options as string[]).join("\n"));
+    setEditError(null);
+  }
+
+  async function saveEdit(poll: PollRow) {
+    setEditSaving(true);
+    setEditError(null);
+    const options = editOptions.split("\n").map((o) => o.trim()).filter(Boolean);
+    const result = await updatePoll(poll.id, editTitle, options, sessionId, orgSlug);
+    setEditSaving(false);
+    if ("error" in result) {
+      setEditError(result.error);
+    } else {
+      setEditingId(null);
+    }
+  }
+
   if (polls.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50 p-12 text-center">
@@ -241,88 +474,84 @@ export function PollList({
     );
   }
 
-  const isEnded = sessionStatus === "ended";
+  const cardProps = {
+    votesByPoll,
+    votesDataByPoll,
+    sessionId,
+    orgSlug,
+    sessionStatus,
+    copyTargets,
+    sections,
+    editingId,
+    editTitle,
+    editOptions,
+    editSaving,
+    editError,
+    onStartEdit: startEdit,
+    onSaveEdit: saveEdit,
+    onCancelEdit: () => setEditingId(null),
+    onEditTitleChange: setEditTitle,
+    onEditOptionsChange: setEditOptions,
+  };
+
+  if (sections.length === 0) {
+    return (
+      <div className="flex flex-col gap-2">
+        {polls.map((poll) => (
+          <PollCard key={poll.id} poll={poll} {...cardProps} />
+        ))}
+      </div>
+    );
+  }
+
+  const sorted = [...sections].sort((a, b) => a.sort_order - b.sort_order);
+  const unsectioned = polls.filter((p) => p.section_id === null);
 
   return (
-    <div className="flex flex-col gap-2">
-      {polls.map((poll) => {
-        const isActive = poll.status === "active";
-        const isClosed = poll.status === "closed";
-        const voteCount = votesByPoll[poll.id] ?? 0;
-        const valueCounts = votesDataByPoll[poll.id] ?? {};
-        const showResults = isEnded || isClosed;
-
+    <div className="flex flex-col gap-5">
+      {sorted.map((section) => {
+        const sectionPolls = polls.filter((p) => p.section_id === section.id);
         return (
-          <div
-            key={poll.id}
-            className={`rounded-xl border px-4 py-3.5 transition-colors ${
-              isActive
-                ? "border-green-500/40 bg-green-500/5 shadow-[0_0_20px_rgba(34,197,94,0.05)]"
-                : isClosed && !isEnded
-                  ? "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 opacity-60"
-                  : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
-            }`}
-          >
-            <div className="flex items-center gap-4">
-              {/* Icon */}
-              <span className="text-xl shrink-0">{TYPE_ICON[poll.type]}</span>
-
-              {/* Info */}
-              <div className="flex-1 min-w-0">
-                <p className={`font-medium text-sm truncate ${isClosed && !isEnded ? "text-slate-400 dark:text-slate-500" : "text-slate-900 dark:text-white"}`}>
-                  {poll.title}
-                </p>
-                <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
-                  {TYPE_LABEL[poll.type]}
-                  {voteCount > 0 && (
-                    <span className="text-slate-300 dark:text-slate-600"> · {voteCount} голосов</span>
-                  )}
-                </p>
-              </div>
-
-              {/* Status indicator */}
-              {isActive && (
-                <span className="flex items-center gap-1.5 text-xs font-semibold text-green-600 dark:text-green-400 shrink-0">
-                  <span className="h-1.5 w-1.5 rounded-full bg-green-500 dark:bg-green-400 animate-pulse" />
-                  Идёт
-                </span>
-              )}
-
-              {/* Actions */}
-              <div className="flex items-center gap-2 shrink-0">
-                {sessionStatus === "active" && (
-                  <>
-                    {!isActive && !isClosed && (
-                      <Button
-                        className="text-xs py-1.5 px-3"
-                        onClick={() => activatePoll(poll.id, sessionId, orgSlug)}
-                      >
-                        Запустить
-                      </Button>
-                    )}
-                    {isActive && (
-                      <Button
-                        variant="secondary"
-                        className="text-xs py-1.5 px-3"
-                        onClick={() => closePoll(poll.id, sessionId, orgSlug)}
-                      >
-                        Остановить
-                      </Button>
-                    )}
-                  </>
-                )}
-                {copyTargets.length > 0 && (
-                  <CopyPollButton pollId={poll.id} orgSlug={orgSlug} targets={copyTargets} />
-                )}
-              </div>
+          <div key={section.id}>
+            <div className="flex items-center gap-3 mb-2">
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide whitespace-nowrap">
+                {section.title}
+              </span>
+              <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
+              <span className="text-xs text-slate-400 dark:text-slate-600 shrink-0">
+                {sectionPolls.length}
+              </span>
             </div>
-
-            {showResults && (
-              <PollResults poll={poll} valueCounts={valueCounts} total={voteCount} />
+            {sectionPolls.length > 0 ? (
+              <div className="flex flex-col gap-2">
+                {sectionPolls.map((poll) => (
+                  <PollCard key={poll.id} poll={poll} {...cardProps} />
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-xl border border-dashed border-slate-200 dark:border-slate-800 py-6 text-center">
+                <p className="text-xs text-slate-400 dark:text-slate-600">Нет опросов в этой секции</p>
+              </div>
             )}
           </div>
         );
       })}
+
+      {unsectioned.length > 0 && (
+        <div>
+          <div className="flex items-center gap-3 mb-2">
+            <span className="text-xs font-semibold text-slate-400 dark:text-slate-600 uppercase tracking-wide whitespace-nowrap">
+              Без секции
+            </span>
+            <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
+          </div>
+          <div className="flex flex-col gap-2">
+            {unsectioned.map((poll) => (
+              <PollCard key={poll.id} poll={poll} {...cardProps} />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

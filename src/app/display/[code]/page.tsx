@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { DisplayScreen } from "./DisplayScreen";
+import type { BrandingSettings } from "@/lib/actions/branding";
 
 export default async function DisplayPage({
   params,
@@ -11,9 +12,10 @@ export default async function DisplayPage({
 
   const { data: session } = await admin
     .from("sessions")
-    .select("id, title, status, join_code, organization_id")
+    .select("id, title, status, join_code, organization_id, total_attendees")
     .eq("join_code", code.toUpperCase())
     .single();
+  const totalAttendees = (session as unknown as { total_attendees?: number })?.total_attendees ?? 0;
 
   if (!session) {
     return (
@@ -24,8 +26,9 @@ export default async function DisplayPage({
   }
 
   const { data: org } = session
-    ? await admin.from("organizations").select("slug").eq("id", session.organization_id).single()
+    ? await admin.from("organizations").select("slug, settings").eq("id", session.organization_id).single()
     : { data: null };
+  const branding = (org?.settings as BrandingSettings | null) ?? {};
 
   const { data: activePoll } = await admin
     .from("polls")
@@ -50,6 +53,21 @@ export default async function DisplayPage({
     .neq("status", "hidden")
     .order("upvotes", { ascending: false });
 
+  // Count unique voters across all session polls
+  const { data: sessionPolls } = await admin
+    .from("polls")
+    .select("id")
+    .eq("session_id", session.id);
+  const pollIds = (sessionPolls ?? []).map((p) => p.id);
+  let initialJoinedCount = 0;
+  if (pollIds.length > 0) {
+    const { data: voterRows } = await admin
+      .from("votes")
+      .select("voter_token")
+      .in("poll_id", pollIds);
+    initialJoinedCount = new Set((voterRows ?? []).map((v) => v.voter_token)).size;
+  }
+
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
   const joinUrl = `${baseUrl}/join/${session.join_code}`;
 
@@ -61,6 +79,9 @@ export default async function DisplayPage({
       initialQuestions={initialQuestionsData ?? []}
       joinUrl={joinUrl}
       orgSlug={org?.slug ?? ""}
+      totalAttendees={totalAttendees}
+      initialJoinedCount={initialJoinedCount}
+      branding={branding}
     />
   );
 }

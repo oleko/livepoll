@@ -28,23 +28,26 @@ export type Database = {
           id: string
           name: string
           slug: string
-          plan: "free" | "pro" | "team"
+          plan: "free" | "pro" | "team" | "unlimited"
           plan_expires_at: string | null
+          settings: Record<string, unknown> | null
           created_at: string
         }
         Insert: {
           id?: string
           name: string
           slug: string
-          plan?: "free" | "pro" | "team"
+          plan?: "free" | "pro" | "team" | "unlimited"
           plan_expires_at?: string | null
+          settings?: Record<string, unknown> | null
           created_at?: string
         }
         Update: {
           name?: string
           slug?: string
-          plan?: "free" | "pro" | "team"
+          plan?: "free" | "pro" | "team" | "unlimited"
           plan_expires_at?: string | null
+          settings?: Record<string, unknown> | null
         }
         Relationships: []
       }
@@ -145,6 +148,7 @@ export type Database = {
           status: "draft" | "active" | "closed"
           settings: Record<string, unknown>
           sort_order: number
+          section_id: string | null
           created_at: string
           closed_at: string | null
         }
@@ -165,6 +169,7 @@ export type Database = {
           status?: "draft" | "active" | "closed"
           settings?: Record<string, unknown>
           sort_order?: number
+          section_id?: string | null
           created_at?: string
           closed_at?: string | null
         }
@@ -182,6 +187,7 @@ export type Database = {
           status?: "draft" | "active" | "closed"
           settings?: Record<string, unknown>
           sort_order?: number
+          section_id?: string | null
           closed_at?: string | null
         }
         Relationships: [
@@ -273,6 +279,35 @@ export type Database = {
           }
         ]
       }
+      session_sections: {
+        Row: {
+          id: string
+          session_id: string
+          title: string
+          sort_order: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          session_id: string
+          title: string
+          sort_order?: number
+          created_at?: string
+        }
+        Update: {
+          title?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "session_sections_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
     }
     Views: Record<string, never>
     Functions: {
@@ -295,6 +330,8 @@ export type Poll = Database["public"]["Tables"]["polls"]["Row"]
 export type Vote = Database["public"]["Tables"]["votes"]["Row"]
 export type Question = Database["public"]["Tables"]["questions"]["Row"]
 export type QuestionUpvote = Database["public"]["Tables"]["question_upvotes"]["Row"]
+
+export type SessionSection = Database["public"]["Tables"]["session_sections"]["Row"]
 
 export type PollType = Poll["type"]
 export type PollStatus = Poll["status"]

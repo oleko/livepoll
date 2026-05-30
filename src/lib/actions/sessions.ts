@@ -99,6 +99,118 @@ export async function createSession(
   return { redirectTo: `/org/${orgSlug}/sessions/${session.id}` };
 }
 
+export async function setAttendees(
+  sessionId: string,
+  count: number,
+  orgSlug: string
+) {
+  const { user, admin } = await getAuthUser();
+  await assertSessionMember(user.id, sessionId, admin);
+
+  const clamped = Math.max(0, Math.floor(count));
+  await admin
+    .from("sessions")
+    .update({ total_attendees: clamped } as never)
+    .eq("id", sessionId);
+
+  try {
+    await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/realtime/v1/api/broadcast`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+        "apikey": process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      },
+      body: JSON.stringify({
+        messages: [{
+          topic: `session-polls:${sessionId}`,
+          event: "attendees_update",
+          payload: { total: clamped },
+        }],
+      }),
+    });
+  } catch {}
+
+  revalidatePath(`/org/${orgSlug}/sessions/${sessionId}`);
+}
+
+async function realtimeBroadcast(messages: { topic: string; event: string; payload: unknown }[]) {
+  try {
+    await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/realtime/v1/api/broadcast`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+        "apikey": process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      },
+      body: JSON.stringify({ messages }),
+    });
+  } catch {}
+}
+
+export async function startAnnouncement(
+  sessionId: string,
+  text: string,
+  durationSec: number,
+  orgSlug: string
+) {
+  const { user, admin } = await getAuthUser();
+  await assertSessionMember(user.id, sessionId, admin);
+  if (!text.trim() || text.length > 200) return { error: "Введите текст объявления" };
+  await realtimeBroadcast([{
+    topic: `session-polls:${sessionId}`,
+    event: "announcement",
+    payload: { text: text.trim(), duration: durationSec, started_at: new Date().toISOString() },
+  }]);
+  return { success: true };
+}
+
+export async function clearAnnouncement(sessionId: string, orgSlug: string) {
+  const { user, admin } = await getAuthUser();
+  await assertSessionMember(user.id, sessionId, admin);
+  await realtimeBroadcast([{
+    topic: `session-polls:${sessionId}`,
+    event: "announcement",
+    payload: { clear: true },
+  }]);
+  return { success: true };
+}
+
+async function generateFarewell(): Promise<string> {
+  const apiKey = process.env.YANDEX_API_KEY;
+  const folderId = process.env.YANDEX_FOLDER_ID;
+  if (!apiKey || !folderId) return "Спасибо за участие! До встречи!";
+
+  try {
+    const res = await fetch("https://llm.api.cloud.yandex.net/foundationModels/v1/completion", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Api-Key ${apiKey}`,
+      },
+      body: JSON.stringify({
+        modelUri: `gpt://${folderId}/yandexgpt-lite/latest`,
+        completionOptions: { stream: false, temperature: 0.8, maxTokens: "80" },
+        messages: [
+          {
+            role: "system",
+            text: "Ты ведущий мероприятия. Пиши кратко, тепло и по-русски.",
+          },
+          {
+            role: "user",
+            text: "Мероприятие завершилось. Напиши одно короткое прощальное пожелание участникам — 1-2 предложения, тепло и с энергией. Без кавычек, без предисловий.",
+          },
+        ],
+      }),
+    });
+    if (!res.ok) return "Спасибо за участие! До встречи!";
+    const data = await res.json() as { result?: { alternatives?: { message?: { text?: string } }[] } };
+    return data.result?.alternatives?.[0]?.message?.text?.trim() || "Спасибо за участие! До встречи!";
+  } catch {
+    return "Спасибо за участие! До встречи!";
+  }
+}
+
 export async function updateSessionStatus(
   sessionId: string,
   status: "active" | "ended",
@@ -111,13 +223,31 @@ export async function updateSessionStatus(
     .update({ status, ...(status === "ended" ? { ended_at: new Date().toISOString() } : {}) })
     .eq("id", sessionId);
 
-  // При активации сессии — сбрасываем все активные опросы (один за раз)
   if (status === "ended") {
     await admin
       .from("polls")
       .update({ status: "closed", closed_at: new Date().toISOString() })
       .eq("session_id", sessionId)
       .eq("status", "active");
+
+    const farewell = await generateFarewell();
+    try {
+      await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/realtime/v1/api/broadcast`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+          "apikey": process.env.SUPABASE_SERVICE_ROLE_KEY!,
+        },
+        body: JSON.stringify({
+          messages: [{
+            topic: `session-polls:${sessionId}`,
+            event: "session_ended",
+            payload: { farewell },
+          }],
+        }),
+      });
+    } catch {}
   }
 
   revalidatePath(`/org/${orgSlug}/sessions/${sessionId}`);

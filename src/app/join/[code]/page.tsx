@@ -1,5 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { VoteInterface } from "./VoteInterface";
+import type { BrandingSettings } from "@/lib/actions/branding";
+import Link from "next/link";
 
 export default async function JoinPage({
   params,
@@ -11,7 +13,7 @@ export default async function JoinPage({
 
   const { data: session } = await admin
     .from("sessions")
-    .select("id, title, status")
+    .select("id, title, status, organization_id")
     .eq("join_code", code.toUpperCase())
     .single();
 
@@ -37,9 +39,17 @@ export default async function JoinPage({
     );
   }
 
+  const { data: org } = await admin
+    .from("organizations")
+    .select("settings")
+    .eq("id", (session as unknown as { organization_id: string }).organization_id)
+    .single();
+  const branding = (org?.settings as BrandingSettings | null) ?? {};
+  const whiteLabel = !!branding.white_label;
+
   const { data: activePoll } = await admin
     .from("polls")
-    .select("id, title, type, options, status")
+    .select("id, title, type, options, status, settings")
     .eq("session_id", session.id)
     .eq("status", "active")
     .maybeSingle();
@@ -57,9 +67,18 @@ export default async function JoinPage({
 
   return (
     <main className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col">
-      <header className="border-b border-slate-200 dark:border-slate-800 px-6 py-4">
-        <p className="text-center text-sm text-slate-500">{session.title}</p>
+      <header className="border-b border-slate-200 dark:border-slate-800 px-6 py-3 flex items-center justify-center relative">
+        {branding.logo_url ? (
+          <img
+            src={branding.logo_url}
+            alt="Логотип"
+            className="h-8 max-w-[160px] object-contain"
+          />
+        ) : (
+          <p className="text-sm text-slate-500 dark:text-slate-400">{session.title}</p>
+        )}
       </header>
+
       <div className="flex flex-1 items-center justify-center p-6">
         <VoteInterface
           sessionId={session.id}
@@ -69,6 +88,17 @@ export default async function JoinPage({
           initialQuestions={initialQuestions}
         />
       </div>
+
+      {!whiteLabel && (
+        <footer className="py-3 text-center">
+          <Link
+            href="/"
+            className="text-xs text-slate-400 dark:text-slate-600 hover:text-slate-500 dark:hover:text-slate-500 transition-colors"
+          >
+            Powered by LivePoll AI
+          </Link>
+        </footer>
+      )}
     </main>
   );
 }

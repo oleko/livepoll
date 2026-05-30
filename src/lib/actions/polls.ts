@@ -95,9 +95,29 @@ export async function createPoll(
 
   const durationSec = parseInt(formData.get("duration") as string) || 0;
   const voteLimit = parseInt(formData.get("vote_limit") as string) || 0;
+  const allowRevote = formData.get("allow_revote") === "on";
+  const maxQuestions = parseInt(formData.get("max_questions") as string) || 1;
+  const quizMode = formData.get("quiz_mode") === "on";
+  const correctOption = (formData.get("correct_option") as string)?.trim() ?? "";
+  const explanation = (formData.get("explanation") as string)?.trim() ?? "";
   const settings: Record<string, unknown> = {};
   if (durationSec > 0) settings.duration = durationSec;
   if (voteLimit > 0) settings.vote_limit = voteLimit;
+  if (allowRevote) settings.allow_revote = true;
+  if (type === "qa" && maxQuestions > 1) settings.max_questions = maxQuestions;
+  const maxAnswers = parseInt(formData.get("max_answers") as string) || 1;
+  if (type === "multiple_choice" && maxAnswers > 1) settings.max_answers = Math.min(maxAnswers, 10);
+
+  if (quizMode && type === "multiple_choice") {
+    if (!correctOption || !options.includes(correctOption)) {
+      return { error: "Выберите правильный ответ из списка вариантов" };
+    }
+    settings.quiz_mode = true;
+    settings.correct_option = correctOption;
+    if (explanation) settings.explanation = explanation;
+  }
+
+  const sectionId = (formData.get("section_id") as string) || null;
 
   const { error } = await admin.from("polls").insert({
     session_id: sessionId,
@@ -107,9 +127,59 @@ export async function createPoll(
     options,
     settings,
     sort_order: (last?.sort_order ?? -1) + 1,
+    ...(sectionId ? { section_id: sectionId } : {}),
   });
 
   if (error) return { error: error.message };
+
+  revalidatePath(`/org/${orgSlug}/sessions/${sessionId}`);
+  return { success: true };
+}
+
+const EDIT_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
+
+export async function updatePoll(
+  pollId: string,
+  title: string,
+  options: string[],
+  sessionId: string,
+  orgSlug: string
+): Promise<{ error: string } | { success: true }> {
+  const { user, admin } = await getAuthUser();
+  await assertSessionMember(user.id, sessionId, admin);
+
+  if (!title.trim() || title.length > 300) return { error: "Неверное название" };
+
+  const { data: poll } = await admin
+    .from("polls")
+    .select("created_at, type")
+    .eq("id", pollId)
+    .single();
+
+  if (!poll) return { error: "Опрос не найден" };
+
+  const age = Date.now() - new Date(poll.created_at).getTime();
+  if (age > EDIT_WINDOW_MS) return { error: "Окно редактирования закрыто (10 минут)" };
+
+  if (poll.type === "multiple_choice" && options.length > 0) {
+    await admin.from("polls").update({ title: title.trim(), options } as never).eq("id", pollId);
+  } else {
+    await admin.from("polls").update({ title: title.trim() }).eq("id", pollId);
+  }
+
+  const { data: updated } = await admin
+    .from("polls")
+    .select("id, title, type, options, status, settings")
+    .eq("id", pollId)
+    .single();
+
+  if (updated) {
+    await realtimeBroadcast([{
+      topic: `session-polls:${sessionId}`,
+      event: "poll_change",
+      payload: { type: "poll_updated", poll: updated },
+    }]);
+  }
 
   revalidatePath(`/org/${orgSlug}/sessions/${sessionId}`);
   return { success: true };
@@ -125,7 +195,7 @@ export async function activatePoll(
 
   const { data: prevActive } = await admin
     .from("polls")
-    .select("id")
+    .select("id, settings")
     .eq("session_id", sessionId)
     .eq("status", "active")
     .maybeSingle();
@@ -154,19 +224,29 @@ export async function activatePoll(
     .eq("id", pollId)
     .single();
 
+  type QuizSettings = { quiz_mode?: boolean; correct_option?: string; explanation?: string };
+
   const messages = [];
   if (prevActive) {
-    messages.push({
-      topic: `session-polls:${sessionId}`,
-      event: "poll_change",
-      payload: { type: "closed", poll_id: prevActive.id },
-    });
+    const prevSettings = prevActive.settings as QuizSettings | null;
+    const closePayload: Record<string, unknown> = { type: "closed", poll_id: prevActive.id };
+    if (prevSettings?.quiz_mode && prevSettings.correct_option) {
+      closePayload.quiz_reveal = {
+        correct_option: prevSettings.correct_option,
+        ...(prevSettings.explanation ? { explanation: prevSettings.explanation } : {}),
+      };
+    }
+    messages.push({ topic: `session-polls:${sessionId}`, event: "poll_change", payload: closePayload });
   }
   if (activatedPoll) {
+    // Strip quiz answers from broadcast so participants cannot cheat
+    const broadcastSettings = { ...(activatedPoll.settings as Record<string, unknown> ?? {}) };
+    delete broadcastSettings["correct_option"];
+    delete broadcastSettings["explanation"];
     messages.push({
       topic: `session-polls:${sessionId}`,
       event: "poll_change",
-      payload: { type: "activated", poll: activatedPoll },
+      payload: { type: "activated", poll: { ...activatedPoll, settings: broadcastSettings } },
     });
   }
   if (messages.length > 0) await realtimeBroadcast(messages);
@@ -182,15 +262,30 @@ export async function closePoll(
   const { user, admin } = await getAuthUser();
   await assertSessionMember(user.id, sessionId, admin);
 
+  const { data: pollMeta } = await admin
+    .from("polls")
+    .select("settings")
+    .eq("id", pollId)
+    .single();
+
   await admin
     .from("polls")
     .update({ status: "closed", closed_at: new Date().toISOString() })
     .eq("id", pollId);
 
+  const pollSettings = pollMeta?.settings as { quiz_mode?: boolean; correct_option?: string; explanation?: string } | null;
+  const closePayload: Record<string, unknown> = { type: "closed", poll_id: pollId };
+  if (pollSettings?.quiz_mode && pollSettings.correct_option) {
+    closePayload.quiz_reveal = {
+      correct_option: pollSettings.correct_option,
+      ...(pollSettings.explanation ? { explanation: pollSettings.explanation } : {}),
+    };
+  }
+
   await realtimeBroadcast([{
     topic: `session-polls:${sessionId}`,
     event: "poll_change",
-    payload: { type: "closed", poll_id: pollId },
+    payload: closePayload,
   }]);
 
   revalidatePath(`/org/${orgSlug}/sessions/${sessionId}`);
@@ -205,22 +300,21 @@ export async function submitVote(formData: FormData) {
 
   if (!pollId || !voterToken || !value) return { error: "Неверные данные" };
   if (!isValidUUID(voterToken)) return { error: "Неверные данные" };
-  if (value.length > 500) return { error: "Слишком длинный ответ" };
+  if (value.length > 2000) return { error: "Слишком длинный ответ" };
 
-  const { error } = await admin.from("votes").insert({
-    poll_id: pollId,
-    voter_token: voterToken,
-    value,
-  });
-
-  if (error?.code === "23505") return { error: "Вы уже проголосовали" };
-  if (error) return { error: error.message };
-
-  await realtimeBroadcast([{
-    topic: `poll-votes:${pollId}`,
-    event: "vote",
-    payload: { value },
-  }]);
+  // Parse multi-answer JSON arrays
+  let parsedValues: string[];
+  if (value.startsWith("[")) {
+    try {
+      parsedValues = JSON.parse(value) as string[];
+      if (!Array.isArray(parsedValues) || parsedValues.length === 0 || parsedValues.some((v) => typeof v !== "string" || v.length > 200)) {
+        return { error: "Неверные данные" };
+      }
+    } catch { return { error: "Неверные данные" }; }
+  } else {
+    if (value.length > 500) return { error: "Слишком длинный ответ" };
+    parsedValues = [value];
+  }
 
   const { data: pollData } = await admin
     .from("polls")
@@ -228,24 +322,92 @@ export async function submitVote(formData: FormData) {
     .eq("id", pollId)
     .single();
 
-  const voteLimit = (pollData?.settings as { vote_limit?: number } | null)?.vote_limit;
-  if (voteLimit && voteLimit > 0 && pollData?.session_id) {
-    const { count } = await admin
-      .from("votes")
-      .select("*", { count: "exact", head: true })
-      .eq("poll_id", pollId);
+  const settings = pollData?.settings as {
+    allow_revote?: boolean;
+    vote_limit?: number;
+    max_answers?: number;
+  } | null;
 
-    if (count !== null && count >= voteLimit) {
+  const maxAnswers = settings?.max_answers ?? 1;
+  if (parsedValues.length > maxAnswers) return { error: `Можно выбрать не более ${maxAnswers} вариантов` };
+
+  let isRevote = false;
+
+  if (settings?.allow_revote && maxAnswers === 1) {
+    const { data: existing } = await admin
+      .from("votes")
+      .select("value")
+      .eq("poll_id", pollId)
+      .eq("voter_token", voterToken)
+      .maybeSingle();
+
+    if (existing) {
       await admin
-        .from("polls")
-        .update({ status: "closed", closed_at: new Date().toISOString() })
-        .eq("id", pollId);
+        .from("votes")
+        .update({ value } as never)
+        .eq("poll_id", pollId)
+        .eq("voter_token", voterToken);
 
       await realtimeBroadcast([{
-        topic: `session-polls:${pollData.session_id}`,
-        event: "poll_change",
-        payload: { type: "closed", poll_id: pollId },
+        topic: `poll-votes:${pollId}`,
+        event: "revote",
+        payload: { old_value: existing.value, new_value: value },
       }]);
+      isRevote = true;
+    } else {
+      const { error } = await admin.from("votes").insert({ poll_id: pollId, voter_token: voterToken, value });
+      if (error) return { error: error.message };
+      await realtimeBroadcast([{ topic: `poll-votes:${pollId}`, event: "vote", payload: { value } }]);
+    }
+  } else {
+    const { error } = await admin.from("votes").insert({ poll_id: pollId, voter_token: voterToken, value });
+    if (error?.code === "23505") return { error: "Вы уже проголосовали" };
+    if (error) return { error: error.message };
+    await realtimeBroadcast([{ topic: `poll-votes:${pollId}`, event: "vote", payload: { value } }]);
+  }
+
+  // Broadcast unique voter count for this session (skip for revotes — count unchanged)
+  if (!isRevote && pollData?.session_id) {
+    const { data: sessionPolls } = await admin
+      .from("polls")
+      .select("id")
+      .eq("session_id", pollData.session_id);
+    const pollIds = (sessionPolls ?? []).map((p) => p.id);
+    if (pollIds.length > 0) {
+      const { data: allVoterTokens } = await admin
+        .from("votes")
+        .select("voter_token")
+        .in("poll_id", pollIds);
+      const uniqueCount = new Set((allVoterTokens ?? []).map((v) => v.voter_token)).size;
+      await realtimeBroadcast([{
+        topic: `session-polls:${pollData.session_id}`,
+        event: "voter_count",
+        payload: { count: uniqueCount },
+      }]);
+    }
+  }
+
+  // Vote limit check — skip for revotes (total count unchanged)
+  if (!isRevote) {
+    const voteLimit = settings?.vote_limit;
+    if (voteLimit && voteLimit > 0 && pollData?.session_id) {
+      const { count } = await admin
+        .from("votes")
+        .select("*", { count: "exact", head: true })
+        .eq("poll_id", pollId);
+
+      if (count !== null && count >= voteLimit) {
+        await admin
+          .from("polls")
+          .update({ status: "closed", closed_at: new Date().toISOString() })
+          .eq("id", pollId);
+
+        await realtimeBroadcast([{
+          topic: `session-polls:${pollData.session_id}`,
+          event: "poll_change",
+          payload: { type: "closed", poll_id: pollId },
+        }]);
+      }
     }
   }
 
@@ -256,12 +418,29 @@ export async function submitQuestion(formData: FormData) {
   const admin = createAdminClient();
 
   const sessionId = formData.get("session_id") as string;
+  const pollId = formData.get("poll_id") as string;
   const voterToken = formData.get("voter_token") as string;
   const text = (formData.get("text") as string)?.trim();
 
   if (!sessionId || !voterToken || !text) return { error: "Неверные данные" };
   if (!isValidUUID(voterToken)) return { error: "Неверные данные" };
-  if (text.length > 300) return { error: "Вопрос слишком длинный" };
+  if (text.length > 300) return { error: "Вопрос слишком длинный (максимум 300 символов)" };
+
+  // Check per-voter question limit
+  if (pollId) {
+    const { data: pollData } = await admin
+      .from("polls")
+      .select("settings")
+      .eq("id", pollId)
+      .single();
+    const maxQ = (pollData?.settings as { max_questions?: number } | null)?.max_questions ?? 1;
+    const { count } = await admin
+      .from("questions")
+      .select("id", { count: "exact", head: true })
+      .eq("session_id", sessionId)
+      .eq("voter_token", voterToken);
+    if ((count ?? 0) >= maxQ) return { error: "Лимит вопросов исчерпан" };
+  }
 
   const { data, error } = await admin
     .from("questions")
@@ -365,6 +544,25 @@ export async function copyPoll(
   });
 
   revalidatePath(`/org/${orgSlug}/sessions/${targetSessionId}`);
+}
+
+export async function deleteQuestion(
+  questionId: string,
+  sessionId: string,
+  orgSlug: string
+) {
+  const { user, admin } = await getAuthUser();
+  await assertSessionMember(user.id, sessionId, admin);
+
+  await admin.from("questions").delete().eq("id", questionId);
+
+  await realtimeBroadcast([{
+    topic: `session-questions:${sessionId}`,
+    event: "question_change",
+    payload: { type: "updated", question: { id: questionId, status: "hidden" } },
+  }]);
+
+  revalidatePath(`/org/${orgSlug}/sessions/${sessionId}`);
 }
 
 export async function updateQuestionStatus(

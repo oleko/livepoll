@@ -18,7 +18,15 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       stored ??
       (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
     setTheme(initial);
-    // The inline script in layout already set the class, but sync state here
+
+    function onStorage(e: StorageEvent) {
+      if (e.key === "theme" && (e.newValue === "dark" || e.newValue === "light")) {
+        setTheme(e.newValue);
+        document.documentElement.classList.toggle("dark", e.newValue === "dark");
+      }
+    }
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
   }, []);
 
   function toggle() {
