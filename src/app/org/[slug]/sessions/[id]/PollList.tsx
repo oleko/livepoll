@@ -1,11 +1,194 @@
 "use client";
 
 import { useState, useTransition, useEffect, useRef, useOptimistic } from "react";
+import { useRouter } from "next/navigation";
 import { activatePoll, closePoll, copyPoll, updatePoll } from "@/lib/actions/polls";
 import { movePollSection, createSection, deleteSection, renameSection } from "@/lib/actions/sections";
+import { showSlide, hideSlide, deleteSlide, updateSlide } from "@/lib/actions/slides";
 import { Button } from "@/components/ui/Button";
 import { EditIcon } from "@/components/icons";
 import type { Poll, SessionStatus } from "@/types/database";
+import type { SlideRow, SlideType } from "@/lib/actions/slides";
+
+const SLIDE_TYPE_META: Record<SlideType, { label: string; icon: string }> = {
+  splash:   { label: "Заставка",   icon: "🎯" },
+  speaker:  { label: "Спикер",     icon: "🎤" },
+  schedule: { label: "Расписание", icon: "🗓" },
+  quote:    { label: "Цитата",     icon: "💬" },
+  final:    { label: "Финал",      icon: "🎉" },
+};
+
+function slidePreview(slide: SlideRow): string {
+  const c = slide.content as Record<string, string>;
+  switch (slide.type) {
+    case "splash":   return c.title || "Без названия";
+    case "speaker":  return c.name  || "Без имени";
+    case "schedule": return "Расписание";
+    case "quote":    return c.text ? `"${c.text.slice(0, 50)}${c.text.length > 50 ? "…" : ""}"` : "Цитата";
+    case "final":    return c.title || "Финальный экран";
+  }
+}
+
+type ScheduleItem = { time: string; title: string; active?: boolean };
+
+function SlideEditForm({ slide, onDone, onCancel }: {
+  slide: SlideRow;
+  onDone: (content: Record<string, unknown>) => void;
+  onCancel: () => void;
+}) {
+  const [content, setContent] = useState<Record<string, unknown>>(slide.content);
+  const [saving, setSaving] = useState(false);
+  const router = useRouter();
+
+  async function save() {
+    setSaving(true);
+    await updateSlide(slide.id, content, slide.session_id, "");
+    router.refresh();
+    onDone(content);
+    setSaving(false);
+  }
+
+  const inp = (k: string) => ({
+    value: (content as Record<string, string>)[k] ?? "",
+    onChange: (e: React.ChangeEvent<HTMLInputElement>) => setContent({ ...content, [k]: e.target.value }),
+    className: "w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500",
+  });
+
+  return (
+    <div className="space-y-2 pt-3 border-t border-purple-100 dark:border-purple-900/40">
+      {slide.type === "splash" && <>
+        <input placeholder="Название *" {...inp("title")} />
+        <input placeholder="Подзаголовок" {...inp("subtitle")} />
+        <input placeholder="Дата" {...inp("date")} />
+        <input placeholder="Место" {...inp("location")} />
+      </>}
+      {slide.type === "speaker" && <>
+        <input placeholder="Имя *" {...inp("name")} />
+        <input placeholder="Должность" {...inp("role")} />
+        <input placeholder="Компания" {...inp("company")} />
+        <input placeholder="Тема доклада" {...inp("topic")} />
+        <input placeholder="URL фото" {...inp("photo_url")} />
+      </>}
+      {slide.type === "quote" && <>
+        <textarea
+          value={(content as Record<string, string>).text ?? ""}
+          onChange={e => setContent({ ...content, text: e.target.value })}
+          placeholder="Текст цитаты *" rows={2}
+          className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+        />
+        <input placeholder="Автор" {...inp("author")} />
+      </>}
+      {slide.type === "schedule" && (
+        <div className="space-y-1.5">
+          {((content as { items?: ScheduleItem[] }).items ?? []).map((item, idx) => {
+            const items = (content as { items: ScheduleItem[] }).items;
+            return (
+              <div key={idx} className="flex items-center gap-1.5">
+                <input value={item.time} onChange={e => setContent({ ...content, items: items.map((it, i) => i === idx ? { ...it, time: e.target.value } : it) })}
+                  placeholder="10:00" className="w-16 shrink-0 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 text-slate-900 dark:text-white" />
+                <input value={item.title} onChange={e => setContent({ ...content, items: items.map((it, i) => i === idx ? { ...it, title: e.target.value } : it) })}
+                  placeholder="Блок" className="flex-1 min-w-0 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 text-slate-900 dark:text-white" />
+                <button type="button" onClick={() => setContent({ ...content, items: items.map((it, i) => ({ ...it, active: i === idx })) })}
+                  className={`text-sm px-1 ${item.active ? "text-purple-500" : "text-slate-300 hover:text-purple-400"}`}>▶</button>
+                <button type="button" onClick={() => setContent({ ...content, items: items.filter((_, i) => i !== idx) })}
+                  className="text-slate-300 hover:text-red-400 text-xs px-0.5">✕</button>
+              </div>
+            );
+          })}
+          <button type="button" onClick={() => setContent({ ...content, items: [...((content as { items?: ScheduleItem[] }).items ?? []), { time: "", title: "" }] })}
+            className="text-xs text-purple-600 dark:text-purple-400 hover:underline">＋ Добавить пункт</button>
+        </div>
+      )}
+      {slide.type === "final" && <>
+        <input placeholder="Заголовок *" {...inp("title")} />
+        <input placeholder="Подзаголовок" {...inp("subtitle")} />
+        <input placeholder="Ссылка на материалы" {...inp("url")} />
+      </>}
+      <div className="flex gap-2">
+        <button type="button" onClick={save} disabled={saving}
+          className="rounded-lg bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white px-3 py-1.5 text-xs font-medium transition-colors"
+        >{saving ? "…" : "Сохранить"}</button>
+        <button type="button" onClick={onCancel}
+          className="rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-1.5 text-xs text-slate-500 hover:text-slate-700 transition-colors"
+        >Отмена</button>
+      </div>
+    </div>
+  );
+}
+
+function SlideLineupCard({
+  slide, isActive, sessionId, orgSlug,
+}: {
+  slide: SlideRow; isActive: boolean; sessionId: string; orgSlug: string;
+}) {
+  const router = useRouter();
+  const [editing, setEditing] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const meta = SLIDE_TYPE_META[slide.type];
+
+  async function handleShow() {
+    await showSlide(slide.id, sessionId, orgSlug);
+    router.refresh();
+  }
+
+  async function handleHide() {
+    await hideSlide(sessionId, orgSlug);
+    router.refresh();
+  }
+
+  async function handleDelete() {
+    if (!confirm(`Удалить «${slidePreview(slide)}»?`)) return;
+    setDeleting(true);
+    await deleteSlide(slide.id, sessionId, orgSlug);
+    router.refresh();
+  }
+
+  return (
+    <div className={`rounded-xl border px-4 py-3.5 transition-colors ${
+      isActive
+        ? "border-purple-400/60 bg-purple-500/10 dark:bg-purple-500/10 shadow-[0_0_16px_rgba(168,85,247,0.08)]"
+        : "border-purple-200/50 dark:border-purple-800/40 bg-purple-50/40 dark:bg-purple-950/20"
+    }`}>
+      <div className="flex items-center gap-3">
+        <span className="text-xl shrink-0">{meta.icon}</span>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{slidePreview(slide)}</p>
+          <p className="text-xs text-purple-500 dark:text-purple-400 mt-0.5">{meta.label}</p>
+        </div>
+        {isActive && (
+          <span className="flex items-center gap-1.5 text-xs font-semibold text-purple-600 dark:text-purple-400 shrink-0">
+            <span className="h-1.5 w-1.5 rounded-full bg-purple-500 animate-pulse" />На экране
+          </span>
+        )}
+        <div className="flex items-center gap-1.5 shrink-0">
+          {isActive ? (
+            <button type="button" onClick={handleHide}
+              className="rounded-md border border-purple-200 dark:border-purple-800 px-2 py-1 text-xs text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors"
+            >Убрать</button>
+          ) : (
+            <button type="button" onClick={handleShow}
+              className="rounded-md bg-purple-600 hover:bg-purple-500 text-white px-2 py-1 text-xs font-medium transition-colors"
+            >Показать</button>
+          )}
+          <button type="button" onClick={() => setEditing(v => !v)}
+            className="rounded-md border border-slate-200 dark:border-slate-700 p-1.5 text-slate-400 hover:text-purple-500 transition-colors"
+          ><EditIcon size={12} /></button>
+          <button type="button" onClick={handleDelete} disabled={deleting}
+            className="rounded-md border border-slate-200 dark:border-slate-700 p-1.5 text-slate-300 dark:text-slate-600 hover:text-red-400 transition-colors disabled:opacity-50"
+          >{deleting ? "…" : "✕"}</button>
+        </div>
+      </div>
+
+      {editing && (
+        <SlideEditForm
+          slide={slide}
+          onDone={() => setEditing(false)}
+          onCancel={() => setEditing(false)}
+        />
+      )}
+    </div>
+  );
+}
 
 type CopyTarget = { id: string; title: string; status: string };
 type SectionItem = { id: string; title: string; sort_order: number };
@@ -409,6 +592,8 @@ function AddSectionBar({
 
 export function PollList({
   polls,
+  slides,
+  activeSlideId,
   votesByPoll,
   votesDataByPoll,
   sessionId,
@@ -418,6 +603,8 @@ export function PollList({
   sections: initialSections,
 }: {
   polls: PollRow[];
+  slides: SlideRow[];
+  activeSlideId: string | null;
   votesByPoll: Record<string, number>;
   votesDataByPoll: Record<string, Record<string, number>>;
   sessionId: string; orgSlug: string; sessionStatus: SessionStatus;
@@ -514,15 +701,17 @@ export function PollList({
     );
   }
 
-  if (optimisticPolls.length === 0 && sorted.length === 0) {
+  const hasAnything = optimisticPolls.length > 0 || sorted.length > 0 || slides.length > 0;
+
+  if (!hasAnything) {
     return (
       <>
         {sessionStatus !== "ended" && (
           <AddSectionBar sessionId={sessionId} orgSlug={orgSlug} sectionsCount={0} />
         )}
         <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50 p-12 text-center">
-          <p className="text-slate-500 dark:text-slate-400">Нет опросов</p>
-          <p className="text-slate-400 dark:text-slate-600 text-sm mt-1">Добавьте первый опрос справа</p>
+          <p className="text-slate-500 dark:text-slate-400">Лайн-ап пуст</p>
+          <p className="text-slate-400 dark:text-slate-600 text-sm mt-1">Добавьте опрос или экран справа</p>
         </div>
       </>
     );
@@ -530,12 +719,38 @@ export function PollList({
 
   const unsectioned = optimisticPolls.filter(p => p.section_id === null);
 
+  // Slides always appear as a group at the top (before sections/polls), sorted by sort_order
+  const sortedSlides = [...slides].sort((a, b) => a.sort_order - b.sort_order);
+
   return (
     <div className="flex flex-col gap-5">
       {sessionStatus !== "ended" && (
         <AddSectionBar sessionId={sessionId} orgSlug={orgSlug} sectionsCount={sorted.length} />
       )}
 
+      {/* Slides lineup */}
+      {sortedSlides.length > 0 && (
+        <div className="flex flex-col gap-2">
+          {sortedSlides.map(slide => (
+            <SlideLineupCard
+              key={slide.id}
+              slide={slide}
+              isActive={activeSlideId === slide.id}
+              sessionId={sessionId}
+              orgSlug={orgSlug}
+            />
+          ))}
+          {optimisticPolls.length > 0 && (
+            <div className="flex items-center gap-3 mt-1">
+              <div className="flex-1 h-px bg-slate-200 dark:bg-slate-800" />
+              <span className="text-[10px] text-slate-400 dark:text-slate-600 uppercase tracking-wider font-medium shrink-0">Опросы</span>
+              <div className="flex-1 h-px bg-slate-200 dark:bg-slate-800" />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Sections + polls */}
       {sorted.map(section => {
         const sectionPolls = optimisticPolls.filter(p => p.section_id === section.id);
         return (
@@ -547,18 +762,14 @@ export function PollList({
       })}
 
       {sorted.length === 0 ? (
-        /* No sections — flat list */
         <div className="flex flex-col gap-2">
           {optimisticPolls.map(poll => <PollCard key={poll.id} poll={poll} {...cardProps} />)}
         </div>
       ) : (
-        /* Has sections — show unsectioned zone only when needed */
         (unsectioned.length > 0 || draggingId) && (
           <div>
             <div className="flex items-center gap-3 mb-2 px-1">
-              <span className="text-xs font-semibold text-slate-400 dark:text-slate-600 uppercase tracking-wide whitespace-nowrap">
-                Без секции
-              </span>
+              <span className="text-xs font-semibold text-slate-400 dark:text-slate-600 uppercase tracking-wide whitespace-nowrap">Без секции</span>
               <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
             </div>
             <SectionDropZone sectionId={null} polls={unsectioned} />

@@ -7,7 +7,7 @@ import { SessionControls } from "./SessionControls";
 import { PollList } from "./PollList";
 import { NewPollForm } from "./NewPollForm";
 import { QAPanel } from "./QAPanel";
-import { SlidesPanel } from "./SlidesPanel";
+import { AddSlidePanel } from "./AddSlidePanel";
 import { SharePanel } from "./SharePanel";
 import { AttendeesInput } from "./AttendeesInput";
 import { AnnouncementForm } from "./AnnouncementForm";
@@ -184,6 +184,8 @@ export default async function SessionPage({
               ...p,
               section_id: (p as unknown as { section_id?: string | null }).section_id ?? null,
             }))}
+            slides={(slides ?? []) as import("@/lib/actions/slides").SlideRow[]}
+            activeSlideId={activeSlideId}
             votesByPoll={votesByPoll}
             votesDataByPoll={votesDataByPoll}
             sessionId={id}
@@ -195,13 +197,21 @@ export default async function SessionPage({
         </div>
 
         <div className="flex flex-col gap-6">
-          {/* Q&A panel */}
+          {/* Creation tools — top of sidebar */}
+          {session.status !== "ended" && (
+            <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
+              <h2 className="text-sm font-semibold text-slate-900 dark:text-white mb-4">Добавить опрос</h2>
+              <NewPollForm sessionId={id} orgSlug={slug} sections={sections ?? []} />
+            </div>
+          )}
+
+          {session.status !== "ended" && (
+            <AddSlidePanel sessionId={id} orgSlug={slug} />
+          )}
+
+          {/* Q&A moderation */}
           {hasQA && (
-            <QAPanel
-              sessionId={id}
-              orgSlug={slug}
-              initialQuestions={questions ?? []}
-            />
+            <QAPanel sessionId={id} orgSlug={slug} initialQuestions={questions ?? []} />
           )}
 
           {/* Announcement */}
@@ -209,22 +219,6 @@ export default async function SessionPage({
             <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
               <h2 className="text-sm font-semibold text-slate-900 dark:text-white mb-4">📢 Объявление</h2>
               <AnnouncementForm sessionId={id} orgSlug={slug} />
-            </div>
-          )}
-
-          {/* Slides panel */}
-          <SlidesPanel
-            sessionId={id}
-            orgSlug={slug}
-            initialSlides={(slides ?? []) as import("@/lib/actions/slides").SlideRow[]}
-            initialActiveSlideId={activeSlideId}
-          />
-
-          {/* New poll form */}
-          {session.status !== "ended" && (
-            <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
-              <h2 className="text-sm font-semibold text-slate-900 dark:text-white mb-4">Добавить опрос</h2>
-              <NewPollForm sessionId={id} orgSlug={slug} sections={sections ?? []} />
             </div>
           )}
         </div>
