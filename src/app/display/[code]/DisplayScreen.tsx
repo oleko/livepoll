@@ -5,8 +5,10 @@ import { createClient } from "@/lib/supabase/client";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LabelList } from "recharts";
 import { closePoll } from "@/lib/actions/polls";
 import { useTheme } from "@/components/ThemeProvider";
+import { SlideView } from "./SlideView";
 import type { PollType } from "@/types/database";
 import type { BrandingSettings } from "@/lib/actions/branding";
+import type { SlideType } from "@/lib/actions/slides";
 
 type PollSettings = {
   duration?: number;
@@ -62,6 +64,8 @@ function aggregateVotes(votes: { value: string }[], type: PollType, options: str
     .filter((e) => e.count > 0 || type === "multiple_choice");
 }
 
+type ActiveSlide = { id: string; type: SlideType; content: Record<string, unknown> } | null;
+
 export function DisplayScreen({
   session,
   initialPoll,
@@ -72,6 +76,7 @@ export function DisplayScreen({
   totalAttendees: initialTotalAttendees,
   initialJoinedCount,
   branding,
+  initialActiveSlide,
 }: {
   session: SessionData;
   initialPoll: PollData;
@@ -82,11 +87,13 @@ export function DisplayScreen({
   totalAttendees: number;
   initialJoinedCount: number;
   branding?: BrandingSettings;
+  initialActiveSlide?: ActiveSlide;
 }) {
   const accent = branding?.accent_color ?? "#6366f1";
   const [poll, setPoll] = useState<PollData>(initialPoll);
   const [quizReveal, setQuizReveal] = useState<QuizReveal | null>(null);
   const [announcement, setAnnouncement] = useState<AnnouncementData | null>(null);
+  const [activeSlide, setActiveSlide] = useState<ActiveSlide>(initialActiveSlide ?? null);
   const [announcementTimeLeft, setAnnouncementTimeLeft] = useState<number | null>(null);
   const [votes, setVotes] = useState(initialVotes);
   const [questions, setQuestions] = useState<QuestionRow[]>(initialQuestions);
@@ -149,7 +156,16 @@ export function DisplayScreen({
       })
       .subscribe();
 
-    return () => { sb.removeChannel(channel); };
+    const slidesChannel = sb
+      .channel(`session-slides:${session.id}`)
+      .on("broadcast", { event: "slide_change" }, ({ payload }) => {
+        const data = payload as { type: "show" | "hide"; slide?: ActiveSlide };
+        if (data.type === "show" && data.slide) setActiveSlide(data.slide);
+        else if (data.type === "hide") setActiveSlide(null);
+      })
+      .subscribe();
+
+    return () => { sb.removeChannel(channel); sb.removeChannel(slidesChannel); };
   }, [session.id]);
 
   // Clean up expired pulse events every second
@@ -274,6 +290,13 @@ export function DisplayScreen({
       }`}
       style={branding?.display_bg ? { backgroundColor: branding.display_bg } : undefined}
     >
+
+      {/* Slide — full screen, below announcement */}
+      {activeSlide && !announcement && (
+        <div className="absolute inset-0 z-20">
+          <SlideView slide={activeSlide} />
+        </div>
+      )}
 
       {/* Announcement overlay */}
       {announcement && (

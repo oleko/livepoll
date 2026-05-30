@@ -101,6 +101,7 @@ export type Database = {
           status: "draft" | "active" | "ended"
           settings: Record<string, unknown>
           total_attendees: number
+          active_slide_id: string | null
           created_at: string
           ended_at: string | null
         }
@@ -113,6 +114,7 @@ export type Database = {
           status?: "draft" | "active" | "ended"
           settings?: Record<string, unknown>
           total_attendees?: number
+          active_slide_id?: string | null
           created_at?: string
           ended_at?: string | null
         }
@@ -121,6 +123,7 @@ export type Database = {
           status?: "draft" | "active" | "ended"
           settings?: Record<string, unknown>
           total_attendees?: number
+          active_slide_id?: string | null
           ended_at?: string | null
         }
         Relationships: [
@@ -278,6 +281,38 @@ export type Database = {
             columns: ["question_id"]
             isOneToOne: false
             referencedRelation: "questions"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      session_slides: {
+        Row: {
+          id: string
+          session_id: string
+          type: "splash" | "speaker" | "schedule" | "quote" | "final"
+          content: Record<string, unknown>
+          sort_order: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          session_id: string
+          type: "splash" | "speaker" | "schedule" | "quote" | "final"
+          content?: Record<string, unknown>
+          sort_order?: number
+          created_at?: string
+        }
+        Update: {
+          type?: "splash" | "speaker" | "schedule" | "quote" | "final"
+          content?: Record<string, unknown>
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "session_slides_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
             referencedColumns: ["id"]
           }
         ]

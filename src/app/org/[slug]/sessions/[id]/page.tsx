@@ -7,6 +7,7 @@ import { SessionControls } from "./SessionControls";
 import { PollList } from "./PollList";
 import { NewPollForm } from "./NewPollForm";
 import { QAPanel } from "./QAPanel";
+import { SlidesPanel } from "./SlidesPanel";
 import { SharePanel } from "./SharePanel";
 import { AttendeesInput } from "./AttendeesInput";
 import { AnnouncementForm } from "./AnnouncementForm";
@@ -87,6 +88,14 @@ export default async function SessionPage({
     .order("upvotes", { ascending: false });
 
   const hasQA = polls?.some((p) => p.type === "qa") ?? false;
+
+  const { data: slides } = await admin
+    .from("session_slides")
+    .select("id, session_id, type, content, sort_order, created_at")
+    .eq("session_id", id)
+    .order("sort_order");
+
+  const activeSlideId = (session as unknown as { active_slide_id?: string | null })?.active_slide_id ?? null;
 
   const { data: otherSessions } = await admin
     .from("sessions")
@@ -202,6 +211,14 @@ export default async function SessionPage({
               <AnnouncementForm sessionId={id} orgSlug={slug} />
             </div>
           )}
+
+          {/* Slides panel */}
+          <SlidesPanel
+            sessionId={id}
+            orgSlug={slug}
+            initialSlides={(slides ?? []) as import("@/lib/actions/slides").SlideRow[]}
+            initialActiveSlideId={activeSlideId}
+          />
 
           {/* New poll form */}
           {session.status !== "ended" && (

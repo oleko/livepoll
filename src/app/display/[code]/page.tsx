@@ -68,6 +68,18 @@ export default async function DisplayPage({
     initialJoinedCount = new Set((voterRows ?? []).map((v) => v.voter_token)).size;
   }
 
+  // Active slide
+  const activeSlideId = (session as unknown as { active_slide_id?: string | null })?.active_slide_id;
+  let initialActiveSlide = null;
+  if (activeSlideId) {
+    const { data: slideData } = await admin
+      .from("session_slides")
+      .select("id, type, content")
+      .eq("id", activeSlideId)
+      .single();
+    initialActiveSlide = slideData ?? null;
+  }
+
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
   const joinUrl = `${baseUrl}/join/${session.join_code}`;
 
@@ -82,6 +94,7 @@ export default async function DisplayPage({
       totalAttendees={totalAttendees}
       initialJoinedCount={initialJoinedCount}
       branding={branding}
+      initialActiveSlide={initialActiveSlide}
     />
   );
 }

@@ -1,0 +1,347 @@
+"use client";
+
+import { useState, useTransition } from "react";
+import { createSlide, updateSlide, deleteSlide, showSlide, hideSlide } from "@/lib/actions/slides";
+import type { SlideType, SlideRow } from "@/lib/actions/slides";
+
+const TYPE_META: Record<SlideType, { label: string; icon: string; description: string }> = {
+  splash:   { label: "Заставка",    icon: "🎯", description: "Название мероприятия и подзаголовок" },
+  speaker:  { label: "Спикер",      icon: "🎤", description: "Карточка докладчика" },
+  schedule: { label: "Расписание",  icon: "🗓", description: "Порядок выступлений" },
+  quote:    { label: "Цитата",      icon: "💬", description: "Крупная цитата или тезис" },
+  final:    { label: "Финал",       icon: "🎉", description: "Завершающий экран с контактами" },
+};
+
+function slideTitle(slide: SlideRow): string {
+  const c = slide.content as Record<string, string>;
+  switch (slide.type) {
+    case "splash":   return c.title || "Заставка";
+    case "speaker":  return c.name  || "Спикер";
+    case "schedule": return "Расписание";
+    case "quote":    return c.text ? `"${c.text.slice(0, 40)}${c.text.length > 40 ? "…" : ""}"` : "Цитата";
+    case "final":    return c.title || "Финальный экран";
+  }
+}
+
+// ─── Slide form per type ──────────────────────────────────────────────────────
+
+function SplashForm({ value, onChange }: { value: Record<string, string>; onChange: (v: Record<string, string>) => void }) {
+  const f = (k: string) => ({ value: value[k] ?? "", onChange: (e: React.ChangeEvent<HTMLInputElement>) => onChange({ ...value, [k]: e.target.value }) });
+  return (
+    <div className="space-y-2">
+      <Input placeholder="Название мероприятия *" {...f("title")} />
+      <Input placeholder="Подзаголовок / тема" {...f("subtitle")} />
+      <Input placeholder="Дата" {...f("date")} />
+      <Input placeholder="Место проведения" {...f("location")} />
+    </div>
+  );
+}
+
+function SpeakerForm({ value, onChange }: { value: Record<string, string>; onChange: (v: Record<string, string>) => void }) {
+  const f = (k: string) => ({ value: value[k] ?? "", onChange: (e: React.ChangeEvent<HTMLInputElement>) => onChange({ ...value, [k]: e.target.value }) });
+  return (
+    <div className="space-y-2">
+      <Input placeholder="Имя *" {...f("name")} />
+      <Input placeholder="Должность" {...f("role")} />
+      <Input placeholder="Компания / организация" {...f("company")} />
+      <Input placeholder="Тема доклада" {...f("topic")} />
+      <Input placeholder="URL фото (необязательно)" {...f("photo_url")} />
+    </div>
+  );
+}
+
+type ScheduleItem = { time: string; title: string; active?: boolean };
+
+function ScheduleForm({ value, onChange }: {
+  value: { items?: ScheduleItem[] };
+  onChange: (v: { items: ScheduleItem[] }) => void;
+}) {
+  const items: ScheduleItem[] = value.items ?? [];
+
+  function update(idx: number, patch: Partial<ScheduleItem>) {
+    const next = items.map((it, i) => i === idx ? { ...it, ...patch } : it);
+    onChange({ items: next });
+  }
+  function add() { onChange({ items: [...items, { time: "", title: "" }] }); }
+  function remove(idx: number) { onChange({ items: items.filter((_, i) => i !== idx) }); }
+  function setActive(idx: number) {
+    onChange({ items: items.map((it, i) => ({ ...it, active: i === idx })) });
+  }
+
+  return (
+    <div className="space-y-2">
+      {items.map((item, idx) => (
+        <div key={idx} className="flex items-center gap-1.5">
+          <input
+            value={item.time}
+            onChange={e => update(idx, { time: e.target.value })}
+            placeholder="10:00"
+            className="w-16 shrink-0 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 py-1.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          />
+          <input
+            value={item.title}
+            onChange={e => update(idx, { title: e.target.value })}
+            placeholder="Название блока"
+            className="flex-1 min-w-0 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 py-1.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          />
+          <button
+            type="button"
+            title={item.active ? "Текущий блок" : "Пометить как текущий"}
+            onClick={() => setActive(idx)}
+            className={`text-sm px-1 transition-colors ${item.active ? "text-indigo-500" : "text-slate-300 dark:text-slate-600 hover:text-indigo-400"}`}
+          >▶</button>
+          <button type="button" onClick={() => remove(idx)} className="text-slate-300 dark:text-slate-600 hover:text-red-400 text-xs px-0.5 transition-colors">✕</button>
+        </div>
+      ))}
+      <button type="button" onClick={add}
+        className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline"
+      >＋ Добавить пункт</button>
+    </div>
+  );
+}
+
+function QuoteForm({ value, onChange }: { value: Record<string, string>; onChange: (v: Record<string, string>) => void }) {
+  return (
+    <div className="space-y-2">
+      <textarea
+        value={value.text ?? ""}
+        onChange={e => onChange({ ...value, text: e.target.value })}
+        placeholder="Текст цитаты *"
+        rows={3}
+        className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 py-1.5 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-none"
+      />
+      <Input
+        placeholder="Автор (необязательно)"
+        value={value.author ?? ""}
+        onChange={e => onChange({ ...value, author: e.target.value })}
+      />
+    </div>
+  );
+}
+
+function FinalForm({ value, onChange }: { value: Record<string, string>; onChange: (v: Record<string, string>) => void }) {
+  const f = (k: string) => ({ value: value[k] ?? "", onChange: (e: React.ChangeEvent<HTMLInputElement>) => onChange({ ...value, [k]: e.target.value }) });
+  return (
+    <div className="space-y-2">
+      <Input placeholder="Заголовок *" {...f("title")} />
+      <Input placeholder="Подзаголовок" {...f("subtitle")} />
+      <Input placeholder="Ссылка на материалы" {...f("url")} />
+    </div>
+  );
+}
+
+function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
+  return (
+    <input
+      {...props}
+      className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 py-1.5 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+    />
+  );
+}
+
+function SlideForm({ type, content, onChange }: {
+  type: SlideType;
+  content: Record<string, unknown>;
+  onChange: (v: Record<string, unknown>) => void;
+}) {
+  const props = { value: content as Record<string, string>, onChange };
+  switch (type) {
+    case "splash":   return <SplashForm {...props} />;
+    case "speaker":  return <SpeakerForm {...props} />;
+    case "schedule": return <ScheduleForm value={content as { items?: ScheduleItem[] }} onChange={onChange as (v: { items: ScheduleItem[] }) => void} />;
+    case "quote":    return <QuoteForm {...props} />;
+    case "final":    return <FinalForm {...props} />;
+  }
+}
+
+// ─── Slide card ───────────────────────────────────────────────────────────────
+
+function SlideCard({
+  slide, isActive, sessionId, orgSlug, onShow, onHide,
+}: {
+  slide: SlideRow; isActive: boolean; sessionId: string; orgSlug: string;
+  onShow: () => void; onHide: () => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const [content, setContent] = useState<Record<string, unknown>>(slide.content);
+  const [saving, startSave] = useTransition();
+  const [deleting, startDelete] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const meta = TYPE_META[slide.type];
+
+  function save() {
+    setError(null);
+    startSave(async () => {
+      const result = await updateSlide(slide.id, content, sessionId, orgSlug);
+      if ("error" in result) setError(result.error);
+      else setExpanded(false);
+    });
+  }
+
+  function del() {
+    if (!confirm(`Удалить слайд «${slideTitle(slide)}»?`)) return;
+    startDelete(async () => { await deleteSlide(slide.id, sessionId, orgSlug); });
+  }
+
+  return (
+    <div className={`rounded-xl border transition-colors ${isActive ? "border-indigo-400/60 bg-indigo-500/5 dark:bg-indigo-500/10" : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"}`}>
+      <div className="flex items-center gap-2 px-3 py-2.5">
+        <span className="text-base shrink-0">{meta.icon}</span>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{slideTitle(slide)}</p>
+          <p className="text-[11px] text-slate-400 dark:text-slate-500">{meta.label}</p>
+        </div>
+        {isActive && <span className="text-[11px] font-semibold text-indigo-500 dark:text-indigo-400 shrink-0">На экране</span>}
+        <div className="flex items-center gap-1 shrink-0">
+          {isActive ? (
+            <button type="button" onClick={onHide}
+              className="rounded-md border border-slate-200 dark:border-slate-700 px-2 py-1 text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+            >Убрать</button>
+          ) : (
+            <button type="button" onClick={onShow}
+              className="rounded-md bg-indigo-600 hover:bg-indigo-500 text-white px-2 py-1 text-xs font-medium transition-colors"
+            >Показать</button>
+          )}
+          <button type="button" onClick={() => setExpanded(v => !v)}
+            className="rounded-md border border-slate-200 dark:border-slate-700 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+              <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+            </svg>
+          </button>
+          <button type="button" onClick={del} disabled={deleting}
+            className="rounded-md border border-slate-200 dark:border-slate-700 p-1 text-slate-300 dark:text-slate-600 hover:text-red-400 dark:hover:text-red-500 transition-colors disabled:opacity-40"
+          >✕</button>
+        </div>
+      </div>
+
+      {expanded && (
+        <div className="px-3 pb-3 border-t border-slate-100 dark:border-slate-800 pt-3 space-y-3">
+          <SlideForm type={slide.type} content={content} onChange={setContent} />
+          {error && <p className="text-xs text-red-500">{error}</p>}
+          <div className="flex gap-2">
+            <button type="button" onClick={save} disabled={saving}
+              className="rounded-md bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white px-3 py-1.5 text-xs font-medium transition-colors"
+            >{saving ? "Сохраняю…" : "Сохранить"}</button>
+            <button type="button" onClick={() => setExpanded(false)}
+              className="rounded-md border border-slate-200 dark:border-slate-700 px-3 py-1.5 text-xs text-slate-500 hover:text-slate-700 transition-colors"
+            >Отмена</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Add slide form ───────────────────────────────────────────────────────────
+
+function AddSlideForm({ sessionId, orgSlug, onClose }: {
+  sessionId: string; orgSlug: string; onClose: () => void;
+}) {
+  const [type, setType] = useState<SlideType>("splash");
+  const [content, setContent] = useState<Record<string, unknown>>({});
+  const [saving, startSave] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  function save() {
+    setError(null);
+    startSave(async () => {
+      const result = await createSlide(sessionId, type, content, orgSlug);
+      if ("error" in result) setError(result.error);
+      else { setContent({}); onClose(); }
+    });
+  }
+
+  return (
+    <div className="rounded-xl border border-indigo-200 dark:border-indigo-900 bg-indigo-50/50 dark:bg-indigo-950/30 p-3 space-y-3">
+      <div className="grid grid-cols-5 gap-1">
+        {(Object.entries(TYPE_META) as [SlideType, typeof TYPE_META[SlideType]][]).map(([t, m]) => (
+          <button key={t} type="button" onClick={() => { setType(t); setContent({}); }}
+            className={`flex flex-col items-center gap-1 rounded-lg p-2 text-center transition-colors ${type === t ? "bg-indigo-600 text-white" : "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-indigo-300"}`}
+          >
+            <span className="text-lg">{m.icon}</span>
+            <span className="text-[10px] font-medium leading-tight">{m.label}</span>
+          </button>
+        ))}
+      </div>
+
+      <SlideForm type={type} content={content} onChange={setContent} />
+
+      {error && <p className="text-xs text-red-500">{error}</p>}
+      <div className="flex gap-2">
+        <button type="button" onClick={save} disabled={saving}
+          className="rounded-md bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white px-3 py-1.5 text-xs font-medium transition-colors"
+        >{saving ? "Создаю…" : "Создать"}</button>
+        <button type="button" onClick={onClose}
+          className="rounded-md border border-slate-200 dark:border-slate-700 px-3 py-1.5 text-xs text-slate-500 hover:text-slate-700 transition-colors"
+        >Отмена</button>
+      </div>
+    </div>
+  );
+}
+
+// ─── SlidesPanel ──────────────────────────────────────────────────────────────
+
+export function SlidesPanel({
+  sessionId,
+  orgSlug,
+  initialSlides,
+  initialActiveSlideId,
+}: {
+  sessionId: string;
+  orgSlug: string;
+  initialSlides: SlideRow[];
+  initialActiveSlideId: string | null;
+}) {
+  const [slides] = useState(initialSlides);
+  const [activeId, setActiveId] = useState(initialActiveSlideId);
+  const [adding, setAdding] = useState(false);
+  const [, startT] = useTransition();
+
+  function handleShow(slideId: string) {
+    setActiveId(slideId);
+    startT(async () => { await showSlide(slideId, sessionId, orgSlug); });
+  }
+
+  function handleHide() {
+    setActiveId(null);
+    startT(async () => { await hideSlide(sessionId, orgSlug); });
+  }
+
+  return (
+    <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-sm font-semibold text-slate-900 dark:text-white">📽 Экраны</h2>
+        {!adding && (
+          <button type="button" onClick={() => setAdding(true)}
+            className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-medium"
+          >＋ Добавить</button>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        {adding && (
+          <AddSlideForm sessionId={sessionId} orgSlug={orgSlug} onClose={() => setAdding(false)} />
+        )}
+
+        {slides.length === 0 && !adding && (
+          <p className="text-xs text-slate-400 dark:text-slate-600 text-center py-4">
+            Нет экранов. Создайте первый — он появится на проекторе одной кнопкой.
+          </p>
+        )}
+
+        {slides.map(slide => (
+          <SlideCard
+            key={slide.id}
+            slide={slide}
+            isActive={activeId === slide.id}
+            sessionId={sessionId}
+            orgSlug={orgSlug}
+            onShow={() => handleShow(slide.id)}
+            onHide={handleHide}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
