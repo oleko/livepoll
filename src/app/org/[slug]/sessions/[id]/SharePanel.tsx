@@ -57,7 +57,7 @@ export function SharePanel({ joinUrl, joinCode }: { joinUrl: string; joinCode: s
       label: "Макс",
       href: `https://max.ru/:share?text=${encodeURIComponent(`Присоединяйтесь к голосованию!\n${joinUrl}`)}`,
       bg: "bg-gradient-to-br from-[#44ccff] to-[#9933dd] hover:opacity-90",
-      icon: <MaxIcon size={18} />,
+      icon: <MaxIcon size={16} />,
     },
     {
       label: "Email",
