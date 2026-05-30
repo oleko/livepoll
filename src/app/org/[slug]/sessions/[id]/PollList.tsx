@@ -4,6 +4,7 @@ import { useState, useTransition, useEffect, useRef, useOptimistic } from "react
 import { activatePoll, closePoll, copyPoll, updatePoll } from "@/lib/actions/polls";
 import { movePollSection, createSection, deleteSection, renameSection } from "@/lib/actions/sections";
 import { Button } from "@/components/ui/Button";
+import { EditIcon } from "@/components/icons";
 import type { Poll, SessionStatus } from "@/types/database";
 
 type CopyTarget = { id: string; title: string; status: string };
@@ -243,8 +244,8 @@ function PollCard({
             <div className="flex items-center gap-2 shrink-0">
               {canEdit && (
                 <button onClick={() => onStartEdit(poll)} title="Редактировать (10 мин после создания)"
-                  className="rounded-lg border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 bg-white dark:bg-slate-900 px-2 py-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors text-xs"
-                >✏</button>
+                  className="rounded-lg border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 bg-white dark:bg-slate-900 px-2 py-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                ><EditIcon size={13} /></button>
               )}
               {sessionStatus === "active" && (
                 <>
@@ -311,8 +312,8 @@ function SectionHeader({
           </span>
           <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
           <button type="button" onClick={() => setEditing(true)} title="Переименовать"
-            className="text-[11px] text-slate-300 dark:text-slate-600 hover:text-slate-500 dark:hover:text-slate-400 px-0.5 shrink-0 transition-colors"
-          >✏</button>
+            className="text-slate-300 dark:text-slate-600 hover:text-slate-500 dark:hover:text-slate-400 px-0.5 shrink-0 transition-colors"
+          ><EditIcon size={12} /></button>
           <button type="button" onClick={handleDelete} disabled={isPending} title="Удалить секцию"
             className="text-[11px] text-slate-300 dark:text-slate-600 hover:text-red-400 dark:hover:text-red-500 px-0.5 shrink-0 transition-colors disabled:opacity-40"
           >✕</button>
