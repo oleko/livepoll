@@ -100,6 +100,7 @@ export type Database = {
           join_code: string
           status: "draft" | "active" | "ended"
           settings: Record<string, unknown>
+          total_attendees: number
           created_at: string
           ended_at: string | null
         }
@@ -111,6 +112,7 @@ export type Database = {
           join_code: string
           status?: "draft" | "active" | "ended"
           settings?: Record<string, unknown>
+          total_attendees?: number
           created_at?: string
           ended_at?: string | null
         }
@@ -118,6 +120,7 @@ export type Database = {
           title?: string
           status?: "draft" | "active" | "ended"
           settings?: Record<string, unknown>
+          total_attendees?: number
           ended_at?: string | null
         }
         Relationships: [

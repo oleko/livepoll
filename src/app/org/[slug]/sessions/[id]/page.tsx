@@ -11,7 +11,6 @@ import { SharePanel } from "./SharePanel";
 import { AttendeesInput } from "./AttendeesInput";
 import { AnnouncementForm } from "./AnnouncementForm";
 import { ExportButton } from "./ExportButton";
-import { SectionManager } from "./SectionManager";
 import type { Session } from "@/types/database";
 
 const STATUS_LABEL: Record<Session["status"], string> = {
@@ -202,15 +201,6 @@ export default async function SessionPage({
               <h2 className="text-sm font-semibold text-slate-900 dark:text-white mb-4">📢 Объявление</h2>
               <AnnouncementForm sessionId={id} orgSlug={slug} />
             </div>
-          )}
-
-          {/* Section manager */}
-          {session.status !== "ended" && (
-            <SectionManager
-              sessionId={id}
-              orgSlug={slug}
-              initialSections={sections ?? []}
-            />
           )}
 
           {/* New poll form */}
