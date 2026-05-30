@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getAuthUser } from "@/lib/actions/guards";
 import { sendFeedbackEmail } from "@/lib/email";
 
 type FeedbackResult = { success: true } | { error: string };
@@ -49,7 +50,18 @@ export async function submitFeedback(
 }
 
 export async function getFeedback() {
-  const admin = createAdminClient();
+  const { user, admin } = await getAuthUser();
+
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("platform_role")
+    .eq("id", user.id)
+    .single();
+
+  if ((profile as unknown as { platform_role?: string } | null)?.platform_role !== "platform_admin") {
+    throw new Error("Нет доступа");
+  }
+
   const { data } = await admin
     .from("feedback" as never)
     .select("id, type, text, user_email, page_url, created_at")

@@ -72,7 +72,9 @@ export async function updateSlide(
   const { user, admin } = await getAuthUser();
   await assertSessionMember(user.id, sessionId, admin);
 
-  const { error } = await admin.from("session_slides").update({ content }).eq("id", slideId);
+  const { error } = await admin.from("session_slides").update({ content })
+    .eq("id", slideId)
+    .eq("session_id", sessionId);
   if (error) return { error: error.message };
 
   // If this slide is currently active, broadcast the updated content
@@ -115,7 +117,9 @@ export async function deleteSlide(
     await broadcast(sessionId, { type: "hide" });
   }
 
-  await admin.from("session_slides").delete().eq("id", slideId);
+  await admin.from("session_slides").delete()
+    .eq("id", slideId)
+    .eq("session_id", sessionId);
   revalidatePath(`/org/${orgSlug}/sessions/${sessionId}`);
 }
 
@@ -127,15 +131,16 @@ export async function showSlide(
   const { user, admin } = await getAuthUser();
   await assertSessionMember(user.id, sessionId, admin);
 
-  await admin.from("sessions").update({ active_slide_id: slideId } as never).eq("id", sessionId);
-
   const { data: slide } = await admin
     .from("session_slides")
     .select("id, type, content")
     .eq("id", slideId)
+    .eq("session_id", sessionId)
     .single();
 
   if (!slide) return { error: "Слайд не найден" };
+
+  await admin.from("sessions").update({ active_slide_id: slideId } as never).eq("id", sessionId);
   await broadcast(sessionId, { type: "show", slide });
 
   revalidatePath(`/org/${orgSlug}/sessions/${sessionId}`);
@@ -152,7 +157,9 @@ export async function reorderSlides(
 
   await Promise.all(
     orderedIds.map((id, idx) =>
-      admin.from("session_slides").update({ sort_order: idx } as never).eq("id", id)
+      admin.from("session_slides").update({ sort_order: idx } as never)
+        .eq("id", id)
+        .eq("session_id", sessionId)
     )
   );
 

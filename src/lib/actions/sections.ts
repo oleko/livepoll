@@ -43,7 +43,9 @@ export async function deleteSection(
   await assertSessionMember(user.id, sessionId, admin);
 
   // FK ON DELETE SET NULL handles clearing section_id from polls
-  await admin.from("session_sections").delete().eq("id", sectionId);
+  await admin.from("session_sections").delete()
+    .eq("id", sectionId)
+    .eq("session_id", sessionId);
 
   revalidatePath(`/org/${orgSlug}/sessions/${sessionId}`);
 }
@@ -60,7 +62,9 @@ export async function renameSection(
   const trimmed = title.trim();
   if (!trimmed || trimmed.length > 100) return { error: "Некорректное название" };
 
-  await admin.from("session_sections").update({ title: trimmed }).eq("id", sectionId);
+  await admin.from("session_sections").update({ title: trimmed })
+    .eq("id", sectionId)
+    .eq("session_id", sessionId);
 
   revalidatePath(`/org/${orgSlug}/sessions/${sessionId}`);
   return { success: true };
@@ -75,7 +79,9 @@ export async function movePollSection(
   const { user, admin } = await getAuthUser();
   await assertSessionMember(user.id, sessionId, admin);
 
-  await admin.from("polls").update({ section_id: sectionId } as never).eq("id", pollId);
+  await admin.from("polls").update({ section_id: sectionId } as never)
+    .eq("id", pollId)
+    .eq("session_id", sessionId);
 
   revalidatePath(`/org/${orgSlug}/sessions/${sessionId}`);
 }

@@ -154,6 +154,7 @@ export async function updatePoll(
     .from("polls")
     .select("created_at, type")
     .eq("id", pollId)
+    .eq("session_id", sessionId)
     .single();
 
   if (!poll) return { error: "Опрос не найден" };
@@ -210,7 +211,10 @@ export async function activatePoll(
     .from("polls")
     .select("settings")
     .eq("id", pollId)
+    .eq("session_id", sessionId)
     .single();
+
+  if (!pollForActivation) return;
 
   const existingSettings = (pollForActivation?.settings ?? {}) as Record<string, unknown>;
   await admin
@@ -266,12 +270,16 @@ export async function closePoll(
     .from("polls")
     .select("settings")
     .eq("id", pollId)
+    .eq("session_id", sessionId)
     .single();
+
+  if (!pollMeta) return;
 
   await admin
     .from("polls")
     .update({ status: "closed", closed_at: new Date().toISOString() })
-    .eq("id", pollId);
+    .eq("id", pollId)
+    .eq("session_id", sessionId);
 
   const pollSettings = pollMeta?.settings as { quiz_mode?: boolean; correct_option?: string; explanation?: string } | null;
   const closePayload: Record<string, unknown> = { type: "closed", poll_id: pollId };
