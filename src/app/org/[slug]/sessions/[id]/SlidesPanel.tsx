@@ -254,13 +254,13 @@ function AddSlideForm({ sessionId, orgSlug, onClose }: {
 
   return (
     <div className="rounded-xl border border-indigo-200 dark:border-indigo-900 bg-indigo-50/50 dark:bg-indigo-950/30 p-3 space-y-3">
-      <div className="grid grid-cols-5 gap-1">
+      <div className="grid grid-cols-3 gap-1.5">
         {(Object.entries(TYPE_META) as [SlideType, typeof TYPE_META[SlideType]][]).map(([t, m]) => (
           <button key={t} type="button" onClick={() => { setType(t); setContent({}); }}
-            className={`flex flex-col items-center gap-1 rounded-lg p-2 text-center transition-colors ${type === t ? "bg-indigo-600 text-white" : "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-indigo-300"}`}
+            className={`flex items-center gap-2 rounded-lg px-3 py-2 text-left transition-colors ${type === t ? "bg-indigo-600 text-white" : "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-indigo-300 dark:hover:border-indigo-700"}`}
           >
-            <span className="text-lg">{m.icon}</span>
-            <span className="text-[10px] font-medium leading-tight">{m.label}</span>
+            <span className="text-base shrink-0">{m.icon}</span>
+            <span className="text-xs font-medium leading-tight">{m.label}</span>
           </button>
         ))}
       </div>
