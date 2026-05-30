@@ -157,30 +157,38 @@ function SlideForm({ type, content, onChange }: {
 // ─── Slide card ───────────────────────────────────────────────────────────────
 
 function SlideCard({
-  slide, isActive, sessionId, orgSlug, onShow, onHide,
+  slide, isActive, sessionId, orgSlug, onShow, onHide, onDeleted, onUpdated,
 }: {
   slide: SlideRow; isActive: boolean; sessionId: string; orgSlug: string;
   onShow: () => void; onHide: () => void;
+  onDeleted: () => void; onUpdated: (slide: SlideRow) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [content, setContent] = useState<Record<string, unknown>>(slide.content);
-  const [saving, startSave] = useTransition();
-  const [deleting, startDelete] = useTransition();
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const meta = TYPE_META[slide.type];
 
-  function save() {
+  async function save() {
     setError(null);
-    startSave(async () => {
+    setSaving(true);
+    try {
       const result = await updateSlide(slide.id, content, sessionId, orgSlug);
       if ("error" in result) setError(result.error);
-      else setExpanded(false);
-    });
+      else { setExpanded(false); onUpdated({ ...slide, content }); }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Ошибка сохранения");
+    } finally {
+      setSaving(false);
+    }
   }
 
-  function del() {
+  async function del() {
     if (!confirm(`Удалить слайд «${slideTitle(slide)}»?`)) return;
-    startDelete(async () => { await deleteSlide(slide.id, sessionId, orgSlug); });
+    setDeleting(true);
+    try { await deleteSlide(slide.id, sessionId, orgSlug); onDeleted(); }
+    finally { setDeleting(false); }
   }
 
   return (
@@ -210,8 +218,8 @@ function SlideCard({
             </svg>
           </button>
           <button type="button" onClick={del} disabled={deleting}
-            className="rounded-md border border-slate-200 dark:border-slate-700 p-1 text-slate-300 dark:text-slate-600 hover:text-red-400 dark:hover:text-red-500 transition-colors disabled:opacity-40"
-          >✕</button>
+            className="rounded-md border border-slate-200 dark:border-slate-700 p-1 text-slate-300 dark:text-slate-600 hover:text-red-400 dark:hover:text-red-500 transition-colors disabled:opacity-50"
+          >{deleting ? "…" : "✕"}</button>
         </div>
       </div>
 
@@ -235,21 +243,30 @@ function SlideCard({
 
 // ─── Add slide form ───────────────────────────────────────────────────────────
 
-function AddSlideForm({ sessionId, orgSlug, onClose }: {
+function AddSlideForm({ sessionId, orgSlug, onClose, onCreated }: {
   sessionId: string; orgSlug: string; onClose: () => void;
+  onCreated: (slide: SlideRow) => void;
 }) {
   const [type, setType] = useState<SlideType>("splash");
   const [content, setContent] = useState<Record<string, unknown>>({});
-  const [saving, startSave] = useTransition();
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  function save() {
+  async function save() {
     setError(null);
-    startSave(async () => {
+    setSaving(true);
+    try {
       const result = await createSlide(sessionId, type, content, orgSlug);
-      if ("error" in result) setError(result.error);
-      else { setContent({}); onClose(); }
-    });
+      if ("error" in result) {
+        setError(result.error);
+      } else {
+        onCreated({ id: result.id, session_id: sessionId, type, content, sort_order: 0, created_at: new Date().toISOString() });
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Ошибка создания");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -293,10 +310,24 @@ export function SlidesPanel({
   initialSlides: SlideRow[];
   initialActiveSlideId: string | null;
 }) {
-  const [slides] = useState(initialSlides);
+  const [slides, setSlides] = useState(initialSlides);
   const [activeId, setActiveId] = useState(initialActiveSlideId);
   const [adding, setAdding] = useState(false);
   const [, startT] = useTransition();
+
+  function handleCreated(slide: SlideRow) {
+    setSlides(prev => [...prev, slide]);
+    setAdding(false);
+  }
+
+  function handleDeleted(slideId: string) {
+    setSlides(prev => prev.filter(s => s.id !== slideId));
+    if (activeId === slideId) setActiveId(null);
+  }
+
+  function handleUpdated(slide: SlideRow) {
+    setSlides(prev => prev.map(s => s.id === slide.id ? slide : s));
+  }
 
   function handleShow(slideId: string) {
     setActiveId(slideId);
@@ -321,7 +352,12 @@ export function SlidesPanel({
 
       <div className="space-y-2">
         {adding && (
-          <AddSlideForm sessionId={sessionId} orgSlug={orgSlug} onClose={() => setAdding(false)} />
+          <AddSlideForm
+            sessionId={sessionId}
+            orgSlug={orgSlug}
+            onClose={() => setAdding(false)}
+            onCreated={handleCreated}
+          />
         )}
 
         {slides.length === 0 && !adding && (
@@ -339,6 +375,8 @@ export function SlidesPanel({
             orgSlug={orgSlug}
             onShow={() => handleShow(slide.id)}
             onHide={handleHide}
+            onDeleted={() => handleDeleted(slide.id)}
+            onUpdated={handleUpdated}
           />
         ))}
       </div>
