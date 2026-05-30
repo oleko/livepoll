@@ -4,7 +4,7 @@ import { useState, useTransition, useEffect, useRef, useOptimistic } from "react
 import { useRouter } from "next/navigation";
 import { activatePoll, closePoll, copyPoll, updatePoll } from "@/lib/actions/polls";
 import { movePollSection, createSection, deleteSection, renameSection } from "@/lib/actions/sections";
-import { showSlide, hideSlide, deleteSlide, updateSlide } from "@/lib/actions/slides";
+import { showSlide, hideSlide, deleteSlide, updateSlide, reorderSlides } from "@/lib/actions/slides";
 import { Button } from "@/components/ui/Button";
 import { EditIcon } from "@/components/icons";
 import type { Poll, SessionStatus } from "@/types/database";
@@ -117,9 +117,12 @@ function SlideEditForm({ slide, onDone, onCancel }: {
 }
 
 function SlideLineupCard({
-  slide, isActive, sessionId, orgSlug,
+  slide, isActive, sessionId, orgSlug, isDragging, onDragStart, onDragEnd,
 }: {
   slide: SlideRow; isActive: boolean; sessionId: string; orgSlug: string;
+  isDragging: boolean;
+  onDragStart: () => void;
+  onDragEnd: () => void;
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
@@ -148,15 +151,19 @@ function SlideLineupCard({
   }
 
   return (
-    <div className={`rounded-xl border px-4 py-3.5 transition-all select-none
-      ${isActive
-        ? "border-purple-500/40 bg-purple-500/5 shadow-[0_0_20px_rgba(168,85,247,0.06)]"
-        : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
-      }`}
+    <div
+      draggable
+      onDragStart={(e) => { e.dataTransfer.effectAllowed = "move"; onDragStart(); }}
+      onDragEnd={onDragEnd}
+      className={`rounded-xl border px-4 py-3.5 transition-all select-none cursor-grab active:cursor-grabbing
+        ${isDragging ? "opacity-30 scale-95" : ""}
+        ${isActive
+          ? "border-purple-500/40 bg-purple-500/5 shadow-[0_0_20px_rgba(168,85,247,0.06)]"
+          : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
+        }`}
     >
       <div className="flex items-center gap-3">
-        {/* drag handle — same position as poll cards */}
-        <span className="text-slate-300 dark:text-slate-600 text-base leading-none shrink-0 cursor-grab select-none" title="Перетащить">⠿</span>
+        <span className="text-slate-300 dark:text-slate-600 text-base leading-none shrink-0 select-none">⠿</span>
         <span className="text-xl shrink-0">{meta.icon}</span>
         <div className="flex-1 min-w-0">
           <p className="font-medium text-sm truncate text-slate-900 dark:text-white">{slidePreview(slide)}</p>
@@ -172,13 +179,9 @@ function SlideLineupCard({
             className="rounded-lg border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 bg-white dark:bg-slate-900 px-2 py-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
           ><EditIcon size={13} /></button>
           {isActive ? (
-            <Button variant="secondary" className="text-xs py-1.5 px-3" onClick={handleHide} disabled={pending}>
-              Убрать
-            </Button>
+            <Button variant="secondary" className="text-xs py-1.5 px-3" onClick={handleHide} disabled={pending}>Убрать</Button>
           ) : (
-            <Button className="text-xs py-1.5 px-3" onClick={handleShow} disabled={pending}>
-              Показать
-            </Button>
+            <Button className="text-xs py-1.5 px-3" onClick={handleShow} disabled={pending}>Показать</Button>
           )}
           <button type="button" onClick={handleDelete} disabled={pending}
             className="rounded-lg border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 bg-white dark:bg-slate-900 px-2 py-1.5 text-slate-300 dark:text-slate-600 hover:text-red-400 dark:hover:text-red-500 transition-colors disabled:opacity-50"
@@ -187,11 +190,7 @@ function SlideLineupCard({
       </div>
 
       {editing && (
-        <SlideEditForm
-          slide={slide}
-          onDone={() => setEditing(false)}
-          onCancel={() => setEditing(false)}
-        />
+        <SlideEditForm slide={slide} onDone={() => setEditing(false)} onCancel={() => setEditing(false)} />
       )}
     </div>
   );
@@ -625,10 +624,19 @@ export function PollList({
   const [editSaving, setEditSaving]   = useState(false);
   const [editError, setEditError]     = useState<string | null>(null);
 
-  // DnD state
+  // Poll DnD state
   const [draggingId, setDraggingId]       = useState<string | null>(null);
   const [overSectionId, setOverSectionId] = useState<string | "none" | null>(null);
   const [isPending, startTransition]      = useTransition();
+
+  // Slide DnD state
+  const router = useRouter();
+  const [draggingSlideId, setDraggingSlideId] = useState<string | null>(null);
+  const [overSlideId, setOverSlideId]         = useState<string | null>(null);
+  const [optimisticSlides, setOptimisticSlides] = useState(slides);
+
+  // Sync when server data changes
+  useEffect(() => { setOptimisticSlides(slides); }, [slides]);
 
   // Optimistic poll section assignments
   const [optimisticPolls, applyMove] = useOptimistic(
@@ -735,17 +743,45 @@ export function PollList({
         <AddSectionBar sessionId={sessionId} orgSlug={orgSlug} sectionsCount={sorted.length} />
       )}
 
-      {/* Slides lineup */}
-      {sortedSlides.length > 0 && (
+      {/* Slides lineup with DnD */}
+      {optimisticSlides.length > 0 && (
         <div className="flex flex-col gap-2">
-          {sortedSlides.map(slide => (
-            <SlideLineupCard
+          {optimisticSlides.map((slide, idx) => (
+            <div
               key={slide.id}
-              slide={slide}
-              isActive={activeSlideId === slide.id}
-              sessionId={sessionId}
-              orgSlug={orgSlug}
-            />
+              onDragOver={(e) => { e.preventDefault(); setOverSlideId(slide.id); }}
+              onDrop={(e) => {
+                e.preventDefault();
+                if (!draggingSlideId || draggingSlideId === slide.id) {
+                  setDraggingSlideId(null); setOverSlideId(null); return;
+                }
+                // Reorder optimistically
+                const next = [...optimisticSlides];
+                const fromIdx = next.findIndex(s => s.id === draggingSlideId);
+                const toIdx   = next.findIndex(s => s.id === slide.id);
+                const [moved] = next.splice(fromIdx, 1);
+                next.splice(toIdx, 0, moved);
+                setOptimisticSlides(next);
+                setDraggingSlideId(null);
+                setOverSlideId(null);
+                reorderSlides(sessionId, next.map(s => s.id), orgSlug).then(() => router.refresh());
+              }}
+              className={`rounded-xl transition-all ${
+                overSlideId === slide.id && draggingSlideId && draggingSlideId !== slide.id
+                  ? "ring-2 ring-purple-400 ring-inset"
+                  : ""
+              }`}
+            >
+              <SlideLineupCard
+                slide={slide}
+                isActive={activeSlideId === slide.id}
+                sessionId={sessionId}
+                orgSlug={orgSlug}
+                isDragging={draggingSlideId === slide.id}
+                onDragStart={() => setDraggingSlideId(slide.id)}
+                onDragEnd={() => { setDraggingSlideId(null); setOverSlideId(null); }}
+              />
+            </div>
           ))}
           {optimisticPolls.length > 0 && (
             <div className="flex items-center gap-3 mt-1">

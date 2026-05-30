@@ -142,6 +142,23 @@ export async function showSlide(
   return { success: true };
 }
 
+export async function reorderSlides(
+  sessionId: string,
+  orderedIds: string[],
+  orgSlug: string
+): Promise<void> {
+  const { user, admin } = await getAuthUser();
+  await assertSessionMember(user.id, sessionId, admin);
+
+  await Promise.all(
+    orderedIds.map((id, idx) =>
+      admin.from("session_slides").update({ sort_order: idx } as never).eq("id", id)
+    )
+  );
+
+  revalidatePath(`/org/${orgSlug}/sessions/${sessionId}`);
+}
+
 export async function hideSlide(
   sessionId: string,
   orgSlug: string
