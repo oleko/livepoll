@@ -10,6 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 npm run dev          # Dev server (Next.js on port 3000)
 npm run build        # Production build
 npm run lint         # ESLint
+npm run db:types     # Regenerate src/types/database.ts from Supabase schema
 ```
 
 No test runner is configured.
@@ -19,97 +20,166 @@ No test runner is configured.
 `.env.local` (never commit):
 - `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` — Supabase project
 - `SUPABASE_SERVICE_ROLE_KEY` — admin operations (server-only, never expose to client)
-- `YANDEX_API_KEY` / `YANDEX_FOLDER_ID` — AI Q&A summarization (Yandex GPT Lite)
+- `YANDEX_API_KEY` / `YANDEX_FOLDER_ID` — AI features (YandexGPT Lite)
+- `RESEND_API_KEY` — transactional email (feedback notifications)
 
 ## Architecture
 
-**LivePoll** is a Next.js 15 App Router + Supabase SaaS polling platform for live events.
+**LivePoll** is a Next.js 16 / React 19 App Router + Supabase SaaS polling platform for live events. Current version: **0.9**.
 
 ### Routing structure
 
 ```
-/                          — Landing page
-/auth/login|register       — Auth pages
-/onboarding                — Obsolete (auto-org now created on signup)
-/org/[slug]                — Org dashboard (sessions list)
-/org/[slug]/sessions/new   — Create session
-/org/[slug]/sessions/[id]  — Session admin (polls, Q&A, share)
-/org/[slug]/members        — Org members
-/org/[slug]/settings       — Plan & org settings
-/join/[code]               — Participant voting screen
-/display/[code]            — Presenter/display screen (full-screen, no scroll)
-/admin                     — Platform admin (orgs + subscriptions)
-/admin/users               — Platform admin (users management)
-/docs/privacy              — Legal documents
+/                              — Landing page
+/auth/login|register           — Auth pages (email + Yandex OAuth)
+/onboarding                    — Obsolete (org auto-created on signup)
+/org/[slug]                    — Org dashboard (sessions list with poll/participant counts)
+/org/[slug]/sessions/new       — Create session (with templates)
+/org/[slug]/sessions/[id]      — Session admin (polls + slides lineup, Q&A, share, AI summary)
+/org/[slug]/members            — Team management (invite/remove hosts)
+/org/[slug]/settings           — Plan, branding (logo, accent color, display bg/header)
+/join/[code]                   — Participant voting screen (no auth required)
+/display/[code]                — Presenter/projector screen (fullscreen, no scroll)
+/admin                         — Platform admin: orgs list, plan changes
+/admin/users                   — Platform admin: users list, roles, create user
+/admin/feedback                — Platform admin: feedback inbox
+/help                          — Help center (8 articles)
+/help/changelog                — Version history (v0.1–v0.9)
+/docs/privacy                  — Privacy policy
 ```
 
 ### Supabase clients
 
-- `src/lib/supabase/server.ts` — cookie-based client; respects RLS; use for auth reads
-- `src/lib/supabase/admin.ts` → `createAdminClient()` — SERVICE ROLE; bypasses RLS; required for all server actions that write data or cross-user reads
+- `src/lib/supabase/server.ts` — cookie-based client; respects RLS; use **only** to verify authenticated user
+- `src/lib/supabase/admin.ts` → `createAdminClient()` — SERVICE ROLE; bypasses RLS; required for **all** server actions that read or write data
 
-**Rule**: Server Actions always use `createAdminClient()` for DB operations. The cookie client is only used to verify the authenticated user (`supabase.auth.getUser()`).
+**Rule**: Server Actions always use `createAdminClient()` for DB operations. Cookie client is only for `supabase.auth.getUser()`.
 
 ### Authorization (guards)
 
-`src/lib/actions/guards.ts` — three guard functions used at the start of every mutating Server Action:
+`src/lib/actions/guards.ts` — used at the top of every mutating Server Action:
 
 ```typescript
-getAuthUser()                              // throws if not logged in; returns { user, admin }
-assertSessionMember(userId, sessionId, admin)  // throws if user's org doesn't own the session
-assertOrgOwner(userId, orgId, admin)           // throws if user is not org owner
-assertOwnerOfMemberOrg(callerId, memberId, admin) // asserts caller owns the org of memberId
+getAuthUser()                                          // throws if not logged in; returns { user, admin }
+assertSessionMember(userId, sessionId, admin)          // throws if user's org doesn't own the session
+assertOrgOwner(userId, orgId, admin)                   // throws if user is not org owner
+assertOwnerOfMemberOrg(callerId, memberId, admin)      // caller owns the org of memberId
 ```
 
-Never skip these guards when writing new server actions that mutate data.
+Never skip guards in server actions that mutate data.
 
 ### Plan limits
 
-`src/lib/limits.ts` — single source of truth:
+`src/lib/limits.ts` — single source of truth. Plans in `organizations.plan`:
 
-| Plan key | Display name  | Sessions/month | Polls/session | Members |
-|----------|---------------|----------------|---------------|---------|
-| `free`   | Бесплатный    | 3              | 5             | 1       |
-| `pro`    | Стандарт      | 5              | 15            | 5       |
-| `team`   | Про           | 20             | 30            | 10      |
+| Plan key    | Display name | Sessions/mo | Polls/session | Members | Max participants |
+|-------------|--------------|-------------|---------------|---------|-----------------|
+| `free`      | Бесплатный   | 3           | 5             | 1       | 30              |
+| `starter`   | Старт        | ∞           | 10            | 1       | 100             |
+| `pro`       | Про          | ∞           | ∞             | 1       | 500             |
+| `team`      | Команда      | ∞           | ∞             | 5       | ∞               |
+| `unlimited` | Безлимитный  | ∞           | ∞             | ∞       | ∞               |
 
-Plan stored in `organizations.plan` as `free | pro | team`. `plan_expires_at` controls subscription expiry (checked in settings page, shown red when expired in admin).
+Participant limit is enforced at vote time in `submitVote()` — checks unique voter tokens across all session polls.
+
+### Poll types (8)
+
+`multiple_choice`, `temperature`, `word_cloud`, `emoji_cloud`, `qa`, `like_dislike`, `planning_poker`, `idea_wall`
+
+- **idea_wall**: participants submit text ideas (stored as questions); displayed as colored cards on the display screen. Moderated via the Q&A panel (host can hide entries).
+- **qa**: question submission with upvoting; pinnable to display screen.
+- **multiple_choice**: supports quiz mode (correct answer + explanation), multiple answers (`max_answers`), vote limit auto-close.
+- **planning_poker**: Fibonacci sequence voting, hidden until host reveals.
+
+Rendering:
+- Participant: `src/app/join/[code]/VoteInterface.tsx`
+- Host (inline results): `PollList.tsx` → `PollResults` component
+- Display screen: `DisplayScreen.tsx` via Recharts charts
+
+### Slide types (7)
+
+`splash`, `speaker`, `schedule`, `quote`, `final`, `spin_wheel`, `announcement`
+
+- **spin_wheel**: animated slot-machine picker; options list set in `AddSlidePanel`; winner chosen randomly with deceleration animation.
+- **announcement**: full-screen text + optional countdown timer (seconds); timer shown in red when ≤ 5 s.
+
+Defined in `src/app/display/[code]/SlideView.tsx`.
+Created/managed via `src/app/org/[slug]/sessions/[id]/AddSlidePanel.tsx`.
+
+### Session page structure
+
+`src/app/org/[slug]/sessions/[id]/page.tsx` — layout:
+- **Left column**: unified lineup (polls + slides intermixed, `PollList.tsx` + `SlidesPanel.tsx`), drag-and-drop reorder
+- **Right column top**: `CreationTabs.tsx` (tab switcher: 📊 Опрос / 📽 Экран), `AnnouncementForm.tsx`
+- **Right column bottom**: `QAPanel.tsx` (Q&A moderation, idea_wall entries, fullscreen modal with filters)
+- **Header**: session controls, share panel, `SessionSummaryButton.tsx` (AI summary for ended sessions)
+
+### Sections
+
+Sessions can have named sections (e.g., «День 1», «Утренний блок»). Polls are assigned to sections. Managed via `SectionManager.tsx` / `sections.ts`. Sections affect export grouping.
 
 ### Real-time
 
-Supabase Realtime Broadcast (not Postgres changes) via `realtimeBroadcast()` in `polls.ts`:
-- Topic `session-polls:{sessionId}` — event `poll_change` (activated/closed)
-- Topic `poll-votes:{pollId}` — event `vote` (new vote)
-- Topic `session-questions:{sessionId}` — event `question_change` (new/updated/pinned)
+Supabase Realtime Broadcast (not Postgres changes):
+- `session-polls:{sessionId}` → `poll_change` — poll activated/closed, slide activated
+- `poll-votes:{pollId}` → `vote` — new vote (payload: `{ value, ts }`)
+- `session-questions:{sessionId}` → `question_change` — new question, pin/unpin, status change
+- `session-announce:{sessionId}` → `announcement` — timer announcements from host
+- `session-pulse:{sessionId}` → `pulse` — 🔥 reactions from participants
 
-Display screen and join screen subscribe to these channels client-side.
+Display screen and join screen subscribe client-side in `DisplayScreen.tsx` and `VoteInterface.tsx`.
 
-### Poll types
+### AI features
 
-Seven types in `types/database.ts`: `multiple_choice`, `temperature`, `word_cloud`, `emoji_cloud`, `qa`, `like_dislike`, `planning_poker`.
+All in `src/lib/actions/ai.ts` via `callYandex()` helper (YandexGPT Lite):
+- `generatePollOptions(sessionId, pollTitle, pollType)` — AI-generated answer options for a poll
+- `summarizeQuestions(sessionId)` — Q&A summary: key themes, top questions
+- `generateSessionSummary(sessionId)` — end-of-session AI digest: all poll results + Q&A → 3–5 sentence summary
 
-Rendering: `VoteInterface.tsx` (participant) and `PollList.tsx` → `PollResults` (inline results for ended/closed polls).
+### White label / Branding
+
+`/org/[slug]/settings` → `BrandingForm.tsx`. Settings stored in `organizations.settings` jsonb:
+```json
+{ "logo_url": "...", "accent_color": "#6366f1", "display_bg": "dark", "display_header": "..." }
+```
+Applied on display screen and join screen when white label is enabled.
+
+### Export
+
+`ExportButton.tsx` — PDF (via browser print) and CSV. Exports all closed polls with results, grouped by section. Available only on starter+ plans.
 
 ### Platform admin
 
-`/admin` and `/admin/users` are guarded by `platform_role = 'platform_admin'` on the `profiles` table. The guard is in `src/app/admin/layout.tsx` (server-side redirect). Platform admins are created by other platform admins via the Create User form in `/admin/users`.
+`/admin` and `/admin/users` guarded by `platform_role = 'platform_admin'` in `profiles`. Guard in `admin/layout.tsx` (server redirect). Platform admins created via `/admin/users` → CreateUserForm.
 
 ### Security
 
 - All server actions validate ownership with guards before any DB write
-- `voter_token` (UUID) validated with regex before insert: `UUID_RE = /^[0-9a-f]{8}-...-4.../i`
-- Error messages shown to users never leak internal details (server logs the real error)
-- Security headers set in `next.config.ts`: `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`
-- RLS policies on `votes` and `questions` restrict anon reads to active sessions only
+- `voter_token` (UUID) validated with regex before insert
+- Error messages to users never leak internal details
+- Security headers in `next.config.ts`: `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`
+- RLS on `votes` and `questions` restricts anon reads to active sessions
 
 ### Display screen
 
-`src/app/display/[code]/DisplayScreen.tsx` — must remain `h-screen overflow-hidden` (no scroll at any resolution). QR code and text sized with `clamp()` in `vh` units to adapt from laptops to projectors without media queries.
+`src/app/display/[code]/DisplayScreen.tsx` — must remain `h-screen overflow-hidden` (no scroll). Content sized with `clamp()` in `vh` units to adapt from laptops to projectors.
 
 ### Sharing
 
-`src/app/org/[slug]/sessions/[id]/SharePanel.tsx` — share buttons for Telegram, VK, Max (`https://max.ru/:share?text=...`), Email, and clipboard copy. Hidden when session is ended.
+`SharePanel.tsx` — Telegram, VK, Max (`https://max.ru/:share?text=...`), Email, clipboard. Hidden when session is `ended`.
 
 ### Organization auto-creation
 
-On signup/login/OAuth callback, `ensureUserOrg(userId, displayName)` in `organizations.ts` is called. It creates "Мои мероприятия" org if the user has none. There is no manual org creation step in the flow.
+On signup/login/OAuth, `ensureUserOrg(userId, displayName)` in `organizations.ts` creates «Мои мероприятия» org if none exists. No manual org creation step.
+
+### Database migrations
+
+```
+001_initial_schema.sql   — all core tables + RLS
+002_realtime.sql         — realtime broadcast config
+003_realtime_rls_fix.sql — RLS fix for anon vote/question reads
+004_sections.sql         — session_sections table
+005_slides.sql           — session_slides table
+006_spin_wheel.sql       — spin_wheel + announcement slide types
+007_idea_wall.sql        — idea_wall poll type
+```
