@@ -28,7 +28,7 @@ export type Database = {
           id: string
           name: string
           slug: string
-          plan: "free" | "pro" | "team" | "unlimited"
+          plan: "free" | "starter" | "pro" | "team" | "unlimited"
           plan_expires_at: string | null
           settings: Record<string, unknown> | null
           created_at: string
@@ -150,6 +150,7 @@ export type Database = {
             | "word_cloud"
             | "emoji_cloud"
             | "planning_poker"
+            | "idea_wall"
           options: unknown[]
           status: "draft" | "active" | "closed"
           settings: Record<string, unknown>
@@ -171,6 +172,7 @@ export type Database = {
             | "word_cloud"
             | "emoji_cloud"
             | "planning_poker"
+            | "idea_wall"
           options?: unknown[]
           status?: "draft" | "active" | "closed"
           settings?: Record<string, unknown>
@@ -189,6 +191,7 @@ export type Database = {
             | "word_cloud"
             | "emoji_cloud"
             | "planning_poker"
+            | "idea_wall"
           options?: unknown[]
           status?: "draft" | "active" | "closed"
           settings?: Record<string, unknown>
@@ -289,7 +292,7 @@ export type Database = {
         Row: {
           id: string
           session_id: string
-          type: "splash" | "speaker" | "schedule" | "quote" | "final"
+          type: "splash" | "speaker" | "schedule" | "quote" | "final" | "spin_wheel" | "announcement"
           content: Record<string, unknown>
           sort_order: number
           created_at: string
@@ -297,7 +300,7 @@ export type Database = {
         Insert: {
           id?: string
           session_id: string
-          type: "splash" | "speaker" | "schedule" | "quote" | "final"
+          type: "splash" | "speaker" | "schedule" | "quote" | "final" | "spin_wheel" | "announcement"
           content?: Record<string, unknown>
           sort_order?: number
           created_at?: string

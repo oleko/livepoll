@@ -11,11 +11,13 @@ import type { Poll, SessionStatus } from "@/types/database";
 import type { SlideRow, SlideType } from "@/lib/actions/slides";
 
 const SLIDE_TYPE_META: Record<SlideType, { label: string; icon: string }> = {
-  splash:   { label: "Заставка",   icon: "🎯" },
-  speaker:  { label: "Спикер",     icon: "🎤" },
-  schedule: { label: "Расписание", icon: "🗓" },
-  quote:    { label: "Цитата",     icon: "💬" },
-  final:    { label: "Финал",      icon: "🎉" },
+  splash:     { label: "Заставка",   icon: "🎯" },
+  speaker:    { label: "Спикер",     icon: "🎤" },
+  schedule:   { label: "Расписание", icon: "🗓" },
+  quote:      { label: "Цитата",     icon: "💬" },
+  final:      { label: "Финал",      icon: "🎉" },
+  spin_wheel:   { label: "Колесо",      icon: "🎡" },
+  announcement: { label: "Объявление",  icon: "📢" },
 };
 
 function slidePreview(slide: SlideRow): string {
@@ -155,7 +157,7 @@ function SlideLineupCard({
       draggable
       onDragStart={(e) => { e.dataTransfer.effectAllowed = "move"; onDragStart(); }}
       onDragEnd={onDragEnd}
-      className={`rounded-xl border px-4 py-3.5 transition-all select-none cursor-grab active:cursor-grabbing
+      className={`rounded-xl border px-4 py-3.5 transition-[border-color,box-shadow,opacity] duration-150 select-none cursor-grab active:cursor-grabbing
         ${isDragging ? "opacity-30 scale-95" : ""}
         ${isActive
           ? "border-purple-500/40 bg-purple-500/5 shadow-[0_0_20px_rgba(168,85,247,0.06)]"
@@ -381,7 +383,7 @@ function PollCard({
       draggable={!isEnded && !isEditing}
       onDragStart={(e) => { e.dataTransfer.effectAllowed = "move"; onDragStart(poll.id); }}
       onDragEnd={onDragEnd}
-      className={`rounded-xl border px-4 py-3.5 transition-all select-none
+      className={`rounded-xl border px-4 py-3.5 transition-[border-color,box-shadow,opacity] duration-150 select-none
         ${!isEnded && !isEditing ? "cursor-grab active:cursor-grabbing" : ""}
         ${isDragging ? "opacity-30 scale-95" : ""}
         ${isActive ? "border-green-500/40 bg-green-500/5 shadow-[0_0_20px_rgba(34,197,94,0.05)]"
@@ -694,7 +696,7 @@ export function PollList({
       <div
         onDragOver={e => { e.preventDefault(); setOverSectionId(sectionId ?? "none"); }}
         onDrop={e => { e.preventDefault(); handleDrop(sectionId); }}
-        className={`rounded-xl transition-all ${isOver ? "ring-2 ring-indigo-400 ring-inset bg-indigo-50/60 dark:bg-indigo-500/10" : ""}`}
+        className={`rounded-xl transition-[box-shadow,background-color] duration-150 ${isOver ? "ring-2 ring-indigo-400 ring-inset bg-indigo-50/60 dark:bg-indigo-500/10" : ""}`}
       >
         {zonePolls.length === 0 ? (
           <div className={`rounded-xl border-2 border-dashed py-6 text-center transition-colors ${
@@ -766,7 +768,7 @@ export function PollList({
                 setOverSlideId(null);
                 reorderSlides(sessionId, next.map(s => s.id), orgSlug).then(() => router.refresh());
               }}
-              className={`rounded-xl transition-all ${
+              className={`rounded-xl transition-[box-shadow,background-color] duration-150 ${
                 overSlideId === slide.id && draggingSlideId && draggingSlideId !== slide.id
                   ? "ring-2 ring-purple-400 ring-inset"
                   : ""

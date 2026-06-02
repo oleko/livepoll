@@ -5,13 +5,12 @@ import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { SessionControls } from "./SessionControls";
 import { PollList } from "./PollList";
-import { NewPollForm } from "./NewPollForm";
 import { QAPanel } from "./QAPanel";
-import { AddSlidePanel } from "./AddSlidePanel";
+import { CreationTabs } from "./CreationTabs";
 import { SharePanel } from "./SharePanel";
 import { AttendeesInput } from "./AttendeesInput";
-import { AnnouncementForm } from "./AnnouncementForm";
 import { ExportButton } from "./ExportButton";
+import { SessionSummaryButton } from "./SessionSummaryButton";
 import type { Session } from "@/types/database";
 
 const STATUS_LABEL: Record<Session["status"], string> = {
@@ -87,7 +86,7 @@ export default async function SessionPage({
     .eq("session_id", id)
     .order("upvotes", { ascending: false });
 
-  const hasQA = polls?.some((p) => p.type === "qa") ?? false;
+  const hasQA = polls?.some((p) => p.type === "qa" || p.type === "idea_wall") ?? false;
 
   const { data: slides } = await admin
     .from("session_slides")
@@ -152,6 +151,9 @@ export default async function SessionPage({
               </Link>
             </>
           )}
+          {session.status === "ended" && (polls?.length ?? 0) > 0 && (
+            <SessionSummaryButton sessionId={id} />
+          )}
           {(polls?.length ?? 0) > 0 && (
             <ExportButton
               session={{ title: session.title, join_code: session.join_code }}
@@ -197,16 +199,9 @@ export default async function SessionPage({
         </div>
 
         <div className="flex flex-col gap-6">
-          {/* Creation tools — top of sidebar */}
+          {/* Creation tools — tabbed poll / slide */}
           {session.status !== "ended" && (
-            <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
-              <h2 className="text-sm font-semibold text-slate-900 dark:text-white mb-4">Добавить опрос</h2>
-              <NewPollForm sessionId={id} orgSlug={slug} sections={sections ?? []} />
-            </div>
-          )}
-
-          {session.status !== "ended" && (
-            <AddSlidePanel sessionId={id} orgSlug={slug} />
+            <CreationTabs sessionId={id} orgSlug={slug} sections={sections ?? []} />
           )}
 
           {/* Q&A moderation */}
@@ -214,13 +209,6 @@ export default async function SessionPage({
             <QAPanel sessionId={id} orgSlug={slug} initialQuestions={questions ?? []} />
           )}
 
-          {/* Announcement */}
-          {session.status === "active" && (
-            <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
-              <h2 className="text-sm font-semibold text-slate-900 dark:text-white mb-4">📢 Объявление</h2>
-              <AnnouncementForm sessionId={id} orgSlug={slug} />
-            </div>
-          )}
         </div>
       </div>
     </div>

@@ -5,7 +5,7 @@ import { setOrgPlan } from "@/lib/actions/admin";
 import type { OrgPlan } from "@/types/database";
 import { PLAN_DISPLAY_NAME } from "@/lib/limits";
 
-const PLANS: OrgPlan[] = ["free", "pro", "team", "unlimited"];
+const PLANS: OrgPlan[] = ["free", "starter", "pro", "team", "unlimited"];
 
 export function OrgPlanForm({
   orgId,

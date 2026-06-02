@@ -5,6 +5,7 @@ import { createPoll } from "@/lib/actions/polls";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import type { PollType } from "@/types/database";
+import { POLL_TEMPLATE_CATEGORIES } from "@/lib/poll-templates";
 
 type SectionItem = { id: string; title: string };
 
@@ -16,6 +17,7 @@ const POLL_TYPES: { value: PollType; label: string; hasOptions: boolean }[] = [
   { value: "emoji_cloud",     label: "Облако эмодзи",       hasOptions: false },
   { value: "planning_poker",  label: "Planning Poker",      hasOptions: false },
   { value: "qa",              label: "Q&A",                 hasOptions: false },
+  { value: "idea_wall",       label: "Стена идей",           hasOptions: false },
 ];
 
 export function NewPollForm({
@@ -29,25 +31,112 @@ export function NewPollForm({
 }) {
   const [type, setType] = useState<PollType>("multiple_choice");
   const [optionsText, setOptionsText] = useState("");
+  const [titleValue, setTitleValue] = useState("");
   const [quizMode, setQuizMode] = useState(false);
+  const [correctOption, setCorrectOption] = useState("");
+  const [showTemplates, setShowTemplates] = useState(false);
+  const [activeCategory, setActiveCategory] = useState(POLL_TEMPLATE_CATEGORIES[0].id);
   const [state, action, isPending] = useActionState(createPoll, null);
 
   const parsedOptions = optionsText.split("\n").map((o) => o.trim()).filter(Boolean);
-
   const selectedType = POLL_TYPES.find((t) => t.value === type)!;
+
+  function applyTemplate(tpl: typeof POLL_TEMPLATE_CATEGORIES[number]["templates"][number]) {
+    setType(tpl.type);
+    setTitleValue(tpl.title);
+    setOptionsText(tpl.options.join("\n"));
+    setQuizMode(tpl.quiz_mode ?? false);
+    setCorrectOption(tpl.correct_option ?? "");
+    setShowTemplates(false);
+  }
 
   return (
     <form action={action} className="flex flex-col gap-3">
       <input type="hidden" name="session_id" value={sessionId} />
       <input type="hidden" name="org_slug" value={orgSlug} />
 
-
-
       {state && "error" in state && (
         <p className="text-xs text-red-500 dark:text-red-400">{state.error}</p>
       )}
       {state && "success" in state && (
         <p className="text-xs text-green-600 dark:text-green-400">Опрос добавлен</p>
+      )}
+
+      {/* Template trigger */}
+      <button
+        type="button"
+        onClick={() => setShowTemplates(true)}
+        className="flex items-center gap-1.5 text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-300 transition-colors"
+      >
+        <span>📚</span>
+        Из шаблона
+      </button>
+
+      {/* Template modal */}
+      {showTemplates && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-lg flex flex-col overflow-hidden shadow-2xl border border-slate-200 dark:border-slate-700 animate-modal-in"
+               style={{ maxHeight: "80vh" }}>
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-slate-800">
+              <h2 className="text-sm font-semibold text-slate-900 dark:text-white">📚 Шаблоны опросов</h2>
+              <button
+                type="button"
+                onClick={() => setShowTemplates(false)}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 text-lg leading-none w-7 h-7 flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Category tabs */}
+            <div className="flex flex-wrap gap-1.5 px-4 py-3 border-b border-slate-200 dark:border-slate-800 shrink-0">
+              {POLL_TEMPLATE_CATEGORIES.map((cat) => (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => setActiveCategory(cat.id)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors whitespace-nowrap ${
+                    activeCategory === cat.id
+                      ? "bg-indigo-600 text-white"
+                      : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
+                  }`}
+                >
+                  {cat.icon} {cat.name}
+                </button>
+              ))}
+            </div>
+
+            {/* Templates list */}
+            <div className="overflow-y-auto flex-1">
+              {POLL_TEMPLATE_CATEGORIES.find((c) => c.id === activeCategory)?.templates.map((tpl) => {
+                const icon =
+                  tpl.type === "multiple_choice" ? "📊" :
+                  tpl.type === "temperature"     ? "🌡️" :
+                  tpl.type === "word_cloud"      ? "☁️" :
+                  tpl.type === "like_dislike"    ? "👍" :
+                  tpl.type === "emoji_cloud"     ? "😊" :
+                  tpl.type === "planning_poker"  ? "🃏" : "❓";
+                return (
+                  <button
+                    key={tpl.title}
+                    type="button"
+                    onClick={() => applyTemplate(tpl)}
+                    className="flex items-start gap-3 w-full px-5 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors border-b border-slate-100 dark:border-slate-800 last:border-0"
+                  >
+                    <span className="text-xl leading-none mt-0.5 shrink-0">{icon}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-slate-800 dark:text-slate-200 leading-snug">{tpl.title}</p>
+                      {tpl.quiz_mode && (
+                        <span className="text-[11px] text-amber-600 dark:text-amber-400 font-medium">🎯 Квиз-режим</span>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
       )}
 
       <div className="flex flex-col gap-1.5">
@@ -68,6 +157,8 @@ export function NewPollForm({
         label="Вопрос"
         name="title"
         placeholder="Введите вопрос..."
+        value={titleValue}
+        onChange={(e) => setTitleValue(e.target.value)}
         required
       />
 
@@ -172,6 +263,8 @@ export function NewPollForm({
             <label className="text-xs font-medium text-slate-600 dark:text-slate-400">Правильный ответ</label>
             <select
               name="correct_option"
+              value={correctOption}
+              onChange={(e) => setCorrectOption(e.target.value)}
               className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
             >
               <option value="">— выберите из вариантов выше —</option>

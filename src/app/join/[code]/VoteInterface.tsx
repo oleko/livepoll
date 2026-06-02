@@ -224,6 +224,53 @@ export function VoteInterface({
         <p className="text-slate-500 text-sm">Страница обновится автоматически</p>
       </div>
     );
+  } else if (poll.type === "idea_wall") {
+    const submitted = questionsSubmitted > 0;
+    content = (
+      <div className="w-full max-w-sm">
+        <h2 className="text-2xl font-bold text-slate-900 dark:text-white text-center mb-2 leading-snug px-2">
+          {poll.title}
+        </h2>
+        <p className="text-center text-sm text-slate-500 dark:text-slate-400 mb-6">
+          Поделитесь своей идеей — она появится на экране
+        </p>
+        {submitted ? (
+          <div className="text-center">
+            <div className="text-6xl mb-4">💡</div>
+            <p className="text-xl font-semibold text-slate-900 dark:text-white mb-2">Идея отправлена!</p>
+            <p className="text-sm text-slate-400 dark:text-slate-500">Ваша идея уже видна на экране</p>
+          </div>
+        ) : (
+          <>
+            {error && (
+              <div className="mb-4 rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-red-500 text-center">
+                {error}
+              </div>
+            )}
+            <div className="flex flex-col gap-3">
+              <textarea
+                key="idea-input"
+                rows={3}
+                maxLength={200}
+                placeholder="Введите вашу идею..."
+                className="rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-5 py-4 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none text-base"
+                id="idea-input"
+              />
+              <Button
+                className="w-full py-4 text-base"
+                onClick={() => {
+                  const input = document.getElementById("idea-input") as HTMLTextAreaElement;
+                  if (input?.value.trim()) handleSubmitQuestion(input.value.trim());
+                }}
+                loading={isPending}
+              >
+                Отправить идею
+              </Button>
+            </div>
+          </>
+        )}
+      </div>
+    );
   } else if (poll.type === "qa") {
     const maxQ = poll.settings?.max_questions ?? 1;
     const remaining = maxQ - questionsSubmitted;
@@ -373,7 +420,7 @@ export function VoteInterface({
             <div className="flex gap-4 justify-center">
               {["❄️", "🥶", "😐", "🌡️", "🔥"].map((emoji, i) => (
                 <button key={i} onClick={() => handleVote(String(i + 1))} disabled={isPending}
-                  className="text-5xl hover:scale-125 transition-transform disabled:opacity-50 active:scale-110">
+                  className="text-5xl hover:scale-110 transition-transform duration-150 disabled:opacity-50 active:scale-110">
                   {emoji}
                 </button>
               ))}
@@ -389,7 +436,7 @@ export function VoteInterface({
             {[["👍", "like"], ["👎", "dislike"]].map(([emoji, val]) => (
               <button key={val} onClick={() => handleVote(val)} disabled={isPending}
                 className="flex flex-col items-center gap-2 disabled:opacity-50">
-                <span className="text-7xl hover:scale-125 transition-transform active:scale-110 inline-block">{emoji}</span>
+                <span className="text-7xl hover:scale-110 transition-transform duration-150 active:scale-110 inline-block">{emoji}</span>
               </button>
             ))}
           </div>

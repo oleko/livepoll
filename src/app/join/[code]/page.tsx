@@ -19,7 +19,7 @@ export default async function JoinPage({
 
   if (!session) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-950">
+      <main className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-950 pb-16">
         <div className="text-center">
           <p className="text-2xl text-slate-500 dark:text-slate-400">Мероприятие не найдено</p>
           <p className="text-slate-400 dark:text-slate-600 mt-2">Проверьте код и попробуйте снова</p>
@@ -30,7 +30,7 @@ export default async function JoinPage({
 
   if (session.status === "ended") {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-950">
+      <main className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-950 pb-16">
         <div className="text-center">
           <p className="text-2xl text-slate-500 dark:text-slate-400">Мероприятие завершено</p>
           <p className="text-slate-400 dark:text-slate-600 mt-2">Спасибо за участие!</p>

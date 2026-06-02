@@ -1,5 +1,5 @@
 import Link from "next/link";
-import HelpNav from "./HelpNav";
+import HelpNav, { HelpNavMobile } from "./HelpNav";
 
 export const metadata = {
   title: { template: "%s — Помощь | LivePoll AI", default: "Помощь | LivePoll AI" },
@@ -22,7 +22,9 @@ export default function HelpLayout({ children }: { children: React.ReactNode }) 
         </div>
       </header>
 
-      <div className="mx-auto w-full max-w-5xl px-6 py-10 flex gap-12 flex-1">
+      <HelpNavMobile />
+
+      <div className="mx-auto w-full max-w-5xl px-6 py-6 md:py-10 md:flex md:gap-10 lg:gap-12 flex-1">
         <HelpNav />
         <main className="flex-1 min-w-0">
           {children}

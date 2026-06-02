@@ -20,7 +20,7 @@ export function Button({ variant = "primary", loading, className = "", children,
   return (
     <button
       disabled={disabled || loading}
-      className={`inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-slate-900 disabled:cursor-not-allowed ${styles[variant]} ${className}`}
+      className={`inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-[background-color,opacity,transform] duration-150 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-slate-900 disabled:cursor-not-allowed active:scale-[0.97] ${styles[variant]} ${className}`}
       {...props}
     >
       {loading && (

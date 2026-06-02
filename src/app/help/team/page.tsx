@@ -4,8 +4,8 @@ export const metadata = { title: "Команда" };
 
 export default function TeamPage() {
   return (
-    <div className="max-w-2xl">
-      <Link href="/help" className="text-sm text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors md:hidden inline-block mb-6">
+    <div className="max-w-prose">
+      <Link href="/help" className="py-2 text-sm text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors md:hidden inline-block mb-6">
         ← Помощь
       </Link>
 
@@ -94,10 +94,10 @@ export default function TeamPage() {
       </div>
 
       <div className="mt-12 pt-8 border-t border-slate-200 dark:border-slate-800 flex gap-6 text-sm">
-        <Link href="/help/plans" className="text-indigo-600 dark:text-indigo-400 hover:underline">
+        <Link href="/help/plans" className="py-2 text-indigo-600 dark:text-indigo-400 hover:underline">
           ← Тарифы и лимиты
         </Link>
-        <Link href="/help" className="text-indigo-600 dark:text-indigo-400 hover:underline">
+        <Link href="/help" className="py-2 text-indigo-600 dark:text-indigo-400 hover:underline">
           Все статьи →
         </Link>
       </div>

@@ -75,7 +75,7 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-950 px-4">
+    <main className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-950 px-4 pb-16">
       <div className="absolute top-4 right-4">
         <ThemeToggle />
       </div>

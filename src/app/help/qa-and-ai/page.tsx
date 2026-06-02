@@ -4,14 +4,14 @@ export const metadata = { title: "Q&A и AI-анализ" };
 
 export default function QaAndAiPage() {
   return (
-    <div className="max-w-2xl">
-      <Link href="/help" className="text-sm text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors md:hidden inline-block mb-6">
+    <div className="max-w-prose">
+      <Link href="/help" className="py-2 text-sm text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors md:hidden inline-block mb-6">
         ← Помощь
       </Link>
 
-      <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Q&A и AI-анализ</h1>
+      <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Q&A, Стена идей и AI</h1>
       <p className="text-slate-500 dark:text-slate-400 mb-10">
-        Вопросы из зала с модерацией и автоматическим выделением главных тем.
+        Вопросы из зала, сбор идей и автоматический AI-анализ результатов.
       </p>
 
       <div className="space-y-8">
@@ -97,6 +97,60 @@ export default function QaAndAiPage() {
         </section>
 
         <section>
+          <h2 className="text-base font-semibold text-slate-900 dark:text-white mb-3">Стена идей</h2>
+          <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed mb-3">
+            <b>Стена идей</b> — отдельный тип опроса для сбора свободных предложений. В отличие
+            от Q&A, идеи не нужно выносить на экран вручную — они появляются там <b>мгновенно</b>
+            в виде цветных карточек, отсортированных по популярности.
+          </p>
+          <div className="space-y-3">
+            <Action
+              icon="💡"
+              label="Участник пишет идею"
+              desc="Форма похожа на Q&A, но без ограничения количества участников. Одна идея от одного участника."
+            />
+            <Action
+              icon="🖼️"
+              label="Идеи на дисплее"
+              desc="Дисплейный экран показывает все идеи в виде разноцветной карточной сетки. Новые карточки появляются в реальном времени без обновления страницы."
+            />
+            <Action
+              icon="🚫"
+              label="Модерация"
+              desc="В панели идей (там же, где Q&A) ведущий может скрыть неподходящую карточку. Скрытые идеи можно восстановить."
+            />
+          </div>
+          <Tip>
+            Используйте Стену идей на ретроспективах: «Что нужно улучшить?» — за 2 минуты
+            вся команда отправила идеи, а самые популярные видны сразу.
+          </Tip>
+        </section>
+
+        <section>
+          <h2 className="text-base font-semibold text-slate-900 dark:text-white mb-3">AI-резюме мероприятия</h2>
+          <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed mb-3">
+            После завершения мероприятия в шапке страницы появляется кнопка <b>«✨ AI-итог»</b>.
+            Нажмите её — YandexGPT проанализирует все результаты голосований и вопросы аудитории
+            и сформирует краткое резюме в 3–5 предложениях.
+          </p>
+          <div className="rounded-xl bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/20 p-4">
+            <p className="text-xs font-semibold text-indigo-700 dark:text-indigo-300 mb-2">Пример AI-резюме</p>
+            <p className="text-sm text-indigo-900 dark:text-indigo-200 leading-relaxed italic">
+              «Мероприятие прошло активно: 84 участника проголосовали в 6 опросах. Аудитория
+              оценила уровень доклада на 7.8/10. Большинство хотело бы разобрать тему архитектуры
+              подробнее (52%). В Q&A доминировали три темы: масштабирование, безопасность API
+              и тестирование. Рекомендуется сделать отдельную сессию по масштабированию.»
+            </p>
+          </div>
+          <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed mt-3">
+            Результат можно скопировать кнопкой 📋 и вставить в отчёт или сообщение команде.
+          </p>
+          <Tip>
+            AI-резюме доступно только для завершённых мероприятий с хотя бы одним закрытым опросом.
+          </Tip>
+        </section>
+
+        <section>
           <h2 className="text-base font-semibold text-slate-900 dark:text-white mb-3">AI-прощание при завершении</h2>
           <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
             Когда ведущий завершает мероприятие, AI автоматически генерирует короткое тёплое
@@ -109,10 +163,10 @@ export default function QaAndAiPage() {
       </div>
 
       <div className="mt-12 pt-8 border-t border-slate-200 dark:border-slate-800 flex gap-6 text-sm">
-        <Link href="/help/display-screen" className="text-indigo-600 dark:text-indigo-400 hover:underline">
+        <Link href="/help/display-screen" className="py-2 text-indigo-600 dark:text-indigo-400 hover:underline">
           ← Дисплейный экран
         </Link>
-        <Link href="/help/plans" className="text-indigo-600 dark:text-indigo-400 hover:underline">
+        <Link href="/help/plans" className="py-2 text-indigo-600 dark:text-indigo-400 hover:underline">
           Тарифы и лимиты →
         </Link>
       </div>

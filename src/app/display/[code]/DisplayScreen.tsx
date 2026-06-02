@@ -95,7 +95,7 @@ export function DisplayScreen({
   const [announcement, setAnnouncement] = useState<AnnouncementData | null>(null);
   const [activeSlide, setActiveSlide] = useState<ActiveSlide>(initialActiveSlide ?? null);
   const [announcementTimeLeft, setAnnouncementTimeLeft] = useState<number | null>(null);
-  const [votes, setVotes] = useState(initialVotes);
+  const [votes, setVotes] = useState<{ value: string; ts?: string }[]>(initialVotes);
   const [questions, setQuestions] = useState<QuestionRow[]>(initialQuestions);
   const [totalAttendees, setTotalAttendees] = useState(initialTotalAttendees);
   const [joinedCount, setJoinedCount] = useState(initialJoinedCount);
@@ -104,6 +104,11 @@ export function DisplayScreen({
   const [pinnedQuestion, setPinnedQuestion] = useState<QuestionRow | null>(null);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Quiz leaderboard
+  const [quizScores, setQuizScores] = useState<Map<string, number>>(new Map());
+  const [quizTotal, setQuizTotal] = useState(0);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const currentVotesRef = useRef<{ value: string; ts: string }[]>([]);
   const supabase = useRef(createClient());
   const { theme } = useTheme();
   const isDark = theme === "dark";
@@ -127,7 +132,25 @@ export function DisplayScreen({
           const reveal = (data as { quiz_reveal?: QuizReveal }).quiz_reveal;
           if (reveal) {
             setQuizReveal(reveal);
-            // Keep poll visible — chart stays up with correct answer highlighted
+            // Compute scores from this question's votes
+            const buf = currentVotesRef.current;
+            if (buf.length > 0) {
+              setQuizScores((prev) => {
+                const next = new Map(prev);
+                buf.forEach(({ ts, value }) => {
+                  if (value === reveal.correct_option) {
+                    next.set(ts, (next.get(ts) ?? 0) + 1);
+                  } else if (!next.has(ts)) {
+                    next.set(ts, 0);
+                  }
+                });
+                return next;
+              });
+              setQuizTotal((n) => n + 1);
+            }
+            currentVotesRef.current = [];
+            setShowLeaderboard(true);
+            setTimeout(() => setShowLeaderboard(false), 7000);
           } else {
             setQuizReveal(null);
             setPoll((prev) => (prev?.id === data.poll_id ? null : prev));
@@ -254,7 +277,9 @@ export function DisplayScreen({
     const channel = sb
       .channel(`poll-votes:${poll.id}`)
       .on("broadcast", { event: "vote" }, ({ payload }) => {
-        setVotes((prev) => [...prev, { value: (payload as { value: string }).value }]);
+        const p = payload as { value: string; ts?: string };
+        setVotes((prev) => [...prev, { value: p.value, ts: p.ts }]);
+        if (p.ts) currentVotesRef.current.push({ value: p.value, ts: p.ts });
       })
       .on("broadcast", { event: "revote" }, ({ payload }) => {
         const { old_value, new_value } = payload as { old_value: string; new_value: string };
@@ -299,7 +324,7 @@ export function DisplayScreen({
       )}
 
       {/* Announcement overlay */}
-      {announcement && (
+      {announcement && activeSlide?.type !== "announcement" && (
         <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-slate-950/92">
           <div className="text-center px-12 max-w-3xl">
             <div className="text-5xl mb-6">📢</div>
@@ -454,6 +479,7 @@ export function DisplayScreen({
                   {poll.type === "emoji_cloud" && "Облако эмодзи"}
                   {poll.type === "planning_poker" && "Planning Poker"}
                   {poll.type === "qa" && "Вопросы и ответы"}
+                  {poll.type === "idea_wall" && "Стена идей"}
                 </span>
               </div>
 
@@ -503,7 +529,7 @@ export function DisplayScreen({
               )}
 
               {quizReveal && (poll.type === "multiple_choice" || poll.type === "planning_poker") && (
-                <div className="mt-6 text-center">
+                <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-6">
                   <div className="inline-flex flex-col items-center gap-2 rounded-2xl border border-green-500/30 bg-green-500/10 px-8 py-4">
                     <p className="text-lg font-bold text-green-500 dark:text-green-400">
                       ✓ Правильный ответ: {quizReveal.correct_option}
@@ -512,6 +538,28 @@ export function DisplayScreen({
                       <p className="text-slate-500 dark:text-slate-400 text-sm italic">{quizReveal.explanation}</p>
                     )}
                   </div>
+
+                  {showLeaderboard && quizScores.size > 0 && (
+                    <div className="rounded-2xl border border-slate-700 bg-slate-900/90 px-6 py-4 min-w-[220px]">
+                      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">🏆 Лидерборд</p>
+                      <div className="flex flex-col gap-1.5">
+                        {[...quizScores.entries()]
+                          .sort((a, b) => b[1] - a[1])
+                          .slice(0, 5)
+                          .map(([ts, correct], i) => (
+                            <div key={ts} className="flex items-center gap-3">
+                              <span className={`text-sm font-bold w-5 tabular-nums ${i === 0 ? "text-yellow-400" : i === 1 ? "text-slate-300" : i === 2 ? "text-amber-600" : "text-slate-500"}`}>
+                                #{i + 1}
+                              </span>
+                              <span className="text-xs font-mono text-slate-400 w-16">{ts.toUpperCase()}</span>
+                              <span className={`text-sm font-semibold ml-auto ${correct > 0 ? "text-green-400" : "text-slate-500"}`}>
+                                {correct}/{quizTotal}
+                              </span>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -608,6 +656,35 @@ export function DisplayScreen({
                   </>
                 );
               })()}
+
+              {poll.type === "idea_wall" && (
+                visibleQuestions.length === 0 ? (
+                  <p className="text-slate-500 text-xl text-center py-12">Ожидаем идеи от участников...</p>
+                ) : (
+                  <div className="columns-2 lg:columns-3 gap-4 max-h-[55vh] overflow-y-auto p-1">
+                    {[...visibleQuestions]
+                      .sort((a, b) => b.upvotes - a.upvotes)
+                      .map((q, i) => {
+                        const colors = [
+                          "border-indigo-500/30 bg-indigo-500/10",
+                          "border-purple-500/30 bg-purple-500/10",
+                          "border-cyan-500/30 bg-cyan-500/10",
+                          "border-emerald-500/30 bg-emerald-500/10",
+                          "border-amber-500/30 bg-amber-500/10",
+                        ];
+                        return (
+                          <div key={q.id}
+                            className={`break-inside-avoid rounded-2xl border p-5 mb-4 ${colors[i % colors.length]}`}>
+                            <p className="text-white text-lg leading-snug">{q.text}</p>
+                            {q.upvotes > 0 && (
+                              <p className="text-slate-400 text-sm mt-2">▲ {q.upvotes}</p>
+                            )}
+                          </div>
+                        );
+                      })}
+                  </div>
+                )
+              )}
 
               {poll.type === "qa" && (
                 <div className="flex items-center justify-center min-h-40">

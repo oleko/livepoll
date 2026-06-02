@@ -339,6 +339,54 @@ export async function submitVote(formData: FormData) {
   const maxAnswers = settings?.max_answers ?? 1;
   if (parsedValues.length > maxAnswers) return { error: `Можно выбрать не более ${maxAnswers} вариантов` };
 
+  // Participant limit check: only for new voters entering the session for the first time
+  if (pollData?.session_id) {
+    const { data: sessionPolls } = await admin
+      .from("polls")
+      .select("id")
+      .eq("session_id", pollData.session_id);
+    const sessionPollIds = (sessionPolls ?? []).map((p) => p.id);
+
+    if (sessionPollIds.length > 0) {
+      const { data: priorVote } = await admin
+        .from("votes")
+        .select("id")
+        .in("poll_id", sessionPollIds)
+        .eq("voter_token", voterToken)
+        .limit(1)
+        .maybeSingle();
+
+      if (!priorVote) {
+        // New voter — check org plan limit
+        const { data: sess } = await admin
+          .from("sessions")
+          .select("organization_id")
+          .eq("id", pollData.session_id)
+          .single();
+        if (sess) {
+          const { data: org } = await admin
+            .from("organizations")
+            .select("plan")
+            .eq("id", sess.organization_id)
+            .single();
+          if (org) {
+            const limits = getLimits(org.plan as OrgPlan);
+            if (isFinite(limits.maxParticipants)) {
+              const { data: tokens } = await admin
+                .from("votes")
+                .select("voter_token")
+                .in("poll_id", sessionPollIds);
+              const uniqueCount = new Set((tokens ?? []).map((v) => v.voter_token)).size;
+              if (uniqueCount >= limits.maxParticipants) {
+                return { error: `Достигнут лимит участников для текущего тарифа (${limits.maxParticipants})` };
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
   let isRevote = false;
 
   if (settings?.allow_revote && maxAnswers === 1) {
@@ -365,13 +413,13 @@ export async function submitVote(formData: FormData) {
     } else {
       const { error } = await admin.from("votes").insert({ poll_id: pollId, voter_token: voterToken, value });
       if (error) return { error: error.message };
-      await realtimeBroadcast([{ topic: `poll-votes:${pollId}`, event: "vote", payload: { value } }]);
+      await realtimeBroadcast([{ topic: `poll-votes:${pollId}`, event: "vote", payload: { value, ts: voterToken.slice(0, 6) } }]);
     }
   } else {
     const { error } = await admin.from("votes").insert({ poll_id: pollId, voter_token: voterToken, value });
     if (error?.code === "23505") return { error: "Вы уже проголосовали" };
     if (error) return { error: error.message };
-    await realtimeBroadcast([{ topic: `poll-votes:${pollId}`, event: "vote", payload: { value } }]);
+    await realtimeBroadcast([{ topic: `poll-votes:${pollId}`, event: "vote", payload: { value, ts: voterToken.slice(0, 6) } }]);
   }
 
   // Broadcast unique voter count for this session (skip for revotes — count unchanged)

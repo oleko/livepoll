@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { submitFeedback } from "@/lib/actions/feedback";
 
 type FeedbackType = "bug" | "idea" | "question";
@@ -28,6 +28,11 @@ const TYPES: { id: FeedbackType; label: string; icon: string; placeholder: strin
 
 export function FeedbackWidget() {
   const [open, setOpen] = useState(false);
+  const [aboveBanner, setAboveBanner] = useState(true);
+
+  useEffect(() => {
+    setAboveBanner(!localStorage.getItem("cookie_consent"));
+  }, []);
   const [type, setType] = useState<FeedbackType>("idea");
   const [text, setText] = useState("");
   const [status, setStatus] = useState<"idle" | "pending" | "done" | "error">("idle");
@@ -64,7 +69,7 @@ export function FeedbackWidget() {
   }
 
   return (
-    <div className="fixed bottom-5 right-5 z-50 flex flex-col items-end gap-3">
+    <div className={`fixed right-5 z-50 flex flex-col items-end gap-3 transition-all ${aboveBanner ? "bottom-16 sm:bottom-5" : "bottom-5"}`}>
       {/* Card */}
       {open && (
         <div className="w-80 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl shadow-slate-200/60 dark:shadow-slate-950/80 overflow-hidden">

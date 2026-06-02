@@ -43,20 +43,22 @@ export async function createSession(
 
   if (org) {
     const limits = getLimits(org.plan as OrgPlan);
-    const monthStart = new Date();
-    monthStart.setDate(1);
-    monthStart.setHours(0, 0, 0, 0);
+    if (isFinite(limits.sessionsPerMonth)) {
+      const monthStart = new Date();
+      monthStart.setDate(1);
+      monthStart.setHours(0, 0, 0, 0);
 
-    const { count } = await admin
-      .from("sessions")
-      .select("id", { count: "exact", head: true })
-      .eq("organization_id", orgId)
-      .gte("created_at", monthStart.toISOString());
+      const { count } = await admin
+        .from("sessions")
+        .select("id", { count: "exact", head: true })
+        .eq("organization_id", orgId)
+        .gte("created_at", monthStart.toISOString());
 
-    if ((count ?? 0) >= limits.sessionsPerMonth) {
-      return {
-        error: `Лимит мероприятий на текущий месяц исчерпан (${limits.sessionsPerMonth}). Перейдите на более высокий тариф.`,
-      };
+      if ((count ?? 0) >= limits.sessionsPerMonth) {
+        return {
+          error: `Лимит мероприятий на текущий месяц исчерпан (${limits.sessionsPerMonth}). Перейдите на более высокий тариф.`,
+        };
+      }
     }
   }
 

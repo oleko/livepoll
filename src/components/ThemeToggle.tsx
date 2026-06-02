@@ -9,7 +9,7 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
     <button
       onClick={toggle}
       title={theme === "dark" ? "Светлая тема" : "Тёмная тема"}
-      className={`rounded-lg p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-300 transition-colors ${className}`}
+      className={`rounded-lg p-3 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-300 transition-colors ${className}`}
     >
       {theme === "dark" ? (
         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

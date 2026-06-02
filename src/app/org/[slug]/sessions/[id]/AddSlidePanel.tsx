@@ -6,11 +6,13 @@ import { createSlide } from "@/lib/actions/slides";
 import type { SlideType } from "@/lib/actions/slides";
 
 const TYPE_META: Record<SlideType, { label: string; icon: string }> = {
-  splash:   { label: "Заставка",   icon: "🎯" },
-  speaker:  { label: "Спикер",     icon: "🎤" },
-  schedule: { label: "Расписание", icon: "🗓" },
-  quote:    { label: "Цитата",     icon: "💬" },
-  final:    { label: "Финал",      icon: "🎉" },
+  splash:       { label: "Заставка",    icon: "🎯" },
+  speaker:      { label: "Спикер",      icon: "🎤" },
+  schedule:     { label: "Расписание",  icon: "🗓" },
+  quote:        { label: "Цитата",      icon: "💬" },
+  final:        { label: "Финал",       icon: "🎉" },
+  spin_wheel:   { label: "Колесо",      icon: "🎡" },
+  announcement: { label: "Объявление",  icon: "📢" },
 };
 
 type ScheduleItem = { time: string; title: string; active?: boolean };
@@ -95,6 +97,60 @@ function QuoteForm({ v, set }: { v: Record<string, string>; set: (v: Record<stri
   );
 }
 
+function AnnouncementForm({ v, set }: { v: Record<string, unknown>; set: (v: Record<string, unknown>) => void }) {
+  return (
+    <div className="space-y-2">
+      <textarea
+        value={(v.text as string) ?? ""}
+        onChange={e => set({ ...v, text: e.target.value })}
+        rows={3}
+        placeholder="Текст объявления *"
+        className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+      />
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-slate-500 dark:text-slate-400 shrink-0">Таймер</span>
+        <select
+          value={(v.duration as number | undefined) ?? 0}
+          onChange={e => set({ ...v, duration: Number(e.target.value) })}
+          className="flex-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+        >
+          <option value={0}>Без таймера</option>
+          <option value={15}>15 секунд</option>
+          <option value={30}>30 секунд</option>
+          <option value={60}>1 минута</option>
+          <option value={120}>2 минуты</option>
+          <option value={300}>5 минут</option>
+        </select>
+      </div>
+    </div>
+  );
+}
+
+function SpinWheelForm({ v, set }: { v: Record<string, unknown>; set: (v: Record<string, unknown>) => void }) {
+  const [rawText, setRawText] = useState(
+    ((v.options as string[] | undefined) ?? []).join("\n")
+  );
+  return (
+    <div className="space-y-2">
+      <Input placeholder="Заголовок (необязательно)" value={(v.title as string) ?? ""}
+        onChange={e => set({ ...v, title: e.target.value })} />
+      <div className="flex flex-col gap-1">
+        <span className="text-xs text-slate-500 dark:text-slate-400">Варианты (каждый с новой строки) *</span>
+        <textarea
+          value={rawText}
+          onChange={e => {
+            setRawText(e.target.value);
+            set({ ...v, options: e.target.value.split("\n").map(s => s.trim()).filter(Boolean) });
+          }}
+          rows={5}
+          placeholder={"Анна\nИван\nМария\nПётр"}
+          className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+        />
+      </div>
+    </div>
+  );
+}
+
 function FinalForm({ v, set }: { v: Record<string, string>; set: (v: Record<string, string>) => void }) {
   const f = (k: string): React.InputHTMLAttributes<HTMLInputElement> => ({
     value: v[k] ?? "",
@@ -109,9 +165,8 @@ function FinalForm({ v, set }: { v: Record<string, string>; set: (v: Record<stri
   );
 }
 
-export function AddSlidePanel({ sessionId, orgSlug }: { sessionId: string; orgSlug: string }) {
+export function AddSlidePanel({ sessionId, orgSlug, bare = false }: { sessionId: string; orgSlug: string; bare?: boolean }) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
   const [type, setType] = useState<SlideType>("splash");
   const [content, setContent] = useState<Record<string, unknown>>({});
   const [saving, setSaving] = useState(false);
@@ -123,7 +178,7 @@ export function AddSlidePanel({ sessionId, orgSlug }: { sessionId: string; orgSl
     try {
       const result = await createSlide(sessionId, type, content, orgSlug);
       if ("error" in result) setError(result.error);
-      else { setContent({}); setOpen(false); router.refresh(); }
+      else { setContent({}); router.refresh(); }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Ошибка");
     } finally {
@@ -131,53 +186,46 @@ export function AddSlidePanel({ sessionId, orgSlug }: { sessionId: string; orgSl
     }
   }
 
+  const inner = (
+    <div className="space-y-4">
+      {/* Type picker */}
+      <div className="grid grid-cols-2 gap-1.5">
+        {(Object.entries(TYPE_META) as [SlideType, { label: string; icon: string }][]).map(([t, m]) => (
+          <button key={t} type="button" onClick={() => { setType(t); setContent({}); setError(null); }}
+            className={`flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors ${
+              type === t
+                ? "bg-purple-600 text-white"
+                : "border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-purple-300 dark:hover:border-purple-700"
+            }`}
+          >
+            <span className="shrink-0">{m.icon}</span>
+            {m.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Content form */}
+      {type === "splash"       && <SplashForm      v={content as Record<string, string>} set={setContent} />}
+      {type === "speaker"      && <SpeakerForm     v={content as Record<string, string>} set={setContent} />}
+      {type === "schedule"     && <ScheduleForm    v={content as { items?: ScheduleItem[] }} set={setContent as (v: { items: ScheduleItem[] }) => void} />}
+      {type === "quote"        && <QuoteForm       v={content as Record<string, string>} set={setContent} />}
+      {type === "final"        && <FinalForm       v={content as Record<string, string>} set={setContent} />}
+      {type === "spin_wheel"   && <SpinWheelForm   v={content} set={setContent} />}
+      {type === "announcement" && <AnnouncementForm v={content} set={setContent} />}
+
+      {error && <p className="text-xs text-red-500">{error}</p>}
+
+      <button type="button" onClick={save} disabled={saving}
+        className="w-full rounded-lg bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white px-4 py-2 text-sm font-medium transition-colors"
+      >{saving ? "Создаю…" : "Создать экран"}</button>
+    </div>
+  );
+
+  if (bare) return inner;
   return (
     <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
       <h2 className="text-sm font-semibold text-slate-900 dark:text-white mb-4">📽 Добавить экран</h2>
-
-      {!open ? (
-        <button type="button" onClick={() => setOpen(true)}
-          className="w-full rounded-lg border-2 border-dashed border-purple-200 dark:border-purple-900 hover:border-purple-400 dark:hover:border-purple-600 py-3 text-sm text-purple-500 dark:text-purple-400 hover:text-purple-600 dark:hover:text-purple-300 transition-colors font-medium"
-        >
-          ＋ Выбрать тип экрана
-        </button>
-      ) : (
-        <div className="space-y-4">
-          {/* Type picker */}
-          <div className="grid grid-cols-2 gap-1.5">
-            {(Object.entries(TYPE_META) as [SlideType, { label: string; icon: string }][]).map(([t, m]) => (
-              <button key={t} type="button" onClick={() => { setType(t); setContent({}); }}
-                className={`flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors ${
-                  type === t
-                    ? "bg-purple-600 text-white"
-                    : "border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-purple-300 dark:hover:border-purple-700"
-                }`}
-              >
-                <span className="shrink-0">{m.icon}</span>
-                {m.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Content form */}
-          {type === "splash"   && <SplashForm   v={content as Record<string, string>} set={setContent} />}
-          {type === "speaker"  && <SpeakerForm  v={content as Record<string, string>} set={setContent} />}
-          {type === "schedule" && <ScheduleForm v={content as { items?: ScheduleItem[] }} set={setContent as (v: { items: ScheduleItem[] }) => void} />}
-          {type === "quote"    && <QuoteForm    v={content as Record<string, string>} set={setContent} />}
-          {type === "final"    && <FinalForm    v={content as Record<string, string>} set={setContent} />}
-
-          {error && <p className="text-xs text-red-500">{error}</p>}
-
-          <div className="flex gap-2">
-            <button type="button" onClick={save} disabled={saving}
-              className="rounded-lg bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white px-4 py-2 text-sm font-medium transition-colors"
-            >{saving ? "Создаю…" : "Создать"}</button>
-            <button type="button" onClick={() => { setOpen(false); setError(null); setContent({}); }}
-              className="rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm text-slate-500 hover:text-slate-700 transition-colors"
-            >Отмена</button>
-          </div>
-        </div>
-      )}
+      {inner}
     </div>
   );
 }

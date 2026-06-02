@@ -1,3 +1,6 @@
+"use client";
+
+import { useState, useEffect } from "react";
 import type { SlideType } from "@/lib/actions/slides";
 
 type ScheduleItem = { time: string; title: string; active?: boolean };
@@ -125,15 +128,141 @@ function FinalSlide({ c }: { c: Record<string, string> }) {
   );
 }
 
+function AnnouncementSlide({ c }: { c: Record<string, unknown> }) {
+  const text = c.text as string ?? "";
+  const duration = (c.duration as number | undefined) ?? 0;
+  const [timeLeft, setTimeLeft] = useState(duration > 0 ? duration : null);
+
+  useEffect(() => {
+    if (!duration) return;
+    setTimeLeft(duration);
+    const id = setInterval(() => {
+      setTimeLeft((t) => {
+        if (t === null || t <= 1) { clearInterval(id); return 0; }
+        return t - 1;
+      });
+    }, 1000);
+    return () => clearInterval(id);
+  }, [duration]);
+
+  return (
+    <div className="flex flex-col items-center justify-center h-full gap-8 px-16 text-center bg-slate-950">
+      <div className="text-6xl">📢</div>
+      <p className="font-bold text-white leading-tight" style={{ fontSize: "clamp(2.5rem, 8vh, 5rem)" }}>
+        {text}
+      </p>
+      {timeLeft !== null && timeLeft > 0 && (
+        <p className={`text-8xl font-mono font-bold tabular-nums ${timeLeft <= 5 ? "text-red-400 animate-pulse" : "text-indigo-400"}`}>
+          {timeLeft >= 60
+            ? `${Math.floor(timeLeft / 60)}:${String(timeLeft % 60).padStart(2, "0")}`
+            : timeLeft}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function SpinWheelSlide({ c }: { c: Record<string, unknown> }) {
+  const options = (c.options as string[] | undefined) ?? [];
+  const title = c.title as string | undefined;
+  const [displayIdx, setDisplayIdx] = useState(0);
+  const [winner, setWinner] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (options.length === 0) return;
+    if (options.length === 1) { setWinner(options[0]); return; }
+
+    setWinner(null);
+    setDisplayIdx(0);
+    const winnerIdx = Math.floor(Math.random() * options.length);
+    let step = 0;
+    const totalSteps = 28 + Math.floor(Math.random() * 8);
+    let tid: ReturnType<typeof setTimeout>;
+
+    const spin = () => {
+      setDisplayIdx((idx) => (idx + 1) % options.length);
+      step++;
+      const progress = step / totalSteps;
+      const delay = progress < 0.45
+        ? 55 + progress * 80
+        : 80 + (progress - 0.45) * 520;
+      if (step < totalSteps) {
+        tid = setTimeout(spin, delay);
+      } else {
+        setDisplayIdx(winnerIdx);
+        setTimeout(() => setWinner(options[winnerIdx]), 250);
+      }
+    };
+    tid = setTimeout(spin, 400);
+    return () => clearTimeout(tid);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  if (options.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <p className="text-slate-400 text-2xl">Нет вариантов</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col items-center justify-center h-full gap-10 px-16 text-center">
+      {title && <h2 className="text-4xl font-bold text-white">{title}</h2>}
+
+      <div className="flex flex-col items-center gap-6 w-full">
+        {!winner ? (
+          <>
+            <p className="text-slate-400 text-xl uppercase tracking-widest font-medium animate-pulse">
+              🎡 Крутим…
+            </p>
+            <p
+              className="font-bold text-white leading-none transition-all duration-75"
+              style={{ fontSize: "clamp(3rem, 10vh, 8rem)" }}
+            >
+              {options[displayIdx]}
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="text-indigo-400 text-2xl font-semibold uppercase tracking-widest">🎉 Победитель!</p>
+            <p
+              className="font-bold text-white leading-none"
+              style={{ fontSize: "clamp(3.5rem, 12vh, 9rem)" }}
+            >
+              {winner}
+            </p>
+          </>
+        )}
+      </div>
+
+      {winner && options.length > 1 && (
+        <div className="flex flex-wrap gap-2 justify-center max-w-3xl">
+          {options.filter((o) => o !== winner).map((opt, i) => (
+            <span
+              key={i}
+              className="text-slate-600 text-lg px-4 py-1.5 border border-slate-800 rounded-full"
+            >
+              {opt}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function SlideView({ slide }: { slide: SlideData }) {
   const c = slide.content as Record<string, unknown>;
   return (
     <div className="w-full h-full bg-slate-950">
-      {slide.type === "splash"   && <SplashSlide   c={c as Record<string, string>} />}
-      {slide.type === "speaker"  && <SpeakerSlide  c={c as Record<string, string>} />}
-      {slide.type === "schedule" && <ScheduleSlide c={c as { items?: ScheduleItem[] }} />}
-      {slide.type === "quote"    && <QuoteSlide    c={c as Record<string, string>} />}
-      {slide.type === "final"    && <FinalSlide    c={c as Record<string, string>} />}
+      {slide.type === "splash"     && <SplashSlide     c={c as Record<string, string>} />}
+      {slide.type === "speaker"    && <SpeakerSlide    c={c as Record<string, string>} />}
+      {slide.type === "schedule"   && <ScheduleSlide   c={c as { items?: ScheduleItem[] }} />}
+      {slide.type === "quote"      && <QuoteSlide      c={c as Record<string, string>} />}
+      {slide.type === "final"      && <FinalSlide      c={c as Record<string, string>} />}
+      {slide.type === "spin_wheel"   && <SpinWheelSlide    c={c} />}
+      {slide.type === "announcement" && <AnnouncementSlide c={c} />}
     </div>
   );
 }

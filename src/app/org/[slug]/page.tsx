@@ -44,6 +44,34 @@ export default async function OrgDashboardPage({
     .order("created_at", { ascending: false });
 
   const activeSessions = sessions?.filter((s) => s.status === "active").length ?? 0;
+  const sessionIds = (sessions ?? []).map((s) => s.id);
+
+  // Poll counts per session
+  const { data: pollRows } = sessionIds.length > 0
+    ? await admin.from("polls").select("session_id").in("session_id", sessionIds)
+    : { data: [] };
+  const pollCountBySession: Record<string, number> = {};
+  (pollRows ?? []).forEach((r) => {
+    pollCountBySession[r.session_id] = (pollCountBySession[r.session_id] ?? 0) + 1;
+  });
+
+  // Unique participant counts per session (unique voter tokens across polls)
+  const { data: voteRows } = sessionIds.length > 0
+    ? await admin
+        .from("votes")
+        .select("voter_token, polls!inner(session_id)")
+        .in("polls.session_id", sessionIds)
+    : { data: [] };
+  const participantsBySession: Record<string, Set<string>> = {};
+  (voteRows ?? []).forEach((r) => {
+    const sid = (r as unknown as { polls: { session_id: string } }).polls.session_id;
+    if (!participantsBySession[sid]) participantsBySession[sid] = new Set();
+    participantsBySession[sid].add(r.voter_token);
+  });
+  const participantCountBySession: Record<string, number> = {};
+  Object.entries(participantsBySession).forEach(([sid, set]) => {
+    participantCountBySession[sid] = set.size;
+  });
 
   return (
     <div>
@@ -79,17 +107,27 @@ export default async function OrgDashboardPage({
               href={`/org/${slug}/sessions/${session.id}`}
               className="flex items-center justify-between rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-5 py-4 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
             >
-              <div className="flex items-center gap-4">
-                <div>
-                  <p className="font-medium text-slate-900 dark:text-white">{session.title}</p>
-                  <p className="text-sm text-slate-400 dark:text-slate-500 mt-0.5">
-                    Код: <span className="font-mono text-slate-500 dark:text-slate-400">{session.join_code}</span>
-                    {" · "}
-                    {new Date(session.created_at).toLocaleDateString("ru-RU")}
-                  </p>
+              <div className="flex items-center gap-4 min-w-0">
+                <div className="min-w-0">
+                  <p className="font-medium text-slate-900 dark:text-white truncate">{session.title}</p>
+                  <div className="flex items-center gap-3 mt-0.5 flex-wrap">
+                    <p className="text-sm text-slate-400 dark:text-slate-500">
+                      {new Date(session.created_at).toLocaleDateString("ru-RU")}
+                    </p>
+                    {(pollCountBySession[session.id] ?? 0) > 0 && (
+                      <span className="text-xs text-slate-400 dark:text-slate-500">
+                        📊 {pollCountBySession[session.id]}
+                      </span>
+                    )}
+                    {(participantCountBySession[session.id] ?? 0) > 0 && (
+                      <span className="text-xs text-slate-400 dark:text-slate-500">
+                        👥 {participantCountBySession[session.id]}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
-              <span className={`rounded-full px-3 py-1 text-xs font-medium ${STATUS_COLOR[session.status]}`}>
+              <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium ${STATUS_COLOR[session.status]}`}>
                 {STATUS_LABEL[session.status]}
               </span>
             </Link>

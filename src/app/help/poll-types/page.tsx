@@ -59,18 +59,26 @@ const TYPES = [
     examples: ["Открытая Q&A после доклада", "Анонимные вопросы на тренинге", "Сбор тем для следующей встречи"],
     settings: ["Нет таймера: Q&A живёт весь сеанс", "До N вопросов от одного участника (1–10)", "AI-анализ по кнопке"],
   },
+  {
+    icon: "💡",
+    name: "Стена идей",
+    when: "Когда нужно собрать идеи, предложения или мнения от всего зала и сразу показать их на экране — без фильтрации. Идеально для брейнштормов, ретроспектив и сессий обратной связи.",
+    how: "Участник вводит свою идею (до 200 символов) и отправляет. Идеи немедленно появляются на дисплейном экране в виде цветных карточек — без модерации. Карточки упорядочены по популярности. Ведущий может скрыть неподходящие через панель идей.",
+    examples: ["Что улучшить в нашем продукте?", "Идеи для следующего спринта", "Ваш главный вывод после этой встречи", "Что бы вы изменили в команде?"],
+    settings: ["Нет таймера: идеи принимаются весь сеанс", "Одна идея от участника", "Ведущий может скрыть неподходящие", "AI-анализ в панели идей"],
+  },
 ];
 
 export default function PollTypesPage() {
   return (
-    <div className="max-w-2xl">
-      <Link href="/help" className="text-sm text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors md:hidden inline-block mb-6">
+    <div className="max-w-prose">
+      <Link href="/help" className="py-2 text-sm text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors md:hidden inline-block mb-6">
         ← Помощь
       </Link>
 
       <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Типы опросов</h1>
       <p className="text-slate-500 dark:text-slate-400 mb-10">
-        Семь форматов — под любой сценарий выступления.
+        Восемь форматов — под любой сценарий выступления.
       </p>
 
       <div className="space-y-6">
@@ -138,10 +146,10 @@ export default function PollTypesPage() {
       </div>
 
       <div className="mt-12 pt-8 border-t border-slate-200 dark:border-slate-800 flex gap-6 text-sm">
-        <Link href="/help/getting-started" className="text-indigo-600 dark:text-indigo-400 hover:underline">
+        <Link href="/help/getting-started" className="py-2 text-indigo-600 dark:text-indigo-400 hover:underline">
           ← Быстрый старт
         </Link>
-        <Link href="/help/display-screen" className="text-indigo-600 dark:text-indigo-400 hover:underline">
+        <Link href="/help/display-screen" className="py-2 text-indigo-600 dark:text-indigo-400 hover:underline">
           Дисплейный экран →
         </Link>
       </div>

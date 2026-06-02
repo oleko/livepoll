@@ -4,8 +4,8 @@ export const metadata = { title: "Дисплейный экран" };
 
 export default function DisplayScreenPage() {
   return (
-    <div className="max-w-2xl">
-      <Link href="/help" className="text-sm text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors md:hidden inline-block mb-6">
+    <div className="max-w-prose">
+      <Link href="/help" className="py-2 text-sm text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors md:hidden inline-block mb-6">
         ← Помощь
       </Link>
 
@@ -128,10 +128,10 @@ export default function DisplayScreenPage() {
       </div>
 
       <div className="mt-12 pt-8 border-t border-slate-200 dark:border-slate-800 flex gap-6 text-sm">
-        <Link href="/help/poll-types" className="text-indigo-600 dark:text-indigo-400 hover:underline">
+        <Link href="/help/poll-types" className="py-2 text-indigo-600 dark:text-indigo-400 hover:underline">
           ← Типы опросов
         </Link>
-        <Link href="/help/qa-and-ai" className="text-indigo-600 dark:text-indigo-400 hover:underline">
+        <Link href="/help/qa-and-ai" className="py-2 text-indigo-600 dark:text-indigo-400 hover:underline">
           Q&A и AI-анализ →
         </Link>
       </div>
