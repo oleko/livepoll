@@ -13,7 +13,7 @@ export default async function JoinPage({
 
   const { data: session } = await admin
     .from("sessions")
-    .select("id, title, status, organization_id")
+    .select("id, title, status, organization_id, active_slide_id")
     .eq("join_code", code.toUpperCase())
     .single();
 
@@ -46,6 +46,17 @@ export default async function JoinPage({
     .single();
   const branding = (org?.settings as BrandingSettings | null) ?? {};
   const whiteLabel = !!branding.white_label;
+
+  const sessionExt = session as unknown as { id: string; title: string; status: string; organization_id: string; active_slide_id?: string };
+  let initialActiveSlide: { type: string; content: Record<string, unknown> } | null = null;
+  if (sessionExt.active_slide_id) {
+    const { data: activeSlide } = await admin
+      .from("session_slides")
+      .select("id, type, content")
+      .eq("id", sessionExt.active_slide_id)
+      .single();
+    if (activeSlide) initialActiveSlide = activeSlide as { type: string; content: Record<string, unknown> };
+  }
 
   const { data: activePoll } = await admin
     .from("polls")
@@ -86,6 +97,7 @@ export default async function JoinPage({
           initialPoll={activePoll}
           sessionStatus={session.status}
           initialQuestions={initialQuestions}
+          initialActiveSlide={initialActiveSlide}
         />
       </div>
 

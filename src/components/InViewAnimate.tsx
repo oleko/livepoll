@@ -2,19 +2,23 @@
 
 import { useEffect, useRef, useState } from "react";
 
-export function InViewSection({
+export function InViewAnimate({
   children,
   className = "",
-  stagger = false,
+  enterClass,
+  delay = 0,
 }: {
   children: React.ReactNode;
   className?: string;
-  stagger?: boolean;
+  enterClass: string;
+  delay?: number;
 }) {
-  const ref = useRef<HTMLElement>(null);
+  const ref = useRef<HTMLDivElement>(null);
   const [entered, setEntered] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     const el = ref.current;
     if (!el) return;
     const observer = new IntersectionObserver(
@@ -30,12 +34,14 @@ export function InViewSection({
     return () => observer.disconnect();
   }, []);
 
+  // SSR: no class (visible to crawlers). After hydration: opacity-0 until in viewport.
   return (
-    <section
+    <div
       ref={ref}
-      className={`${entered ? (stagger ? "stagger-active" : "animate-section-rise") : ""} ${className}`}
+      className={`${entered ? enterClass : mounted ? "opacity-0" : ""} ${className}`}
+      style={entered && delay > 0 ? { animationDelay: `${delay}ms` } : undefined}
     >
       {children}
-    </section>
+    </div>
   );
 }

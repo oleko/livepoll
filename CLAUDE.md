@@ -25,7 +25,7 @@ No test runner is configured.
 
 ## Architecture
 
-**LivePoll** is a Next.js 16 / React 19 App Router + Supabase SaaS polling platform for live events. Current version: **0.9**.
+**LivePoll** is a Next.js 16 / React 19 App Router + Supabase SaaS polling platform for live events. Current version: **1.0**.
 
 ### Routing structure
 
@@ -33,7 +33,8 @@ No test runner is configured.
 /                              — Landing page
 /auth/login|register           — Auth pages (email + Yandex OAuth)
 /onboarding                    — Obsolete (org auto-created on signup)
-/org/[slug]                    — Org dashboard (sessions list with poll/participant counts)
+/org/[slug]                    — Org dashboard (sessions
+ list with poll/participant counts)
 /org/[slug]/sessions/new       — Create session (with templates)
 /org/[slug]/sessions/[id]      — Session admin (polls + slides lineup, Q&A, share, AI summary)
 /org/[slug]/members            — Team management (invite/remove hosts)
@@ -44,7 +45,7 @@ No test runner is configured.
 /admin/users                   — Platform admin: users list, roles, create user
 /admin/feedback                — Platform admin: feedback inbox
 /help                          — Help center (8 articles)
-/help/changelog                — Version history (v0.1–v0.9)
+/help/changelog                — Version history (v0.1–v1.0)
 /docs/privacy                  — Privacy policy
 ```
 
@@ -171,6 +172,17 @@ Applied on display screen and join screen when white label is enabled.
 ### Organization auto-creation
 
 On signup/login/OAuth, `ensureUserOrg(userId, displayName)` in `organizations.ts` creates «Мои мероприятия» org if none exists. No manual org creation step.
+
+### Landing page design system
+
+`src/components/LandingPage.tsx` — marketing landing page. Key components:
+
+- `InViewAnimate` (`src/components/InViewAnimate.tsx`) — scroll-triggered animation wrapper. SSR-safe: `opacity-0` applied only after client hydration via `mounted` state. Accepts `enterClass` (e.g. `animate-from-left`) and optional `delay` ms.
+- `InViewSection` (`src/components/InViewSection.tsx`) — wraps `<section>`; adds `stagger-active` or `animate-section-rise` on intersection.
+- `src/app/globals.css` — animation keyframes: `fade-in`, `section-rise`, `item-rise`, `from-left`, `from-right`, `scale-in`. Custom easing vars: `--ease-out`, `--ease-in-out`, `--ease-spring`. All animations respect `prefers-reduced-motion`.
+- `src/app/icon.tsx` — favicon via Next.js `ImageResponse`: indigo rounded square + 3 bar-chart bars.
+
+Landing page layout (top to bottom): Nav → Hero (dark, split) → Three Pillars (asymmetric 2-col) → AI block → Slides → Quiz → Poll types → How it works → Pricing → CTA → Footer.
 
 ### Database migrations
 

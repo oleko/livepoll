@@ -94,6 +94,8 @@ export function DisplayScreen({
   const [quizReveal, setQuizReveal] = useState<QuizReveal | null>(null);
   const [announcement, setAnnouncement] = useState<AnnouncementData | null>(null);
   const [activeSlide, setActiveSlide] = useState<ActiveSlide>(initialActiveSlide ?? null);
+  const [revealedSlideId, setRevealedSlideId] = useState<string | null>(null);
+  const [buzzers, setBuzzers] = useState<{ token: string; ts: number }[]>([]);
   const [announcementTimeLeft, setAnnouncementTimeLeft] = useState<number | null>(null);
   const [votes, setVotes] = useState<{ value: string; ts?: string }[]>(initialVotes);
   const [questions, setQuestions] = useState<QuestionRow[]>(initialQuestions);
@@ -183,12 +185,34 @@ export function DisplayScreen({
       .channel(`session-slides:${session.id}`)
       .on("broadcast", { event: "slide_change" }, ({ payload }) => {
         const data = payload as { type: "show" | "hide"; slide?: ActiveSlide };
-        if (data.type === "show" && data.slide) setActiveSlide(data.slide);
-        else if (data.type === "hide") setActiveSlide(null);
+        if (data.type === "show" && data.slide) {
+          setActiveSlide(data.slide);
+          setRevealedSlideId(null);
+          setBuzzers([]);
+        } else if (data.type === "hide") {
+          setActiveSlide(null);
+          setRevealedSlideId(null);
+          setBuzzers([]);
+        }
+      })
+      .on("broadcast", { event: "slide_reveal" }, ({ payload }) => {
+        const { slide_id } = payload as { slide_id: string };
+        setRevealedSlideId(slide_id);
       })
       .subscribe();
 
-    return () => { sb.removeChannel(channel); sb.removeChannel(slidesChannel); };
+    const buzzChannel = sb
+      .channel(`session-buzz:${session.id}`)
+      .on("broadcast", { event: "buzz" }, ({ payload }) => {
+        const { token, ts } = payload as { token: string; ts: number };
+        setBuzzers((prev) => {
+          if (prev.some((b) => b.token === token)) return prev;
+          return [...prev, { token, ts }].sort((a, b) => a.ts - b.ts);
+        });
+      })
+      .subscribe();
+
+    return () => { sb.removeChannel(channel); sb.removeChannel(slidesChannel); sb.removeChannel(buzzChannel); };
   }, [session.id]);
 
   // Clean up expired pulse events every second
@@ -319,7 +343,11 @@ export function DisplayScreen({
       {/* Slide — full screen, below announcement */}
       {activeSlide && !announcement && (
         <div className="absolute inset-0 z-20">
-          <SlideView slide={activeSlide} />
+          <SlideView
+            slide={activeSlide}
+            revealed={revealedSlideId === activeSlide.id}
+            buzzers={buzzers}
+          />
         </div>
       )}
 

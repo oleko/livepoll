@@ -18,6 +18,7 @@ const SLIDE_TYPE_META: Record<SlideType, { label: string; icon: string }> = {
   final:      { label: "Финал",      icon: "🎉" },
   spin_wheel:   { label: "Колесо",      icon: "🎡" },
   announcement: { label: "Объявление",  icon: "📢" },
+  reveal:       { label: "Вопрос-ответ", icon: "❓" },
 };
 
 function slidePreview(slide: SlideRow): string {
@@ -28,6 +29,7 @@ function slidePreview(slide: SlideRow): string {
     case "schedule": return "Расписание";
     case "quote":    return c.text ? `"${c.text.slice(0, 50)}${c.text.length > 50 ? "…" : ""}"` : "Цитата";
     case "final":    return c.title || "Финальный экран";
+    default:         return "Слайд";
   }
 }
 
@@ -266,11 +268,13 @@ const TYPE_LABEL: Record<Poll["type"], string> = {
   word_cloud:      "Облако слов",
   emoji_cloud:     "Облако эмодзи",
   planning_poker:  "Planning Poker",
+  idea_wall:       "Стена идей",
 };
 
 const TYPE_ICON: Record<Poll["type"], string> = {
   multiple_choice: "📊", temperature: "🌡️", qa: "❓",
   like_dislike: "👍", word_cloud: "☁️", emoji_cloud: "😊", planning_poker: "🃏",
+  idea_wall: "💡",
 };
 
 const EDIT_WINDOW_MS = 10 * 60 * 1000;

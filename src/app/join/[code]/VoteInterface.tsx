@@ -43,12 +43,14 @@ export function VoteInterface({
   initialPoll,
   sessionStatus,
   initialQuestions = [],
+  initialActiveSlide = null,
 }: {
   sessionId: string;
   joinCode: string;
   initialPoll: PollData;
   sessionStatus: string;
   initialQuestions?: QuestionItem[];
+  initialActiveSlide?: { type: string; content: Record<string, unknown> } | null;
 }) {
   const [poll, setPoll] = useState<PollData>(initialPoll);
   const [voted, setVoted] = useState(false);
@@ -63,8 +65,11 @@ export function VoteInterface({
   const [sessionEnded, setSessionEnded] = useState(false);
   const [farewell, setFarewell] = useState<string | null>(null);
   const [pulseFlash, setPulseFlash] = useState(false);
+  const [activeSlide, setActiveSlide] = useState<{ type: string; content: Record<string, unknown> } | null>(initialActiveSlide);
+  const [buzzed, setBuzzed] = useState(false);
   const supabase = useRef(createClient());
   const channelRef = useRef<ReturnType<typeof supabase.current.channel> | null>(null);
+  const buzzChannelRef = useRef<ReturnType<typeof supabase.current.channel> | null>(null);
 
   function sendPulse() {
     channelRef.current?.send({ type: "broadcast", event: "pulse", payload: {} });
@@ -112,6 +117,37 @@ export function VoteInterface({
   }, [sessionId]);
 
   useEffect(() => {
+    const channel = supabase.current
+      .channel(`session-slides:${sessionId}`)
+      .on("broadcast", { event: "slide_change" }, ({ payload }) => {
+        const data = payload as { type: "show" | "hide"; slide?: { type: string; content: Record<string, unknown> } };
+        if (data.type === "show" && data.slide) {
+          setActiveSlide(data.slide);
+          setBuzzed(false);
+        } else if (data.type === "hide") {
+          setActiveSlide(null);
+          setBuzzed(false);
+        }
+      })
+      .subscribe();
+    return () => { supabase.current.removeChannel(channel); };
+  }, [sessionId]);
+
+  useEffect(() => {
+    const isBuzz = activeSlide?.type === "reveal" && !!(activeSlide.content as { buzz?: boolean }).buzz;
+    if (!isBuzz) {
+      if (buzzChannelRef.current) {
+        supabase.current.removeChannel(buzzChannelRef.current);
+        buzzChannelRef.current = null;
+      }
+      return;
+    }
+    const ch = supabase.current.channel(`session-buzz:${sessionId}`).subscribe();
+    buzzChannelRef.current = ch;
+    return () => { supabase.current.removeChannel(ch); buzzChannelRef.current = null; };
+  }, [activeSlide, sessionId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
     if (!announcement) { setAnnouncementTimeLeft(null); return; }
     if (announcement.duration <= 0) { setAnnouncementTimeLeft(null); return; }
     const update = () => {
@@ -124,6 +160,17 @@ export function VoteInterface({
     const id = setInterval(update, 500);
     return () => clearInterval(id);
   }, [announcement]);
+
+  const isBuzzSlide = !sessionEnded &&
+    activeSlide?.type === "reveal" &&
+    !!(activeSlide.content as { buzz?: boolean }).buzz;
+
+  function sendBuzz() {
+    if (buzzed) return;
+    const voterToken = getVoterToken();
+    buzzChannelRef.current?.send({ type: "broadcast", event: "buzz", payload: { token: voterToken, ts: Date.now() } });
+    setBuzzed(true);
+  }
 
   async function handleVote(value: string) {
     const voterToken = getVoterToken();
@@ -214,6 +261,34 @@ export function VoteInterface({
         <div className="text-5xl mb-5">🕐</div>
         <p className="text-2xl font-semibold text-slate-900 dark:text-white mb-2">Мероприятие ещё не началось</p>
         <p className="text-slate-500">Ожидайте начала...</p>
+      </div>
+    );
+  } else if (isBuzzSlide) {
+    const slideContent = activeSlide!.content as { question?: string };
+    content = (
+      <div className="text-center px-6 max-w-sm w-full flex flex-col items-center">
+        {slideContent.question && (
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-3 leading-snug">
+            {slideContent.question}
+          </h2>
+        )}
+        <p className="text-sm text-slate-500 dark:text-slate-400 mb-10">
+          {buzzed ? "Ожидай подтверждения ведущего" : "Знаешь ответ? Нажми быстрее всех!"}
+        </p>
+        {buzzed ? (
+          <div className="flex flex-col items-center gap-3">
+            <span className="text-7xl animate-bounce">🔥</span>
+            <p className="text-xl font-bold text-orange-500 dark:text-orange-400">Ты нажал!</p>
+          </div>
+        ) : (
+          <button
+            onClick={sendBuzz}
+            className="w-44 h-44 rounded-full bg-indigo-600 hover:bg-indigo-500 active:scale-95 transition-transform text-white flex flex-col items-center justify-center gap-3 shadow-xl shadow-indigo-500/30"
+          >
+            <span className="text-5xl">⚡</span>
+            <span className="text-xl font-bold">Я знаю!</span>
+          </button>
+        )}
       </div>
     );
   } else if (!poll) {
@@ -486,7 +561,7 @@ export function VoteInterface({
       {showPulseButton && (
         <button
           onClick={sendPulse}
-          className={`fixed bottom-6 left-1/2 -translate-x-1/2 text-5xl select-none transition-transform duration-150 ${pulseFlash ? "scale-150" : "scale-100"}`}
+          className={`fixed bottom-14 left-1/2 -translate-x-1/2 text-5xl select-none transition-transform duration-150 ${pulseFlash ? "scale-150" : "scale-100"}`}
           title="Пульс конференции"
         >
           🔥

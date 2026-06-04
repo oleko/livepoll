@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getAuthUser, assertSessionMember } from "@/lib/actions/guards";
 
-export type SlideType = "splash" | "speaker" | "schedule" | "quote" | "final" | "spin_wheel" | "announcement";
+export type SlideType = "splash" | "speaker" | "schedule" | "quote" | "final" | "spin_wheel" | "announcement" | "reveal";
 
 export type SlideContent =
   | { type: "splash";       title: string; subtitle?: string; date?: string; location?: string }
@@ -12,7 +12,8 @@ export type SlideContent =
   | { type: "quote";        text: string; author?: string }
   | { type: "final";        title: string; subtitle?: string; url?: string }
   | { type: "spin_wheel";   title?: string; options: string[] }
-  | { type: "announcement"; text: string; duration?: number };
+  | { type: "announcement"; text: string; duration?: number }
+  | { type: "reveal"; question: string; answer: string; buzz?: boolean };
 
 export type SlideRow = {
   id: string;
@@ -184,6 +185,21 @@ export async function reorderSlides(
   );
 
   revalidatePath(`/org/${orgSlug}/sessions/${sessionId}`);
+}
+
+export async function revealAnswer(
+  slideId: string,
+  sessionId: string,
+  orgSlug: string
+): Promise<void> {
+  const { user, admin } = await getAuthUser();
+  await assertSessionMember(user.id, sessionId, admin);
+
+  await broadcastRaw([{
+    topic: `session-slides:${sessionId}`,
+    event: "slide_reveal",
+    payload: { slide_id: slideId },
+  }]);
 }
 
 export async function hideSlide(

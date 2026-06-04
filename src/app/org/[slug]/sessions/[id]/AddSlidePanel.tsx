@@ -13,6 +13,7 @@ const TYPE_META: Record<SlideType, { label: string; icon: string }> = {
   final:        { label: "Финал",       icon: "🎉" },
   spin_wheel:   { label: "Колесо",      icon: "🎡" },
   announcement: { label: "Объявление",  icon: "📢" },
+  reveal:       { label: "Вопрос-ответ", icon: "❓" },
 };
 
 type ScheduleItem = { time: string; title: string; active?: boolean };
@@ -151,6 +152,36 @@ function SpinWheelForm({ v, set }: { v: Record<string, unknown>; set: (v: Record
   );
 }
 
+function RevealForm({ v, set }: { v: Record<string, unknown>; set: (v: Record<string, unknown>) => void }) {
+  return (
+    <div className="space-y-2">
+      <textarea
+        value={(v.question as string) ?? ""}
+        onChange={e => set({ ...v, question: e.target.value })}
+        rows={2}
+        placeholder="Вопрос для аудитории *"
+        className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+      />
+      <textarea
+        value={(v.answer as string) ?? ""}
+        onChange={e => set({ ...v, answer: e.target.value })}
+        rows={2}
+        placeholder="Правильный ответ"
+        className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+      />
+      <label className="flex items-center gap-2 cursor-pointer select-none">
+        <input
+          type="checkbox"
+          checked={!!v.buzz}
+          onChange={e => set({ ...v, buzz: e.target.checked })}
+          className="rounded border-slate-300 dark:border-slate-600 text-purple-600 focus:ring-purple-500"
+        />
+        <span className="text-xs text-slate-600 dark:text-slate-400">Кнопка «Я знаю!» для участников</span>
+      </label>
+    </div>
+  );
+}
+
 function FinalForm({ v, set }: { v: Record<string, string>; set: (v: Record<string, string>) => void }) {
   const f = (k: string): React.InputHTMLAttributes<HTMLInputElement> => ({
     value: v[k] ?? "",
@@ -212,6 +243,7 @@ export function AddSlidePanel({ sessionId, orgSlug, bare = false }: { sessionId:
       {type === "final"        && <FinalForm       v={content as Record<string, string>} set={setContent} />}
       {type === "spin_wheel"   && <SpinWheelForm   v={content} set={setContent} />}
       {type === "announcement" && <AnnouncementForm v={content} set={setContent} />}
+      {type === "reveal"       && <RevealForm       v={content} set={setContent} />}
 
       {error && <p className="text-xs text-red-500">{error}</p>}
 

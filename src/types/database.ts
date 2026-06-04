@@ -37,7 +37,7 @@ export type Database = {
           id?: string
           name: string
           slug: string
-          plan?: "free" | "pro" | "team" | "unlimited"
+          plan?: "free" | "starter" | "pro" | "team" | "unlimited"
           plan_expires_at?: string | null
           settings?: Record<string, unknown> | null
           created_at?: string
@@ -45,7 +45,7 @@ export type Database = {
         Update: {
           name?: string
           slug?: string
-          plan?: "free" | "pro" | "team" | "unlimited"
+          plan?: "free" | "starter" | "pro" | "team" | "unlimited"
           plan_expires_at?: string | null
           settings?: Record<string, unknown> | null
         }
@@ -292,7 +292,7 @@ export type Database = {
         Row: {
           id: string
           session_id: string
-          type: "splash" | "speaker" | "schedule" | "quote" | "final" | "spin_wheel" | "announcement"
+          type: "splash" | "speaker" | "schedule" | "quote" | "final" | "spin_wheel" | "announcement" | "reveal"
           content: Record<string, unknown>
           sort_order: number
           created_at: string
@@ -300,7 +300,7 @@ export type Database = {
         Insert: {
           id?: string
           session_id: string
-          type: "splash" | "speaker" | "schedule" | "quote" | "final" | "spin_wheel" | "announcement"
+          type: "splash" | "speaker" | "schedule" | "quote" | "final" | "spin_wheel" | "announcement" | "reveal"
           content?: Record<string, unknown>
           sort_order?: number
           created_at?: string
@@ -316,6 +316,45 @@ export type Database = {
             columns: ["session_id"]
             isOneToOne: false
             referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      orders: {
+        Row: {
+          id: string
+          org_id: string
+          plan: string
+          amount_kopecks: number
+          status: string
+          payment_id: string | null
+          payment_url: string | null
+          created_at: string
+          paid_at: string | null
+        }
+        Insert: {
+          id?: string
+          org_id: string
+          plan: string
+          amount_kopecks: number
+          status?: string
+          payment_id?: string | null
+          payment_url?: string | null
+          created_at?: string
+          paid_at?: string | null
+        }
+        Update: {
+          status?: string
+          payment_id?: string | null
+          payment_url?: string | null
+          paid_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           }
         ]

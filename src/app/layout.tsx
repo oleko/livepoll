@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Rubik } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { CookieBanner } from "@/components/CookieBanner";
 
-const inter = Inter({ subsets: ["latin", "cyrillic"] });
+const rubik = Rubik({ subsets: ["latin", "cyrillic"], variable: "--font-rubik" });
 
 export const metadata: Metadata = {
   title: "LivePoll AI",
@@ -28,7 +28,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className={`${inter.className} min-h-full flex flex-col antialiased bg-white dark:bg-slate-950`}>
+      <body className={`${rubik.className} min-h-full flex flex-col antialiased bg-white dark:bg-zinc-950`}>
         <ThemeProvider>{children}</ThemeProvider>
         <CookieBanner />
       </body>

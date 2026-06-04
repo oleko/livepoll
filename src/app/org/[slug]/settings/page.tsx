@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { getLimits, formatLimit, PLAN_DISPLAY_NAME } from "@/lib/limits";
 import { BrandingForm } from "./BrandingForm";
 import type { BrandingSettings } from "@/lib/actions/branding";
@@ -69,9 +70,19 @@ export default async function SettingsPage({
         <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-semibold text-slate-900 dark:text-white">Тариф</h2>
-            <span className="rounded-full bg-indigo-600/20 px-3 py-1 text-xs font-semibold text-indigo-600 dark:text-indigo-400 uppercase">
-              {PLAN_DISPLAY_NAME[org.plan]}
-            </span>
+            <div className="flex items-center gap-3">
+              <span className="rounded-full bg-indigo-600/20 px-3 py-1 text-xs font-semibold text-indigo-600 dark:text-indigo-400 uppercase">
+                {PLAN_DISPLAY_NAME[org.plan]}
+              </span>
+              {org.plan !== "unlimited" && (
+                <Link
+                  href={`/org/${slug}/upgrade`}
+                  className="text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:underline"
+                >
+                  Сменить тариф →
+                </Link>
+              )}
+            </div>
           </div>
           <div className="flex flex-col gap-3 text-sm">
             <div className="flex justify-between">
@@ -87,10 +98,18 @@ export default async function SettingsPage({
               <span className="text-slate-600 dark:text-slate-300">{formatLimit(limits.members)}</span>
             </div>
           </div>
-          {org.plan === "free" && (
-            <div className="mt-4 rounded-lg bg-indigo-600/10 border border-indigo-600/20 px-4 py-3 text-sm text-indigo-600 dark:text-indigo-400">
-              Для снятия ограничений перейдите на Pro тариф
-            </div>
+          {org.plan !== "unlimited" && (
+            <Link
+              href={`/org/${slug}/upgrade`}
+              className="mt-4 flex items-center justify-between rounded-lg bg-indigo-600/10 border border-indigo-600/20 px-4 py-3 text-sm text-indigo-600 dark:text-indigo-400 hover:bg-indigo-600/15 transition-colors"
+            >
+              <span>
+                {org.plan === "free"
+                  ? "Снять ограничения — перейти на платный тариф"
+                  : "Сменить или продлить тариф"}
+              </span>
+              <span>→</span>
+            </Link>
           )}
         </div>
 

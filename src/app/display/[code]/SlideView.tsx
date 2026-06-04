@@ -252,17 +252,66 @@ function SpinWheelSlide({ c }: { c: Record<string, unknown> }) {
   );
 }
 
-export function SlideView({ slide }: { slide: SlideData }) {
+type BuzzerEntry = { token: string; ts: number };
+
+function RevealSlide({ c, revealed, buzzers }: {
+  c: Record<string, unknown>;
+  revealed: boolean;
+  buzzers: BuzzerEntry[];
+}) {
+  const question = (c.question as string) ?? "";
+  const answer = (c.answer as string) ?? "";
+  const buzz = c.buzz as boolean | undefined;
+
+  return (
+    <div className="flex flex-col items-center justify-center h-full px-16 gap-10 text-center">
+      <p className="font-bold text-white leading-tight max-w-4xl" style={{ fontSize: "clamp(2.5rem, 7vh, 5rem)" }}>
+        {question}
+      </p>
+
+      <div className={`transition-all duration-700 ${revealed ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6 pointer-events-none"}`}>
+        <div className="rounded-2xl border border-emerald-500/40 bg-emerald-500/10 px-12 py-6">
+          <p className="text-emerald-400 text-sm font-semibold uppercase tracking-wider mb-3">Ответ</p>
+          <p className="text-white font-bold leading-snug" style={{ fontSize: "clamp(1.75rem, 5vh, 3.5rem)" }}>
+            {answer}
+          </p>
+        </div>
+      </div>
+
+      {buzz && buzzers.length > 0 && (
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          {buzzers.slice(0, 5).map((b, i) => (
+            <div key={b.token} className={`flex items-center gap-2 rounded-xl px-4 py-2 border ${
+              i === 0
+                ? "bg-amber-500/20 border-amber-500/40 text-amber-300"
+                : "bg-white/5 border-white/10 text-slate-400"
+            }`}>
+              {i === 0 && <span>⚡</span>}
+              <span className="text-sm font-mono">{b.token.slice(0, 6).toUpperCase()}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function SlideView({ slide, revealed = false, buzzers = [] }: {
+  slide: SlideData;
+  revealed?: boolean;
+  buzzers?: BuzzerEntry[];
+}) {
   const c = slide.content as Record<string, unknown>;
   return (
     <div className="w-full h-full bg-slate-950">
-      {slide.type === "splash"     && <SplashSlide     c={c as Record<string, string>} />}
-      {slide.type === "speaker"    && <SpeakerSlide    c={c as Record<string, string>} />}
-      {slide.type === "schedule"   && <ScheduleSlide   c={c as { items?: ScheduleItem[] }} />}
-      {slide.type === "quote"      && <QuoteSlide      c={c as Record<string, string>} />}
-      {slide.type === "final"      && <FinalSlide      c={c as Record<string, string>} />}
+      {slide.type === "splash"       && <SplashSlide       c={c as Record<string, string>} />}
+      {slide.type === "speaker"      && <SpeakerSlide      c={c as Record<string, string>} />}
+      {slide.type === "schedule"     && <ScheduleSlide     c={c as { items?: ScheduleItem[] }} />}
+      {slide.type === "quote"        && <QuoteSlide        c={c as Record<string, string>} />}
+      {slide.type === "final"        && <FinalSlide        c={c as Record<string, string>} />}
       {slide.type === "spin_wheel"   && <SpinWheelSlide    c={c} />}
       {slide.type === "announcement" && <AnnouncementSlide c={c} />}
+      {slide.type === "reveal"       && <RevealSlide       c={c} revealed={revealed} buzzers={buzzers} />}
     </div>
   );
 }

@@ -51,6 +51,7 @@ export default async function AdminOrgsPage() {
 
   const PLAN_COLOR: Record<OrgPlan, string> = {
     free:      "text-slate-500 bg-slate-100 dark:text-slate-400 dark:bg-slate-800",
+    starter:   "text-sky-600 bg-sky-50 dark:text-sky-400 dark:bg-sky-950/40",
     pro:       "text-indigo-600 bg-indigo-50 dark:text-indigo-400 dark:bg-indigo-950/40",
     team:      "text-amber-600 bg-amber-50 dark:text-amber-400 dark:bg-amber-950/30",
     unlimited: "text-violet-600 bg-violet-50 dark:text-violet-400 dark:bg-violet-950/40",

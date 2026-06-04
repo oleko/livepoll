@@ -1,15 +1,18 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { createSlide, updateSlide, deleteSlide, showSlide, hideSlide } from "@/lib/actions/slides";
+import { useState, useEffect, useTransition } from "react";
+import { createSlide, updateSlide, deleteSlide, showSlide, hideSlide, revealAnswer } from "@/lib/actions/slides";
 import type { SlideType, SlideRow } from "@/lib/actions/slides";
 
 const TYPE_META: Record<SlideType, { label: string; icon: string; description: string }> = {
-  splash:   { label: "Заставка",    icon: "🎯", description: "Название мероприятия и подзаголовок" },
-  speaker:  { label: "Спикер",      icon: "🎤", description: "Карточка докладчика" },
-  schedule: { label: "Расписание",  icon: "🗓", description: "Порядок выступлений" },
-  quote:    { label: "Цитата",      icon: "💬", description: "Крупная цитата или тезис" },
-  final:    { label: "Финал",       icon: "🎉", description: "Завершающий экран с контактами" },
+  splash:       { label: "Заставка",        icon: "🎯", description: "Название мероприятия и подзаголовок" },
+  speaker:      { label: "Спикер",          icon: "🎤", description: "Карточка докладчика" },
+  schedule:     { label: "Расписание",      icon: "🗓", description: "Порядок выступлений" },
+  quote:        { label: "Цитата",          icon: "💬", description: "Крупная цитата или тезис" },
+  final:        { label: "Финал",           icon: "🎉", description: "Завершающий экран с контактами" },
+  spin_wheel:   { label: "Колесо фортуны",  icon: "🎡", description: "Розыгрыш или случайный выбор" },
+  announcement: { label: "Объявление",      icon: "📣", description: "Текст с таймером обратного отсчёта" },
+  reveal:       { label: "Вопрос-ответ",    icon: "❓", description: "Вопрос для зала с раскрываемым ответом" },
 };
 
 function slideTitle(slide: SlideRow): string {
@@ -19,7 +22,11 @@ function slideTitle(slide: SlideRow): string {
     case "speaker":  return c.name  || "Спикер";
     case "schedule": return "Расписание";
     case "quote":    return c.text ? `"${c.text.slice(0, 40)}${c.text.length > 40 ? "…" : ""}"` : "Цитата";
-    case "final":    return c.title || "Финальный экран";
+    case "final":       return c.title || "Финальный экран";
+    case "spin_wheel":  return c.title || "Колесо фортуны";
+    case "announcement": return c.text ? c.text.slice(0, 40) : "Объявление";
+    case "reveal":       return c.question ? (c.question as string).slice(0, 40) : "Вопрос-ответ";
+    default:            return "Слайд";
   }
 }
 
@@ -130,6 +137,36 @@ function FinalForm({ value, onChange }: { value: Record<string, string>; onChang
   );
 }
 
+function RevealForm({ value, onChange }: { value: Record<string, unknown>; onChange: (v: Record<string, unknown>) => void }) {
+  return (
+    <div className="space-y-2">
+      <textarea
+        value={(value.question as string) ?? ""}
+        onChange={e => onChange({ ...value, question: e.target.value })}
+        rows={2}
+        placeholder="Вопрос для аудитории *"
+        className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 py-1.5 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-none"
+      />
+      <textarea
+        value={(value.answer as string) ?? ""}
+        onChange={e => onChange({ ...value, answer: e.target.value })}
+        rows={2}
+        placeholder="Правильный ответ"
+        className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 py-1.5 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-none"
+      />
+      <label className="flex items-center gap-2 cursor-pointer select-none">
+        <input
+          type="checkbox"
+          checked={!!value.buzz}
+          onChange={e => onChange({ ...value, buzz: e.target.checked })}
+          className="rounded border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500"
+        />
+        <span className="text-xs text-slate-600 dark:text-slate-400">Кнопка «Я знаю!» для участников</span>
+      </label>
+    </div>
+  );
+}
+
 function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
@@ -151,6 +188,7 @@ function SlideForm({ type, content, onChange }: {
     case "schedule": return <ScheduleForm value={content as { items?: ScheduleItem[] }} onChange={onChange as (v: { items: ScheduleItem[] }) => void} />;
     case "quote":    return <QuoteForm {...props} />;
     case "final":    return <FinalForm {...props} />;
+    case "reveal":   return <RevealForm value={content} onChange={onChange} />;
   }
 }
 
@@ -168,7 +206,10 @@ function SlideCard({
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [revealed, setRevealed] = useState(false);
   const meta = TYPE_META[slide.type];
+
+  useEffect(() => { setRevealed(false); }, [isActive]);
 
   async function save() {
     setError(null);
@@ -182,6 +223,11 @@ function SlideCard({
     } finally {
       setSaving(false);
     }
+  }
+
+  async function handleReveal() {
+    setRevealed(true);
+    await revealAnswer(slide.id, sessionId, orgSlug);
   }
 
   async function del() {
@@ -201,24 +247,33 @@ function SlideCard({
         </div>
         {isActive && <span className="text-[11px] font-semibold text-indigo-500 dark:text-indigo-400 shrink-0">На экране</span>}
         <div className="flex items-center gap-1 shrink-0">
+          {isActive && slide.type === "reveal" && (
+            revealed ? (
+              <span className="h-7 flex items-center px-1 text-xs font-medium text-emerald-500">✓ Ответ</span>
+            ) : (
+              <button type="button" onClick={handleReveal}
+                className="h-7 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 text-xs font-medium transition-colors"
+              >Ответ</button>
+            )
+          )}
           {isActive ? (
             <button type="button" onClick={onHide}
-              className="rounded-md border border-slate-200 dark:border-slate-700 px-2 py-1 text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+              className="h-7 rounded-md border border-slate-200 dark:border-slate-700 px-2.5 text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
             >Убрать</button>
           ) : (
             <button type="button" onClick={onShow}
-              className="rounded-md bg-indigo-600 hover:bg-indigo-500 text-white px-2 py-1 text-xs font-medium transition-colors"
+              className="h-7 rounded-md bg-indigo-600 hover:bg-indigo-500 text-white px-2.5 text-xs font-medium transition-colors"
             >Показать</button>
           )}
           <button type="button" onClick={() => setExpanded(v => !v)}
-            className="rounded-md border border-slate-200 dark:border-slate-700 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+            className="h-7 w-7 rounded-md border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
               <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
             </svg>
           </button>
           <button type="button" onClick={del} disabled={deleting}
-            className="rounded-md border border-slate-200 dark:border-slate-700 p-1 text-slate-300 dark:text-slate-600 hover:text-red-400 dark:hover:text-red-500 transition-colors disabled:opacity-50"
+            className="h-7 w-7 rounded-md border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-300 dark:text-slate-600 hover:text-red-400 dark:hover:text-red-500 transition-colors disabled:opacity-50"
           >{deleting ? "…" : "✕"}</button>
         </div>
       </div>
