@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { PLAN_DISPLAY_NAME } from "@/lib/limits";
 import { PLAN_PRICES } from "@/lib/billing-config";
-import { UpgradeButton } from "./UpgradeButton";
+// import { UpgradeButton } from "./UpgradeButton"; // включить после запуска ЮKassa
 import type { OrgPlan } from "@/types/database";
 
 const PLAN_ORDER: OrgPlan[] = ["free", "starter", "pro", "team", "unlimited"];
@@ -152,17 +152,12 @@ export default async function UpgradePage({
                   Понижение тарифа — напишите нам
                 </div>
               ) : price ? (
-                <UpgradeButton
-                  orgId={org.id}
-                  plan={p.key}
-                  orgSlug={slug}
-                  label={`Перейти на ${PLAN_DISPLAY_NAME[p.key]}`}
-                  className={`w-full rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors active:scale-[0.97] ${
-                    p.highlight
-                      ? "bg-indigo-600 hover:bg-indigo-500 text-white"
-                      : "bg-slate-900 dark:bg-white hover:bg-slate-700 dark:hover:bg-slate-100 text-white dark:text-slate-900"
-                  }`}
-                />
+                <a
+                  href="mailto:oleko85@gmail.com?subject=LivePoll%20AI%20%E2%80%94%20Тариф%20тестирование"
+                  className="w-full rounded-xl border border-indigo-300 dark:border-indigo-700 px-4 py-2.5 text-sm font-medium text-center text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition-colors block"
+                >
+                  Участвовать в тестировании →
+                </a>
               ) : (
                 <a
                   href="mailto:oleko85@gmail.com?subject=LivePoll%20AI%20%E2%80%94%20Безлимитный%20тариф"
@@ -177,8 +172,9 @@ export default async function UpgradePage({
       </div>
 
       <p className="mt-8 text-xs text-slate-400 dark:text-slate-600 text-center">
-        Оплата картой через ЮKassa. Тариф активируется автоматически после подтверждения платежа.
-        Вопросы — <a href="mailto:oleko85@gmail.com" className="hover:underline">oleko85@gmail.com</a>
+        Сервис в режиме тестирования. Напишите на{" "}
+        <a href="mailto:oleko85@gmail.com" className="hover:underline">oleko85@gmail.com</a>
+        {" "}— администратор подключит нужный тариф вручную.
       </p>
     </div>
   );
