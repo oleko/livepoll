@@ -656,6 +656,7 @@ export function PollList({
   const router = useRouter();
   const [draggingSlideId, setDraggingSlideId] = useState<string | null>(null);
   const [overSlideId, setOverSlideId]         = useState<string | null>(null);
+  const [overSlideSection, setOverSlideSection] = useState<string | "none" | null>(null);
   const [optimisticSlides, setOptimisticSlides] = useState(slides);
 
   // Sync when server data changes
@@ -683,6 +684,15 @@ export function PollList({
     setEditSaving(false);
     if ("error" in result) setEditError(result.error);
     else setEditingId(null);
+  }
+
+  function handleSlideToSection(slideId: string, sectionId: string | null) {
+    const slide = optimisticSlides.find(s => s.id === slideId);
+    setDraggingSlideId(null);
+    setOverSlideSection(null);
+    if (!slide || slide.section_id === sectionId) return;
+    setOptimisticSlides(prev => prev.map(s => s.id === slideId ? { ...s, section_id: sectionId } : s));
+    moveSlideToSection(slideId, sessionId, sectionId, orgSlug).then(() => router.refresh());
   }
 
   function handleDrop(targetSectionId: string | null) {
@@ -821,9 +831,24 @@ export function PollList({
       {sorted.map(section => {
         const sectionPolls = optimisticPolls.filter(p => p.section_id === section.id);
         const sectionSlides = optimisticSlides.filter(s => s.section_id === section.id).sort((a, b) => a.sort_order - b.sort_order);
+        const isSlideOver = draggingSlideId !== null && overSlideSection === section.id;
         return (
           <div key={section.id}>
             <SectionHeader section={section} orgSlug={orgSlug} sessionId={sessionId} isPending={isPending} />
+            {/* Slide drop zone for this section — visible only while dragging a slide */}
+            {draggingSlideId && (
+              <div
+                onDragOver={e => { e.preventDefault(); setOverSlideSection(section.id); }}
+                onDrop={e => { e.preventDefault(); handleSlideToSection(draggingSlideId, section.id); }}
+                className={`rounded-xl border-2 border-dashed mb-2 py-3 text-center text-xs font-medium transition-colors ${
+                  isSlideOver
+                    ? "border-purple-400 bg-purple-50/30 dark:bg-purple-900/10 text-purple-500"
+                    : "border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-600"
+                }`}
+              >
+                {isSlideOver ? "Перенести экран сюда" : `Экран → ${section.title}`}
+              </div>
+            )}
             {sectionSlides.length > 0 && (
               <div className="flex flex-col gap-2 mb-2">
                 {renderSlideGroup(sectionSlides)}
@@ -839,15 +864,31 @@ export function PollList({
           {optimisticPolls.map(poll => <PollCard key={poll.id} poll={poll} {...cardProps} />)}
         </div>
       ) : (
-        (unsectioned.length > 0 || draggingId) && (
-          <div>
-            <div className="flex items-center gap-3 mb-2 px-1">
-              <span className="text-xs font-semibold text-slate-400 dark:text-slate-600 uppercase tracking-wide whitespace-nowrap">Без секции</span>
-              <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
+        <>
+          {/* "Без секции" drop for slides — visible while dragging a slide that's in a section */}
+          {draggingSlideId && optimisticSlides.find(s => s.id === draggingSlideId)?.section_id !== null && (
+            <div
+              onDragOver={e => { e.preventDefault(); setOverSlideSection("none"); }}
+              onDrop={e => { e.preventDefault(); handleSlideToSection(draggingSlideId, null); }}
+              className={`rounded-xl border-2 border-dashed py-3 text-center text-xs font-medium transition-colors ${
+                overSlideSection === "none"
+                  ? "border-purple-400 bg-purple-50/30 dark:bg-purple-900/10 text-purple-500"
+                  : "border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-600"
+              }`}
+            >
+              {overSlideSection === "none" ? "Убрать из секции" : "Экран → Без секции"}
             </div>
-            <SectionDropZone sectionId={null} polls={unsectioned} />
-          </div>
-        )
+          )}
+          {(unsectioned.length > 0 || draggingId) && (
+            <div>
+              <div className="flex items-center gap-3 mb-2 px-1">
+                <span className="text-xs font-semibold text-slate-400 dark:text-slate-600 uppercase tracking-wide whitespace-nowrap">Без секции</span>
+                <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
+              </div>
+              <SectionDropZone sectionId={null} polls={unsectioned} />
+            </div>
+          )}
+        </>
       )}
     </div>
   );
