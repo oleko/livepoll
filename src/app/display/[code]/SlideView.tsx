@@ -303,7 +303,7 @@ export function SlideView({ slide, revealed = false, buzzers = [] }: {
 }) {
   const c = slide.content as Record<string, unknown>;
   return (
-    <div className="w-full h-full bg-white dark:bg-slate-950">
+    <div className="w-full h-full bg-slate-950">
       {slide.type === "splash"       && <SplashSlide       c={c as Record<string, string>} />}
       {slide.type === "speaker"      && <SpeakerSlide      c={c as Record<string, string>} />}
       {slide.type === "schedule"     && <ScheduleSlide     c={c as { items?: ScheduleItem[] }} />}

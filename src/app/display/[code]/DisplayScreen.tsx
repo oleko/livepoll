@@ -131,6 +131,8 @@ export function DisplayScreen({
           setPoll(data.poll);
           setVotes([]);
           setActiveSlide(null);
+        } else if (data.type === "display_hidden") {
+          setPoll(null);
         } else if (data.type === "closed") {
           const reveal = (data as { quiz_reveal?: QuizReveal }).quiz_reveal;
           if (reveal) {

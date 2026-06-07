@@ -253,6 +253,10 @@ export async function activatePoll(
       payload: { type: "activated", poll: { ...activatedPoll, settings: broadcastSettings } },
     });
   }
+  // Clear active slide so display shows poll after refresh too
+  await admin.from("sessions").update({ active_slide_id: null } as never).eq("id", sessionId);
+  // Also broadcast slide hide so display reacts immediately
+  messages.push({ topic: `session-slides:${sessionId}`, event: "slide_change", payload: { type: "hide" } });
   if (messages.length > 0) await realtimeBroadcast(messages);
 
   revalidatePath(`/org/${orgSlug}/sessions/${sessionId}`);
@@ -647,6 +651,53 @@ export async function updateQuestionStatus(
       payload: { type: "updated", question: updated },
     }]);
   }
+
+  revalidatePath(`/org/${orgSlug}/sessions/${sessionId}`);
+}
+
+export async function showPollOnDisplay(
+  pollId: string,
+  sessionId: string,
+  orgSlug: string
+): Promise<void> {
+  const { user, admin } = await getAuthUser();
+  await assertSessionMember(user.id, sessionId, admin);
+
+  const { data: poll } = await admin
+    .from("polls")
+    .select("id, title, type, options, status, settings")
+    .eq("id", pollId)
+    .eq("session_id", sessionId)
+    .single();
+
+  if (!poll || poll.status !== "active") return;
+
+  const broadcastSettings = { ...(poll.settings as Record<string, unknown> ?? {}) };
+  delete broadcastSettings["correct_option"];
+  delete broadcastSettings["explanation"];
+
+  await admin.from("sessions").update({ active_slide_id: null } as never).eq("id", sessionId);
+
+  await realtimeBroadcast([
+    { topic: `session-slides:${sessionId}`, event: "slide_change", payload: { type: "hide" } },
+    { topic: `session-polls:${sessionId}`, event: "poll_change", payload: { type: "activated", poll: { ...poll, settings: broadcastSettings } } },
+  ]);
+
+  revalidatePath(`/org/${orgSlug}/sessions/${sessionId}`);
+}
+
+export async function hidePollFromDisplay(
+  sessionId: string,
+  orgSlug: string
+): Promise<void> {
+  const { user, admin } = await getAuthUser();
+  await assertSessionMember(user.id, sessionId, admin);
+
+  await realtimeBroadcast([{
+    topic: `session-polls:${sessionId}`,
+    event: "poll_change",
+    payload: { type: "display_hidden" },
+  }]);
 
   revalidatePath(`/org/${orgSlug}/sessions/${sessionId}`);
 }

@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useEffect, useRef, useOptimistic } from "react";
 import { useRouter } from "next/navigation";
-import { activatePoll, closePoll, copyPoll, updatePoll } from "@/lib/actions/polls";
+import { activatePoll, closePoll, copyPoll, updatePoll, showPollOnDisplay, hidePollFromDisplay } from "@/lib/actions/polls";
 import { movePollSection, createSection, deleteSection, renameSection } from "@/lib/actions/sections";
 import { showSlide, hideSlide, deleteSlide, updateSlide, reorderSlides, moveSlideToSection } from "@/lib/actions/slides";
 import { Button } from "@/components/ui/Button";
@@ -377,6 +377,7 @@ function PollCard({
   draggingId, onDragStart, onDragEnd,
   editingId, editTitle, editOptions, editSaving, editError,
   onStartEdit, onSaveEdit, onCancelEdit, onEditTitleChange, onEditOptionsChange,
+  hiddenFromDisplay, onHide, onShow,
 }: {
   poll: PollRow;
   votesByPoll: Record<string, number>;
@@ -388,6 +389,9 @@ function PollCard({
   editingId: string | null; editTitle: string; editOptions: string; editSaving: boolean; editError: string | null;
   onStartEdit: (p: PollRow) => void; onSaveEdit: (p: PollRow) => void; onCancelEdit: () => void;
   onEditTitleChange: (v: string) => void; onEditOptionsChange: (v: string) => void;
+  hiddenFromDisplay: boolean;
+  onHide: () => void;
+  onShow: () => void;
 }) {
   const isActive    = poll.status === "active";
   const isClosed    = poll.status === "closed";
@@ -464,8 +468,14 @@ function PollCard({
                   {!isActive && !isClosed && (
                     <Button className="text-xs py-1.5 px-3" onClick={() => activatePoll(poll.id, sessionId, orgSlug)}>Запустить</Button>
                   )}
+                  {isActive && hiddenFromDisplay && (
+                    <Button className="text-xs py-1.5 px-3" onClick={onShow}>Показать</Button>
+                  )}
+                  {isActive && !hiddenFromDisplay && (
+                    <Button variant="secondary" className="text-xs py-1.5 px-3" onClick={onHide}>Убрать с экрана</Button>
+                  )}
                   {isActive && (
-                    <Button variant="secondary" className="text-xs py-1.5 px-3" onClick={() => closePoll(poll.id, sessionId, orgSlug)}>Остановить</Button>
+                    <Button variant="secondary" className="text-xs py-1.5 px-3" onClick={() => closePoll(poll.id, sessionId, orgSlug)}>Завершить</Button>
                   )}
                 </>
               )}
@@ -640,6 +650,9 @@ export function PollList({
   copyTargets: CopyTarget[];
   sections: SectionItem[];
 }) {
+  // Track polls hidden from display (local, not persisted)
+  const [hiddenPollIds, setHiddenPollIds] = useState<Set<string>>(new Set());
+
   // Poll editing state
   const [editingId, setEditingId]     = useState<string | null>(null);
   const [editTitle, setEditTitle]     = useState("");
@@ -708,13 +721,37 @@ export function PollList({
     });
   }
 
-  const cardProps = {
+  function handleHidePoll(pollId: string) {
+    setHiddenPollIds(prev => new Set([...prev, pollId]));
+    hidePollFromDisplay(sessionId, orgSlug);
+  }
+
+  function handleShowPoll(pollId: string) {
+    setHiddenPollIds(prev => { const next = new Set(prev); next.delete(pollId); return next; });
+    showPollOnDisplay(pollId, sessionId, orgSlug);
+  }
+
+  const baseCardProps = {
     votesByPoll, votesDataByPoll, sessionId, orgSlug, sessionStatus, copyTargets,
-    draggingId, onDragStart: setDraggingId, onDragEnd: () => { setDraggingId(null); setOverSectionId(null); },
+    draggingId, onDragStart: (id: string) => { setDraggingId(id); setHiddenPollIds(new Set()); },
+    onDragEnd: () => { setDraggingId(null); setOverSectionId(null); },
     editingId, editTitle, editOptions, editSaving, editError,
     onStartEdit: startEdit, onSaveEdit: saveEdit, onCancelEdit: () => setEditingId(null),
     onEditTitleChange: setEditTitle, onEditOptionsChange: setEditOptions,
   };
+
+  function renderPollCard(poll: PollRow) {
+    return (
+      <PollCard
+        key={poll.id}
+        poll={poll}
+        {...baseCardProps}
+        hiddenFromDisplay={hiddenPollIds.has(poll.id)}
+        onHide={() => handleHidePoll(poll.id)}
+        onShow={() => handleShowPoll(poll.id)}
+      />
+    );
+  }
 
   const sorted = [...initialSections].sort((a, b) => a.sort_order - b.sort_order);
 
@@ -737,7 +774,7 @@ export function PollList({
           </div>
         ) : (
           <div className="flex flex-col gap-2">
-            {zonePolls.map(poll => <PollCard key={poll.id} poll={poll} {...cardProps} />)}
+            {zonePolls.map(poll => renderPollCard(poll))}
             {isOver && (
               <div className="rounded-xl border-2 border-dashed border-indigo-400 py-3 text-center text-xs text-indigo-500 font-medium">
                 Перенести сюда
@@ -861,7 +898,7 @@ export function PollList({
 
       {sorted.length === 0 ? (
         <div className="flex flex-col gap-2">
-          {optimisticPolls.map(poll => <PollCard key={poll.id} poll={poll} {...cardProps} />)}
+          {optimisticPolls.map(poll => renderPollCard(poll))}
         </div>
       ) : (
         <>
