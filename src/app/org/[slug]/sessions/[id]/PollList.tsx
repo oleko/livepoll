@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useTransition, useEffect, useRef, useOptimistic } from "react";
+import { useState, useTransition, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { activatePoll, closePoll, copyPoll, updatePoll, showPollOnDisplay, hidePollFromDisplay } from "@/lib/actions/polls";
+import { activatePoll, closePoll, copyPoll, updatePoll, showPollOnDisplay, hidePollFromDisplay, reorderPolls } from "@/lib/actions/polls";
 import { movePollSection, createSection, deleteSection, renameSection } from "@/lib/actions/sections";
 import { showSlide, hideSlide, deleteSlide, updateSlide, reorderSlides, moveSlideToSection } from "@/lib/actions/slides";
 import { revealPoker } from "@/lib/actions/sessions";
@@ -123,12 +123,15 @@ function SlideEditForm({ slide, onDone, onCancel }: {
 
 function SlideLineupCard({
   slide, isActive, sessionId, orgSlug, isDragging, onDragStart, onDragEnd, sections,
+  onShowSlide, onHideSlide,
 }: {
   slide: SlideRow; isActive: boolean; sessionId: string; orgSlug: string;
   isDragging: boolean;
   onDragStart: () => void;
   onDragEnd: () => void;
   sections?: SectionItem[];
+  onShowSlide: (slideId: string) => void;
+  onHideSlide: () => void;
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
@@ -136,6 +139,7 @@ function SlideLineupCard({
   const meta = SLIDE_TYPE_META[slide.type];
 
   async function handleShow() {
+    onShowSlide(slide.id);
     setPending(true);
     await showSlide(slide.id, sessionId, orgSlug);
     router.refresh();
@@ -143,6 +147,7 @@ function SlideLineupCard({
   }
 
   async function handleHide() {
+    onHideSlide();
     setPending(true);
     await hideSlide(sessionId, orgSlug);
     router.refresh();
@@ -698,16 +703,16 @@ export function PollList({
   const [overSlideId, setOverSlideId]         = useState<string | null>(null);
   const [overSlideSection, setOverSlideSection] = useState<string | "none" | null>(null);
   const [optimisticSlides, setOptimisticSlides] = useState(slides);
+  const [optimisticActiveSlideId, setOptimisticActiveSlideId] = useState(activeSlideId);
 
   // Sync when server data changes
   useEffect(() => { setOptimisticSlides(slides); }, [slides]);
+  useEffect(() => { setOptimisticActiveSlideId(activeSlideId); }, [activeSlideId]);
 
-  // Optimistic poll section assignments
-  const [optimisticPolls, applyMove] = useOptimistic(
-    polls,
-    (prev, { pollId, sectionId }: { pollId: string; sectionId: string | null }) =>
-      prev.map(p => p.id === pollId ? { ...p, section_id: sectionId } : p)
-  );
+  // Optimistic poll state
+  const [optimisticPolls, setOptimisticPolls] = useState(polls);
+  const [overPollId, setOverPollId] = useState<string | null>(null);
+  useEffect(() => { setOptimisticPolls(polls); }, [polls]);
 
   function startEdit(poll: PollRow) {
     setEditingId(poll.id);
@@ -741,11 +746,24 @@ export function PollList({
     const id = draggingId;
     setDraggingId(null);
     setOverSectionId(null);
+    setOverPollId(null);
     if (poll?.section_id === targetSectionId) return;
-    startTransition(() => {
-      applyMove({ pollId: id, sectionId: targetSectionId });
-      movePollSection(id, targetSectionId, sessionId, orgSlug);
-    });
+    setOptimisticPolls(prev => prev.map(p => p.id === id ? { ...p, section_id: targetSectionId } : p));
+    movePollSection(id, targetSectionId, sessionId, orgSlug).then(() => router.refresh());
+  }
+
+  function handleReorder(draggingPollId: string, targetPollId: string) {
+    setDraggingId(null);
+    setOverSectionId(null);
+    setOverPollId(null);
+    const next = [...optimisticPolls];
+    const fromIdx = next.findIndex(p => p.id === draggingPollId);
+    const toIdx   = next.findIndex(p => p.id === targetPollId);
+    if (fromIdx === -1 || toIdx === -1) return;
+    const [moved] = next.splice(fromIdx, 1);
+    next.splice(toIdx, 0, moved);
+    setOptimisticPolls(next);
+    reorderPolls(sessionId, next.map(p => p.id), orgSlug).then(() => router.refresh());
   }
 
   function handleHidePoll(pollId: string) {
@@ -761,7 +779,7 @@ export function PollList({
   const baseCardProps = {
     votesByPoll, votesDataByPoll, sessionId, orgSlug, sessionStatus, copyTargets,
     draggingId, onDragStart: (id: string) => { setDraggingId(id); setHiddenPollIds(new Set()); },
-    onDragEnd: () => { setDraggingId(null); setOverSectionId(null); },
+    onDragEnd: () => { setDraggingId(null); setOverSectionId(null); setOverPollId(null); },
     editingId, editTitle, editOptions, editSaving, editError,
     onStartEdit: startEdit, onSaveEdit: saveEdit, onCancelEdit: () => setEditingId(null),
     onEditTitleChange: setEditTitle, onEditOptionsChange: setEditOptions,
@@ -785,14 +803,14 @@ export function PollList({
 
   const sorted = [...initialSections].sort((a, b) => a.sort_order - b.sort_order);
 
-  // shared drop zone wrapper
+  // shared drop zone wrapper — handles section drops and within-section reorder
   function SectionDropZone({ sectionId, polls: zonePolls }: { sectionId: string | null; polls: PollRow[] }) {
     const key = sectionId ?? "none";
-    const isOver = draggingId !== null && overSectionId === key;
+    const isOver = draggingId !== null && overSectionId === key && !overPollId;
 
     return (
       <div
-        onDragOver={e => { e.preventDefault(); setOverSectionId(sectionId ?? "none"); }}
+        onDragOver={e => { if (!draggingId) return; e.preventDefault(); setOverSectionId(sectionId ?? "none"); }}
         onDrop={e => { e.preventDefault(); e.stopPropagation(); handleDrop(sectionId); }}
         className={`rounded-xl transition-[box-shadow,background-color] duration-150 ${isOver ? "ring-2 ring-indigo-400 ring-inset bg-indigo-50/60 dark:bg-indigo-500/10" : ""}`}
       >
@@ -804,7 +822,35 @@ export function PollList({
           </div>
         ) : (
           <div className="flex flex-col gap-2">
-            {zonePolls.map(poll => renderPollCard(poll))}
+            {zonePolls.map(poll => (
+              <div
+                key={poll.id}
+                onDragOver={e => {
+                  if (!draggingId || draggingId === poll.id) return;
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setOverSectionId(sectionId ?? "none");
+                  setOverPollId(poll.id);
+                }}
+                onDragLeave={e => {
+                  if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                    setOverPollId(prev => prev === poll.id ? null : prev);
+                  }
+                }}
+                onDrop={e => {
+                  if (!draggingId || draggingId === poll.id) return;
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleReorder(draggingId, poll.id);
+                }}
+                className={`rounded-xl transition-[box-shadow] duration-100 ${
+                  overPollId === poll.id && draggingId && draggingId !== poll.id
+                    ? "ring-2 ring-indigo-400 ring-inset" : ""
+                }`}
+              >
+                {renderPollCard(poll)}
+              </div>
+            ))}
             {isOver && (
               <div className="rounded-xl border-2 border-dashed border-indigo-400 py-3 text-center text-xs text-indigo-500 font-medium">
                 Перенести сюда
@@ -866,13 +912,15 @@ export function PollList({
       >
         <SlideLineupCard
           slide={slide}
-          isActive={activeSlideId === slide.id}
+          isActive={optimisticActiveSlideId === slide.id}
           sessionId={sessionId}
           orgSlug={orgSlug}
           isDragging={draggingSlideId === slide.id}
           onDragStart={() => setDraggingSlideId(slide.id)}
           onDragEnd={() => { setDraggingSlideId(null); setOverSlideId(null); }}
           sections={sorted}
+          onShowSlide={id => setOptimisticActiveSlideId(id)}
+          onHideSlide={() => setOptimisticActiveSlideId(null)}
         />
       </div>
     ));
@@ -939,9 +987,7 @@ export function PollList({
       })}
 
       {sorted.length === 0 ? (
-        <div className="flex flex-col gap-2">
-          {optimisticPolls.map(poll => renderPollCard(poll))}
-        </div>
+        <SectionDropZone sectionId={null} polls={optimisticPolls} />
       ) : (
         <>
           {/* "Без секции" drop for slides — visible while dragging a slide that's in a section */}

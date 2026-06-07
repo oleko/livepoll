@@ -722,3 +722,20 @@ export async function hidePollFromDisplay(
 
   revalidatePath(`/org/${orgSlug}/sessions/${sessionId}`);
 }
+
+export async function reorderPolls(
+  sessionId: string,
+  orderedIds: string[],
+  orgSlug: string
+): Promise<void> {
+  const { user, admin } = await getAuthUser();
+  await assertSessionMember(user.id, sessionId, admin);
+
+  await Promise.all(
+    orderedIds.map((id, idx) =>
+      admin.from("polls").update({ sort_order: idx }).eq("id", id).eq("session_id", sessionId)
+    )
+  );
+
+  revalidatePath(`/org/${orgSlug}/sessions/${sessionId}`);
+}
