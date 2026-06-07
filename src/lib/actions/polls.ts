@@ -335,7 +335,7 @@ export async function submitVote(formData: FormData) {
 
   const { data: pollData } = await admin
     .from("polls")
-    .select("settings, session_id")
+    .select("type, settings, session_id")
     .eq("id", pollId)
     .single();
 
@@ -347,6 +347,11 @@ export async function submitVote(formData: FormData) {
 
   const maxAnswers = settings?.max_answers ?? 1;
   if (parsedValues.length > maxAnswers) return { error: `Можно выбрать не более ${maxAnswers} вариантов` };
+
+  const pollType = (pollData as unknown as { type?: string })?.type;
+  if (pollType === "word_cloud" && parsedValues.some((v) => v.length > 50)) {
+    return { error: "Слишком длинное слово" };
+  }
 
   // Participant limit check: only for new voters entering the session for the first time
   if (pollData?.session_id) {

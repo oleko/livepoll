@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { submitVote, submitQuestion } from "@/lib/actions/polls";
+import { submitVote, submitQuestion, upvoteQuestion } from "@/lib/actions/polls";
 import { Button } from "@/components/ui/Button";
 import type { PollType } from "@/types/database";
 
@@ -12,7 +12,7 @@ type PollData = {
   type: PollType;
   options: unknown[];
   status: string;
-  settings?: { allow_revote?: boolean; max_questions?: number; quiz_mode?: boolean; max_answers?: number };
+  settings?: { allow_revote?: boolean; max_questions?: number; quiz_mode?: boolean; max_answers?: number; duration?: number; activated_at?: string };
 } | null;
 
 type QuizReveal = { correct_option: string; explanation?: string };
@@ -30,10 +30,10 @@ const EMOJI_OPTIONS = ["😊", "🔥", "👍", "❤️", "🎉", "😮", "🤔",
 
 function getVoterToken(): string {
   if (typeof window === "undefined") return "";
-  let token = sessionStorage.getItem("voter_token");
+  let token = localStorage.getItem("voter_token");
   if (!token) {
     token = crypto.randomUUID();
-    sessionStorage.setItem("voter_token", token);
+    localStorage.setItem("voter_token", token);
   }
   return token;
 }
@@ -57,9 +57,25 @@ export function VoteInterface({
   const [myVote, setMyVote] = useState<string | null>(null);
   const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
   const [quizReveal, setQuizReveal] = useState<QuizReveal | null>(null);
-  const [announcement, setAnnouncement] = useState<AnnouncementData | null>(null);
+  const [announcement, setAnnouncement] = useState<AnnouncementData | null>(
+    initialActiveSlide?.type === "announcement"
+      ? {
+          text: (initialActiveSlide.content as { text?: string }).text ?? "",
+          duration: (initialActiveSlide.content as { duration?: number }).duration ?? 0,
+          started_at: new Date().toISOString(),
+        }
+      : null
+  );
   const [announcementTimeLeft, setAnnouncementTimeLeft] = useState<number | null>(null);
   const [questionsSubmitted, setQuestionsSubmitted] = useState(0);
+  const [questions, setQuestions] = useState<QuestionItem[]>(initialQuestions);
+  const [upvotedIds, setUpvotedIds] = useState<Set<string>>(() => {
+    if (typeof window === "undefined") return new Set();
+    try {
+      const saved = sessionStorage.getItem(`upvoted-${sessionId}`);
+      return saved ? new Set(JSON.parse(saved) as string[]) : new Set();
+    } catch { return new Set(); }
+  });
   const [ideaText, setIdeaText] = useState("");
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -68,6 +84,7 @@ export function VoteInterface({
   const [pulseFlash, setPulseFlash] = useState(false);
   const [activeSlide, setActiveSlide] = useState<{ type: string; content: Record<string, unknown> } | null>(initialActiveSlide);
   const [buzzed, setBuzzed] = useState(false);
+  const [connected, setConnected] = useState(true);
   const supabase = useRef(createClient());
   const channelRef = useRef<ReturnType<typeof supabase.current.channel> | null>(null);
   const buzzChannelRef = useRef<ReturnType<typeof supabase.current.channel> | null>(null);
@@ -93,6 +110,7 @@ export function VoteInterface({
           setIdeaText("");
           setError(null);
           setActiveSlide(null);
+          setQuestions([]);
         } else if (data.type === "closed") {
           const reveal = (data as { quiz_reveal?: QuizReveal }).quiz_reveal;
           if (reveal) setQuizReveal(reveal);
@@ -113,7 +131,9 @@ export function VoteInterface({
           setAnnouncement({ text: data.text, duration: data.duration ?? 0, started_at: data.started_at });
         }
       })
-      .subscribe();
+      .subscribe((status) => {
+        setConnected(status === "SUBSCRIBED");
+      });
 
     channelRef.current = channel;
     return () => { supabase.current.removeChannel(channel); channelRef.current = null; };
@@ -130,6 +150,26 @@ export function VoteInterface({
         } else if (data.type === "hide") {
           setActiveSlide(null);
           setBuzzed(false);
+        }
+      })
+      .subscribe();
+    return () => { supabase.current.removeChannel(channel); };
+  }, [sessionId]);
+
+  useEffect(() => {
+    const channel = supabase.current
+      .channel(`session-questions:${sessionId}`)
+      .on("broadcast", { event: "question_change" }, ({ payload }) => {
+        const data = payload as { type: string; question?: QuestionItem };
+        if (data.type === "new" && data.question && data.question.status !== "hidden") {
+          setQuestions((prev) => [data.question!, ...prev]);
+        } else if (data.type === "updated" && data.question) {
+          const q = data.question;
+          setQuestions((prev) =>
+            q.status === "hidden"
+              ? prev.filter((item) => item.id !== q.id)
+              : prev.map((item) => (item.id === q.id ? q : item))
+          );
         }
       })
       .subscribe();
@@ -164,6 +204,22 @@ export function VoteInterface({
     return () => clearInterval(id);
   }, [announcement]);
 
+  const [pollTimeLeft, setPollTimeLeft] = useState<number | null>(null);
+  useEffect(() => {
+    setPollTimeLeft(null);
+    const { duration, activated_at } = poll?.settings ?? {};
+    if (!duration || !activated_at) return;
+    const endTime = new Date(activated_at).getTime() + duration * 1000;
+    const tick = () => {
+      const left = Math.max(0, Math.ceil((endTime - Date.now()) / 1000));
+      setPollTimeLeft(left);
+      if (left === 0) clearInterval(id);
+    };
+    tick();
+    const id = setInterval(tick, 500);
+    return () => clearInterval(id);
+  }, [poll?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const isBuzzSlide = !sessionEnded &&
     activeSlide?.type === "reveal" &&
     !!(activeSlide.content as { buzz?: boolean }).buzz;
@@ -190,7 +246,7 @@ export function VoteInterface({
       setError(result.error === "Вы уже проголосовали" ? "Вы уже проголосовали" : "Ошибка, попробуйте снова");
     } else {
       setVoted(true);
-      if (poll?.type === "multiple_choice") setMyVote(value);
+      if (poll?.type === "multiple_choice" || poll?.type === "planning_poker") setMyVote(value);
     }
   }
 
@@ -212,6 +268,17 @@ export function VoteInterface({
       setQuestionsSubmitted((n) => n + 1);
       setIdeaText("");
     }
+  }
+
+  async function handleUpvote(questionId: string) {
+    if (upvotedIds.has(questionId)) return;
+    const voterToken = getVoterToken();
+    const next = new Set(upvotedIds);
+    next.add(questionId);
+    setUpvotedIds(next);
+    try { sessionStorage.setItem(`upvoted-${sessionId}`, JSON.stringify([...next])); } catch {}
+    setQuestions((prev) => prev.map((q) => q.id === questionId ? { ...q, upvotes: q.upvotes + 1 } : q));
+    await upvoteQuestion(questionId, voterToken, sessionId);
   }
 
   const showPulseButton = !sessionEnded && sessionStatus === "active";
@@ -411,15 +478,50 @@ export function VoteInterface({
               Задать вопрос
             </Button>
           </div>
+          {questions.length > 0 && (
+            <div className="mt-6 flex flex-col gap-2">
+              <p className="text-xs text-slate-400 dark:text-slate-500 uppercase tracking-wider font-medium mb-1">Вопросы аудитории</p>
+              {[...questions].sort((a, b) => b.upvotes - a.upvotes).map((q) => (
+                <div key={q.id} className="flex items-start gap-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3">
+                  <button
+                    onClick={() => handleUpvote(q.id)}
+                    disabled={upvotedIds.has(q.id)}
+                    className={`flex flex-col items-center gap-0.5 shrink-0 rounded-lg px-2 py-1 text-sm font-semibold transition-colors ${
+                      upvotedIds.has(q.id)
+                        ? "text-indigo-500 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10"
+                        : "text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-500/10"
+                    }`}
+                  >
+                    <span className="text-base leading-none">▲</span>
+                    <span className="text-xs">{q.upvotes}</span>
+                  </button>
+                  <p className="text-sm text-slate-700 dark:text-slate-300 leading-snug pt-1">{q.text}</p>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       );
     }
   } else if (voted) {
+    const isPoker = poll?.type === "planning_poker";
     content = (
       <div className="text-center px-6">
-        <div className="text-6xl mb-5">✅</div>
-        <p className="text-2xl font-semibold text-slate-900 dark:text-white mb-2">Голос принят!</p>
-        <p className="text-slate-500 text-sm">Ожидайте следующего вопроса</p>
+        {isPoker && myVote ? (
+          <>
+            <div className="mx-auto w-20 h-28 rounded-2xl border-2 border-indigo-500 bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center mb-5 shadow-lg">
+              <span className="text-4xl font-bold text-indigo-600 dark:text-indigo-400">{myVote}</span>
+            </div>
+            <p className="text-xl font-semibold text-slate-900 dark:text-white mb-1">Карта выбрана</p>
+            <p className="text-slate-500 text-sm">Ведущий раскроет результаты</p>
+          </>
+        ) : (
+          <>
+            <div className="text-6xl mb-5">✅</div>
+            <p className="text-2xl font-semibold text-slate-900 dark:text-white mb-2">Голос принят!</p>
+            <p className="text-slate-500 text-sm">Ожидайте следующего вопроса</p>
+          </>
+        )}
         {poll?.settings?.allow_revote && (
           <button onClick={() => setVoted(false)} className="mt-5 text-sm text-indigo-500 dark:text-indigo-400 hover:underline">
             Изменить голос
@@ -575,6 +677,20 @@ export function VoteInterface({
         >
           🔥
         </button>
+      )}
+      {!connected && (
+        <div className="fixed top-0 inset-x-0 z-40 bg-amber-500 text-amber-950 text-center text-xs font-medium py-1.5 px-4">
+          Нет соединения — пытаемся переподключиться…
+        </div>
+      )}
+      {pollTimeLeft !== null && pollTimeLeft > 0 && !voted && (
+        <div className={`fixed top-0 inset-x-0 z-30 text-center text-sm font-semibold py-1.5 px-4 tabular-nums ${
+          pollTimeLeft <= 10 ? "bg-red-500 text-white" : "bg-indigo-600 text-white"
+        }`}>
+          {pollTimeLeft >= 60
+            ? `${Math.floor(pollTimeLeft / 60)}:${String(pollTimeLeft % 60).padStart(2, "0")}`
+            : `${pollTimeLeft} сек`}
+        </div>
       )}
       {announcement && (
         <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-slate-950/95 px-6">

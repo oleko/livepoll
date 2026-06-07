@@ -10,6 +10,33 @@ import type { PollType } from "@/types/database";
 import type { BrandingSettings } from "@/lib/actions/branding";
 import type { SlideType } from "@/lib/actions/slides";
 
+function QrImage({ src, joinUrl, style, className }: {
+  src: string; joinUrl: string;
+  style?: React.CSSProperties; className?: string;
+}) {
+  const [error, setError] = useState(false);
+  if (error) {
+    return (
+      <div
+        className={`flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-center ${className ?? ""}`}
+        style={style}
+      >
+        <p className="text-slate-500 dark:text-slate-400 text-xs font-medium px-4">Перейдите по ссылке:</p>
+        <p className="text-slate-700 dark:text-slate-200 text-xs font-mono mt-1 px-2 break-all">{joinUrl.replace(/^https?:\/\//, "")}</p>
+      </div>
+    );
+  }
+  return (
+    <img
+      src={src}
+      alt="QR-код для участия"
+      className={`rounded-2xl block ${className ?? ""}`}
+      style={style}
+      onError={() => setError(true)}
+    />
+  );
+}
+
 type PollSettings = {
   duration?: number;
   activated_at?: string;
@@ -104,13 +131,23 @@ export function DisplayScreen({
   const [joinedCount, setJoinedCount] = useState(initialJoinedCount);
   const pulseTimestamps = useRef<number[]>([]);
   const [pulseCount, setPulseCount] = useState(0);
-  const [pinnedQuestion, setPinnedQuestion] = useState<QuestionRow | null>(null);
+  const [pinnedQuestion, setPinnedQuestion] = useState<QuestionRow | null>(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      const saved = sessionStorage.getItem(`pinned-q-${session.id}`);
+      if (!saved) return null;
+      const id = JSON.parse(saved) as string;
+      return initialQuestions.find((q) => q.id === id) ?? null;
+    } catch { return null; }
+  });
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   // Quiz leaderboard
   const [quizScores, setQuizScores] = useState<Map<string, number>>(new Map());
   const [quizTotal, setQuizTotal] = useState(0);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [pokerRevealed, setPokerRevealed] = useState(false);
+  const [connected, setConnected] = useState(true);
   const currentVotesRef = useRef<{ value: string; ts: string }[]>([]);
   const supabase = useRef(createClient());
   const { theme } = useTheme();
@@ -129,6 +166,7 @@ export function DisplayScreen({
         const data = payload as { type: string; poll?: PollData; poll_id?: string };
         if (data.type === "activated" && data.poll) {
           setQuizReveal(null);
+          setPokerRevealed(false);
           setPoll(data.poll);
           setVotes([]);
           setActiveSlide(null);
@@ -175,6 +213,9 @@ export function DisplayScreen({
         pulseTimestamps.current.push(Date.now());
         setPulseCount(pulseTimestamps.current.length);
       })
+      .on("broadcast", { event: "poker_reveal" }, () => {
+        setPokerRevealed(true);
+      })
       .on("broadcast", { event: "announcement" }, ({ payload }) => {
         const data = payload as { clear?: boolean; text?: string; duration?: number; started_at?: string };
         if (data.clear) {
@@ -183,7 +224,9 @@ export function DisplayScreen({
           setAnnouncement({ text: data.text, duration: data.duration ?? 0, started_at: data.started_at });
         }
       })
-      .subscribe();
+      .subscribe((status) => {
+        setConnected(status === "SUBSCRIBED");
+      });
 
     const slidesChannel = sb
       .channel(`session-slides:${session.id}`)
@@ -291,7 +334,12 @@ export function DisplayScreen({
           );
           setPinnedQuestion((prev) => prev?.id === q.id ? q : prev);
         } else if (data.type === "pinned") {
-          setPinnedQuestion(data.pinned ?? null);
+          const q = data.pinned ?? null;
+          setPinnedQuestion(q);
+          try {
+            if (q) sessionStorage.setItem(`pinned-q-${session.id}`, JSON.stringify(q.id));
+            else sessionStorage.removeItem(`pinned-q-${session.id}`);
+          } catch {}
         }
       })
       .subscribe();
@@ -344,6 +392,12 @@ export function DisplayScreen({
       }`}
       style={branding?.display_bg ? { backgroundColor: branding.display_bg } : undefined}
     >
+
+      {!connected && (
+        <div className="absolute top-0 inset-x-0 z-50 bg-amber-500/90 text-amber-950 text-center text-sm font-medium py-2 px-4">
+          Соединение потеряно — переподключение…
+        </div>
+      )}
 
       {/* Slide — full screen, below announcement */}
       {activeSlide && !announcement && (
@@ -456,15 +510,7 @@ export function DisplayScreen({
               </p>
               <div className="shrink-0 rounded-3xl border-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 shadow-2xl shadow-black/10 dark:shadow-black/60"
                    style={{ padding: "clamp(8px, 1.5vh, 20px)" }}>
-                <img
-                  src={qrUrlLarge}
-                  alt="QR-код для участия"
-                  className="rounded-2xl block"
-                  style={{
-                    width:  "clamp(140px, 44vh, 420px)",
-                    height: "clamp(140px, 44vh, 420px)",
-                  }}
-                />
+                <QrImage src={qrUrlLarge} joinUrl={joinUrl} style={{ width: "clamp(140px, 44vh, 420px)", height: "clamp(140px, 44vh, 420px)" }} />
               </div>
               <div className="shrink-0 flex flex-col items-center"
                    style={{ gap: "clamp(4px, 1vh, 12px)" }}>
@@ -519,7 +565,14 @@ export function DisplayScreen({
 
               <h2 className="text-4xl font-bold text-slate-900 dark:text-white text-center mb-10 leading-tight">{poll.title}</h2>
 
-              {(poll.type === "multiple_choice" || poll.type === "planning_poker") && chartData.length > 0 && (
+              {poll.type === "planning_poker" && !pokerRevealed && (
+                <div className="flex flex-col items-center justify-center gap-6 py-12">
+                  <p className="text-6xl">🃏</p>
+                  <p className="text-2xl text-slate-500 dark:text-slate-400">{votes.length} карт выбрано</p>
+                  <p className="text-base text-slate-400 dark:text-slate-500">Ведущий раскроет результаты</p>
+                </div>
+              )}
+              {(poll.type === "multiple_choice" || (poll.type === "planning_poker" && pokerRevealed)) && chartData.length > 0 && (
                 <ResponsiveContainer width="100%" height={320}>
                   <BarChart data={chartData} margin={{ top: 36, right: 0, left: 0, bottom: 0 }}>
                     <XAxis dataKey="name" tick={{ fill: isDark ? "#94a3b8" : "#475569", fontSize: 15 }} axisLine={false} tickLine={false} />
@@ -752,13 +805,7 @@ export function DisplayScreen({
         {/* QR sidebar — only shown during active poll */}
         {poll && (
           <div className="w-48 flex flex-col items-center justify-end p-6 border-l border-slate-200 dark:border-slate-800 gap-3">
-            <img
-              src={qrUrl}
-              alt="QR-код для участия"
-              className="rounded-2xl opacity-80 hover:opacity-100 transition-opacity"
-              width={160}
-              height={160}
-            />
+            <QrImage src={qrUrl} joinUrl={joinUrl} style={{ width: 160, height: 160 }} className="opacity-80 hover:opacity-100 transition-opacity" />
             <p className="text-xs text-slate-400 dark:text-slate-600 text-center">Сканируйте для участия</p>
             <p className="font-mono text-slate-500 dark:text-slate-400 text-base tracking-widest">{session.join_code}</p>
           </div>

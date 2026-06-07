@@ -167,6 +167,17 @@ export async function startAnnouncement(
   return { success: true };
 }
 
+export async function revealPoker(sessionId: string, orgSlug: string) {
+  const { user, admin } = await getAuthUser();
+  await assertSessionMember(user.id, sessionId, admin);
+  await realtimeBroadcast([{
+    topic: `session-polls:${sessionId}`,
+    event: "poker_reveal",
+    payload: {},
+  }]);
+  return { success: true };
+}
+
 export async function clearAnnouncement(sessionId: string, orgSlug: string) {
   const { user, admin } = await getAuthUser();
   await assertSessionMember(user.id, sessionId, admin);

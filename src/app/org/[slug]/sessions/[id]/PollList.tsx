@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { activatePoll, closePoll, copyPoll, updatePoll, showPollOnDisplay, hidePollFromDisplay } from "@/lib/actions/polls";
 import { movePollSection, createSection, deleteSection, renameSection } from "@/lib/actions/sections";
 import { showSlide, hideSlide, deleteSlide, updateSlide, reorderSlides, moveSlideToSection } from "@/lib/actions/slides";
+import { revealPoker } from "@/lib/actions/sessions";
 import { Button } from "@/components/ui/Button";
 import { EditIcon } from "@/components/icons";
 import type { Poll, SessionStatus } from "@/types/database";
@@ -486,6 +487,9 @@ function PollCard({
                       На экране
                     </button>
                   )}
+                  {isActive && poll.type === "planning_poker" && (
+                    <Button className="text-xs py-1.5 px-3 bg-purple-600 hover:bg-purple-700" onClick={() => revealPoker(sessionId, orgSlug)}>🃏 Раскрыть</Button>
+                  )}
                   {isActive && (
                     <Button variant="secondary" className="text-xs py-1.5 px-3" onClick={() => closePoll(poll.id, sessionId, orgSlug)}>Завершить</Button>
                   )}
@@ -662,8 +666,19 @@ export function PollList({
   copyTargets: CopyTarget[];
   sections: SectionItem[];
 }) {
-  // Track polls hidden from display (local, not persisted)
-  const [hiddenPollIds, setHiddenPollIds] = useState<Set<string>>(new Set());
+  const [hiddenPollIds, setHiddenPollIds] = useState<Set<string>>(() => {
+    if (typeof window === "undefined") return new Set();
+    try {
+      const saved = sessionStorage.getItem(`hidden-polls-${sessionId}`);
+      return saved ? new Set(JSON.parse(saved) as string[]) : new Set();
+    } catch { return new Set(); }
+  });
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(`hidden-polls-${sessionId}`, JSON.stringify([...hiddenPollIds]));
+    } catch {}
+  }, [hiddenPollIds, sessionId]);
 
   // Poll editing state
   const [editingId, setEditingId]     = useState<string | null>(null);

@@ -151,7 +151,7 @@ export default async function SessionPage({
               </Link>
             </>
           )}
-          {session.status === "ended" && (polls?.length ?? 0) > 0 && (
+          {(session.status === "active" || session.status === "ended") && (polls?.length ?? 0) > 0 && (
             <SessionSummaryButton sessionId={id} />
           )}
           {(polls?.length ?? 0) > 0 && (
