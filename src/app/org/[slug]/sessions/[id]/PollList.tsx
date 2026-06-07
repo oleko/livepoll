@@ -841,7 +841,12 @@ export function PollList({
                   if (!draggingId || draggingId === poll.id) return;
                   e.preventDefault();
                   e.stopPropagation();
-                  handleReorder(draggingId, poll.id);
+                  const src = optimisticPolls.find(p => p.id === draggingId);
+                  if (src?.section_id === sectionId) {
+                    handleReorder(draggingId, poll.id);
+                  } else {
+                    handleDrop(sectionId);
+                  }
                 }}
                 className={`rounded-xl transition-[box-shadow] duration-100 ${
                   overPollId === poll.id && draggingId && draggingId !== poll.id
