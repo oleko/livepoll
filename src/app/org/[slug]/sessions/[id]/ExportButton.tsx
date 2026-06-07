@@ -145,15 +145,15 @@ export function ExportButton({ session, polls, sections, votesByPoll, votesDataB
       if (total > 0) {
         const sum = Object.entries(counts).reduce((s, [v, c]) => s + parseFloat(v) * c, 0);
         const avg = (sum / total).toFixed(1);
-        const pct = Math.round((parseFloat(avg) / 10) * 100);
+        const pct = Math.round((parseFloat(avg) / 5) * 100);
         body = `<div class="bar-wrap"><div class="bar" style="width:${pct}%"></div></div>
-          <p class="note">Среднее: ${avg} / 10 · ${total} голосов</p>`;
+          <p class="note">Среднее: ${avg} / 5 · ${total} голосов</p>`;
       } else {
         body = `<p class="note">Голосов нет</p>`;
       }
     } else if (poll.type === "like_dislike") {
-      const likes = counts["👍"] ?? 0;
-      const dislikes = counts["👎"] ?? 0;
+      const likes = counts["like"] ?? 0;
+      const dislikes = counts["dislike"] ?? 0;
       const lp = total ? Math.round((likes / total) * 100) : 0;
       const dp = total ? Math.round((dislikes / total) * 100) : 0;
       body = `<table><thead><tr><th>Реакция</th><th>Голосов</th><th>%</th></tr></thead>

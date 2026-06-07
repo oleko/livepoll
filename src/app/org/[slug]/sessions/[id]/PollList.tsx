@@ -309,9 +309,9 @@ function PollResults({ poll, valueCounts, total }: { poll: PollRow; valueCounts:
     return (
       <div className="mt-3 flex items-center gap-3">
         <div className="flex-1 h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
-          <div className="h-full rounded-full bg-indigo-500" style={{ width: `${(parseFloat(avg) / 10) * 100}%` }} />
+          <div className="h-full rounded-full bg-indigo-500" style={{ width: `${(parseFloat(avg) / 5) * 100}%` }} />
         </div>
-        <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 shrink-0">{avg} / 10</span>
+        <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 shrink-0">{avg} / 5</span>
       </div>
     );
   }

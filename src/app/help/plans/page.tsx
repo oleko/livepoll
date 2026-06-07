@@ -46,7 +46,7 @@ export default function PlansPage() {
                   { label: "Дисплейный экран",       free: "✓",    starter: "✓",    pro: "✓",    team: "✓"     },
                   { label: "Таймер и лимит голосов", free: "✓",    starter: "✓",    pro: "✓",    team: "✓"     },
                   { label: "Шаблоны мероприятий",    free: "✓",    starter: "✓",    pro: "✓",    team: "✓"     },
-                  { label: "Экспорт CSV / PNG",      free: "—",    starter: "✓",    pro: "✓",    team: "✓"     },
+                  { label: "Экспорт CSV / PDF",      free: "—",    starter: "✓",    pro: "✓",    team: "✓"     },
                   { label: "✨ AI-анализ Q&A",       free: "—",    starter: "—",    pro: "✓",    team: "✓"     },
                   { label: "Слайды и презентации",   free: "—",    starter: "—",    pro: "✓",    team: "✓"     },
                   { label: "⚪ Белый лейбл",         free: "—",    starter: "—",    pro: "—",    team: "✓"     },

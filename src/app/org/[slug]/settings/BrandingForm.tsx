@@ -271,7 +271,7 @@ export function BrandingForm({
         ) : (
           <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-4 py-3 flex items-center justify-between gap-4">
             <p className="text-sm text-slate-500 dark:text-slate-400">
-              Доступно на тарифах <span className="font-medium text-slate-700 dark:text-slate-300">Про</span> и <span className="font-medium text-slate-700 dark:text-slate-300">Безлимитный</span>
+              Доступно на тарифах <span className="font-medium text-slate-700 dark:text-slate-300">Команда</span> и <span className="font-medium text-slate-700 dark:text-slate-300">Безлимитный</span>
             </p>
             <span className="text-xs rounded-full bg-slate-200 dark:bg-slate-700 px-2.5 py-0.5 text-slate-500 dark:text-slate-400 shrink-0">
               🔒 Недоступно

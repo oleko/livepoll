@@ -115,23 +115,11 @@ export async function setAttendees(
     .update({ total_attendees: clamped } as never)
     .eq("id", sessionId);
 
-  try {
-    await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/realtime/v1/api/broadcast`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
-        "apikey": process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      },
-      body: JSON.stringify({
-        messages: [{
-          topic: `session-polls:${sessionId}`,
-          event: "attendees_update",
-          payload: { total: clamped },
-        }],
-      }),
-    });
-  } catch {}
+  await realtimeBroadcast([{
+    topic: `session-polls:${sessionId}`,
+    event: "attendees_update",
+    payload: { total: clamped },
+  }]);
 
   revalidatePath(`/org/${orgSlug}/sessions/${sessionId}`);
 }
@@ -244,23 +232,11 @@ export async function updateSessionStatus(
       .eq("status", "active");
 
     const farewell = await generateFarewell();
-    try {
-      await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/realtime/v1/api/broadcast`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
-          "apikey": process.env.SUPABASE_SERVICE_ROLE_KEY!,
-        },
-        body: JSON.stringify({
-          messages: [{
-            topic: `session-polls:${sessionId}`,
-            event: "session_ended",
-            payload: { farewell },
-          }],
-        }),
-      });
-    } catch {}
+    await realtimeBroadcast([{
+      topic: `session-polls:${sessionId}`,
+      event: "session_ended",
+      payload: { farewell },
+    }]);
   }
 
   revalidatePath(`/org/${orgSlug}/sessions/${sessionId}`);

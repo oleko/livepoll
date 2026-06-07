@@ -594,11 +594,19 @@ export async function copyPoll(
 
   const { data: poll } = await admin
     .from("polls")
-    .select("title, type, options")
+    .select("title, type, options, settings, session_id")
     .eq("id", pollId)
     .single();
 
   if (!poll) throw new Error("Опрос не найден");
+
+  // Verify source poll belongs to a session the user can access
+  await assertSessionMember(user.id, poll.session_id, admin);
+
+  // Strip volatile runtime settings from the copy
+  const sourceSettings = (poll.settings ?? {}) as Record<string, unknown>;
+  const copiedSettings: Record<string, unknown> = { ...sourceSettings };
+  delete copiedSettings["activated_at"];
 
   const { data: last } = await admin
     .from("polls")
@@ -614,7 +622,7 @@ export async function copyPoll(
     title: poll.title,
     type: poll.type,
     options: poll.options,
-    settings: {},
+    settings: copiedSettings,
     sort_order: (last?.sort_order ?? -1) + 1,
   });
 
