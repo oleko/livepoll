@@ -803,66 +803,46 @@ export function PollList({
 
   const sorted = [...initialSections].sort((a, b) => a.sort_order - b.sort_order);
 
-  // shared drop zone wrapper — handles section drops and within-section reorder
-  function SectionDropZone({ sectionId, polls: zonePolls }: { sectionId: string | null; polls: PollRow[] }) {
-    const key = sectionId ?? "none";
-    const isOver = draggingId !== null && overSectionId === key && !overPollId;
-
+  // render function (NOT a component) — avoids remounting on every re-render during drag
+  function renderPollZone(sectionId: string | null, zonePolls: PollRow[]) {
+    if (zonePolls.length === 0) {
+      return (
+        <div className="rounded-xl border-2 border-dashed py-6 text-center border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-600">
+          <p className="text-xs font-medium">Нет опросов</p>
+        </div>
+      );
+    }
     return (
-      <div
-        onDragOver={e => { if (!draggingId) return; e.preventDefault(); setOverSectionId(sectionId ?? "none"); }}
-        onDrop={e => { e.preventDefault(); e.stopPropagation(); handleDrop(sectionId); }}
-        className={`rounded-xl transition-[box-shadow,background-color] duration-150 ${isOver ? "ring-2 ring-indigo-400 ring-inset bg-indigo-50/60 dark:bg-indigo-500/10" : ""}`}
-      >
-        {zonePolls.length === 0 ? (
-          <div className={`rounded-xl border-2 border-dashed py-6 text-center transition-colors ${
-            isOver ? "border-indigo-400 text-indigo-500 dark:text-indigo-400" : "border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-600"
-          }`}>
-            <p className="text-xs font-medium">{isOver ? "Перенести сюда" : "Нет опросов"}</p>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-2">
-            {zonePolls.map(poll => (
-              <div
-                key={poll.id}
-                onDragOver={e => {
-                  if (!draggingId || draggingId === poll.id) return;
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setOverSectionId(sectionId ?? "none");
-                  setOverPollId(poll.id);
-                }}
-                onDragLeave={e => {
-                  if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-                    setOverPollId(prev => prev === poll.id ? null : prev);
-                  }
-                }}
-                onDrop={e => {
-                  if (!draggingId || draggingId === poll.id) return;
-                  e.preventDefault();
-                  e.stopPropagation();
-                  const src = optimisticPolls.find(p => p.id === draggingId);
-                  if (src?.section_id === sectionId) {
-                    handleReorder(draggingId, poll.id);
-                  } else {
-                    handleDrop(sectionId);
-                  }
-                }}
-                className={`rounded-xl transition-[box-shadow] duration-100 ${
-                  overPollId === poll.id && draggingId && draggingId !== poll.id
-                    ? "ring-2 ring-indigo-400 ring-inset" : ""
-                }`}
-              >
-                {renderPollCard(poll)}
-              </div>
-            ))}
-            {isOver && (
-              <div className="rounded-xl border-2 border-dashed border-indigo-400 py-3 text-center text-xs text-indigo-500 font-medium">
-                Перенести сюда
-              </div>
-            )}
-          </div>
-        )}
+      <div className="flex flex-col gap-2">
+        {zonePolls.map(poll => {
+          const isSameSection = optimisticPolls.find(p => p.id === draggingId)?.section_id === sectionId;
+          return (
+            <div
+              key={poll.id}
+              onDragOver={e => {
+                if (!draggingId || draggingId === poll.id || !isSameSection) return;
+                e.preventDefault();
+                e.stopPropagation();
+                setOverPollId(poll.id);
+              }}
+              onDragLeave={e => {
+                if (!e.currentTarget.contains(e.relatedTarget as Node))
+                  setOverPollId(prev => prev === poll.id ? null : prev);
+              }}
+              onDrop={e => {
+                if (!draggingId || draggingId === poll.id || !isSameSection) return;
+                e.preventDefault();
+                e.stopPropagation();
+                handleReorder(draggingId, poll.id);
+              }}
+              className={`rounded-xl transition-[box-shadow] duration-100 ${
+                overPollId === poll.id && isSameSection ? "ring-2 ring-indigo-400 ring-inset" : ""
+              }`}
+            >
+              {renderPollCard(poll)}
+            </div>
+          );
+        })}
       </div>
     );
   }
@@ -956,18 +936,26 @@ export function PollList({
         const sectionPolls = optimisticPolls.filter(p => p.section_id === section.id);
         const sectionSlides = optimisticSlides.filter(s => s.section_id === section.id).sort((a, b) => a.sort_order - b.sort_order);
         const isSlideOver = draggingSlideId !== null && overSlideSection === section.id;
-        const isPollOver = draggingId !== null && overSectionId === section.id;
+        const isPollDropping = draggingId !== null && overSectionId === section.id;
+        const isDragFromOtherSection = draggingId !== null && optimisticPolls.find(p => p.id === draggingId)?.section_id !== section.id;
         return (
-          <div
-            key={section.id}
-            onDragOver={e => { if (draggingId) { e.preventDefault(); setOverSectionId(section.id); } }}
-            onDrop={e => { if (draggingId) { e.preventDefault(); handleDrop(section.id); } }}
-            className={`rounded-xl transition-[box-shadow,background-color] duration-150 -mx-1 px-1 py-0.5 ${
-              isPollOver ? "ring-2 ring-indigo-400 ring-inset bg-indigo-50/40 dark:bg-indigo-500/10" : ""
-            }`}
-          >
+          <div key={section.id} className="rounded-xl -mx-1 px-1 py-0.5">
             <SectionHeader section={section} orgSlug={orgSlug} sessionId={sessionId} isPending={isPending} />
-            {/* Slide drop zone for this section — visible only while dragging a slide */}
+            {/* Poll drop zone — visible only when dragging a poll from a different section */}
+            {isDragFromOtherSection && (
+              <div
+                onDragOver={e => { e.preventDefault(); setOverSectionId(section.id); }}
+                onDrop={e => { e.preventDefault(); e.stopPropagation(); handleDrop(section.id); }}
+                className={`rounded-xl border-2 border-dashed mb-2 py-3 text-center text-xs font-medium transition-colors ${
+                  isPollDropping
+                    ? "border-indigo-400 bg-indigo-50/30 dark:bg-indigo-900/10 text-indigo-500"
+                    : "border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-600"
+                }`}
+              >
+                {isPollDropping ? "Перенести сюда" : `Опрос → ${section.title}`}
+              </div>
+            )}
+            {/* Slide drop zone — visible only while dragging a slide */}
             {draggingSlideId && (
               <div
                 onDragOver={e => { e.preventDefault(); setOverSlideSection(section.id); }}
@@ -986,13 +974,13 @@ export function PollList({
                 {renderSlideGroup(sectionSlides)}
               </div>
             )}
-            <SectionDropZone sectionId={section.id} polls={sectionPolls} />
+            {renderPollZone(section.id, sectionPolls)}
           </div>
         );
       })}
 
       {sorted.length === 0 ? (
-        <SectionDropZone sectionId={null} polls={optimisticPolls} />
+        renderPollZone(null, optimisticPolls)
       ) : (
         <>
           {/* "Без секции" drop for slides — visible while dragging a slide that's in a section */}
@@ -1009,13 +997,27 @@ export function PollList({
               {overSlideSection === "none" ? "Убрать из секции" : "Экран → Без секции"}
             </div>
           )}
+          {/* "Без секции" drop for polls — visible while dragging a poll that's in a section */}
+          {draggingId && optimisticPolls.find(p => p.id === draggingId)?.section_id !== null && (
+            <div
+              onDragOver={e => { e.preventDefault(); setOverSectionId("none"); }}
+              onDrop={e => { e.preventDefault(); e.stopPropagation(); handleDrop(null); }}
+              className={`rounded-xl border-2 border-dashed py-3 text-center text-xs font-medium transition-colors ${
+                overSectionId === "none"
+                  ? "border-indigo-400 bg-indigo-50/30 dark:bg-indigo-900/10 text-indigo-500"
+                  : "border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-600"
+              }`}
+            >
+              {overSectionId === "none" ? "Убрать из секции" : "Опрос → Без секции"}
+            </div>
+          )}
           {(unsectioned.length > 0 || draggingId) && (
             <div>
               <div className="flex items-center gap-3 mb-2 px-1">
                 <span className="text-xs font-semibold text-slate-400 dark:text-slate-600 uppercase tracking-wide whitespace-nowrap">Без секции</span>
                 <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
               </div>
-              <SectionDropZone sectionId={null} polls={unsectioned} />
+              {renderPollZone(null, unsectioned)}
             </div>
           )}
         </>
