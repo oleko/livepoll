@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useActionState } from "react";
-import { signUp } from "@/lib/actions/auth";
+import { signUp/*, signInWithYandex*/ } from "@/lib/actions/auth";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -62,20 +62,21 @@ export default function RegisterPage() {
             </Button>
           </form>
 
+          {/* Yandex OAuth — включить после переезда БД в РФ
           <div className="mt-4 flex items-center gap-3">
             <div className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
             <span className="text-xs text-slate-500">или</span>
             <div className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
           </div>
-
-          <div className="mt-4">
-            <Button type="button" variant="secondary" className="w-full gap-2 opacity-40 cursor-not-allowed" disabled title="Скоро">
+          <form action={signInWithYandex} className="mt-4">
+            <Button type="submit" variant="secondary" className="w-full gap-2">
               <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor">
                 <path d="M13.502 2H10.9C7.22 2 5.046 3.988 5.046 7.2c0 2.648 1.234 4.23 3.57 5.786L5 21.994h3.018l3.395-8.57.94.586L15.49 22h3.18l-3.603-9.407C16.92 11.014 18.5 9.05 18.5 6.2 18.5 3.464 16.576 2 13.502 2zm-.495 9.168h-1.4V4.4h1.4c2.02 0 3.074 1.01 3.074 3.25 0 2.398-1.054 3.518-3.074 3.518z" />
               </svg>
               Зарегистрироваться через Яндекс
             </Button>
-          </div>
+          </form>
+          */}
         </div>
 
         <p className="mt-6 text-center text-sm text-slate-500">
