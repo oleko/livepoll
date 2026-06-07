@@ -146,7 +146,7 @@ function AnnouncementSlide({ c }: { c: Record<string, unknown> }) {
   }, [duration]);
 
   return (
-    <div className="flex flex-col items-center justify-center h-full gap-8 px-16 text-center bg-slate-950">
+    <div className="flex flex-col items-center justify-center h-full gap-8 px-16 text-center">
       <div className="text-6xl">📢</div>
       <p className="font-bold text-white leading-tight" style={{ fontSize: "clamp(2.5rem, 8vh, 5rem)" }}>
         {text}
@@ -303,7 +303,7 @@ export function SlideView({ slide, revealed = false, buzzers = [] }: {
 }) {
   const c = slide.content as Record<string, unknown>;
   return (
-    <div className="w-full h-full bg-slate-950">
+    <div className="w-full h-full bg-white dark:bg-slate-950">
       {slide.type === "splash"       && <SplashSlide       c={c as Record<string, string>} />}
       {slide.type === "speaker"      && <SpeakerSlide      c={c as Record<string, string>} />}
       {slide.type === "schedule"     && <ScheduleSlide     c={c as { items?: ScheduleItem[] }} />}

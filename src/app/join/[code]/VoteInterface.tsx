@@ -90,6 +90,7 @@ export function VoteInterface({
           setVoted(false);
           setQuestionsSubmitted(0);
           setError(null);
+          setActiveSlide(null);
         } else if (data.type === "closed") {
           const reveal = (data as { quiz_reveal?: QuizReveal }).quiz_reveal;
           if (reveal) setQuizReveal(reveal);

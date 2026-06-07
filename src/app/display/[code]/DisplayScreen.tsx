@@ -130,6 +130,7 @@ export function DisplayScreen({
           setQuizReveal(null);
           setPoll(data.poll);
           setVotes([]);
+          setActiveSlide(null);
         } else if (data.type === "closed") {
           const reveal = (data as { quiz_reveal?: QuizReveal }).quiz_reveal;
           if (reveal) {

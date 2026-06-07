@@ -482,20 +482,22 @@ export async function submitQuestion(formData: FormData) {
   if (!isValidUUID(voterToken)) return { error: "Неверные данные" };
   if (text.length > 300) return { error: "Вопрос слишком длинный (максимум 300 символов)" };
 
-  // Check per-voter question limit
+  // Check per-voter question limit (idea_wall is exempt — unlimited ideas per voter)
   if (pollId) {
     const { data: pollData } = await admin
       .from("polls")
-      .select("settings")
+      .select("settings, type")
       .eq("id", pollId)
       .single();
-    const maxQ = (pollData?.settings as { max_questions?: number } | null)?.max_questions ?? 1;
-    const { count } = await admin
-      .from("questions")
-      .select("id", { count: "exact", head: true })
-      .eq("session_id", sessionId)
-      .eq("voter_token", voterToken);
-    if ((count ?? 0) >= maxQ) return { error: "Лимит вопросов исчерпан" };
+    if (pollData?.type !== "idea_wall") {
+      const maxQ = (pollData?.settings as { max_questions?: number } | null)?.max_questions ?? 1;
+      const { count } = await admin
+        .from("questions")
+        .select("id", { count: "exact", head: true })
+        .eq("session_id", sessionId)
+        .eq("voter_token", voterToken);
+      if ((count ?? 0) >= maxQ) return { error: "Лимит вопросов исчерпан" };
+    }
   }
 
   const { data, error } = await admin
