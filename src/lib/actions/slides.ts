@@ -63,7 +63,7 @@ export async function createSlide(
 
   const { data, error } = await admin
     .from("session_slides")
-    .insert({ session_id: sessionId, type, content, sort_order: (last?.sort_order ?? -1) + 1, section_id: sectionId ?? null } as never)
+    .insert({ session_id: sessionId, type, content, sort_order: (last?.sort_order ?? -1) + 1 } as never)
     .select("id")
     .single();
 
