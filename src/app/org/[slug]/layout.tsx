@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { FeedbackWidget } from "@/components/FeedbackWidget";
+import { OnboardingTour } from "@/components/OnboardingTour";
 
 export default async function OrgLayout({
   children,
@@ -96,6 +97,7 @@ export default async function OrgLayout({
         {children}
       </main>
       <FeedbackWidget />
+      <OnboardingTour />
     </div>
   );
 }
