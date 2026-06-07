@@ -3,7 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { PLAN_DISPLAY_NAME } from "@/lib/limits";
-import { PLAN_PRICES } from "@/lib/actions/billing";
+import { PLAN_PRICES } from "@/lib/billing-config";
 import { UpgradeButton } from "./UpgradeButton";
 import type { OrgPlan } from "@/types/database";
 
