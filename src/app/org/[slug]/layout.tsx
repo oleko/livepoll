@@ -60,7 +60,38 @@ export default async function OrgLayout({
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
       <header className="border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3">
+        {/* Mobile — два ряда */}
+        <div className="sm:hidden">
+          <div className="flex items-center justify-between px-4 py-3">
+            <span className="font-semibold text-slate-900 dark:text-white truncate mr-2">{org.name}</span>
+            <div className="flex items-center gap-1 shrink-0">
+              <ThemeToggle />
+              <Link
+                href="/account"
+                className="rounded-md px-2.5 py-1.5 text-sm text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              >
+                Аккаунт
+              </Link>
+              <form action={signOut}>
+                <Button type="submit" variant="ghost" className="text-sm py-1.5 px-2.5">Выйти</Button>
+              </form>
+            </div>
+          </div>
+          <div className="flex items-center gap-1 px-3 pb-2 overflow-x-auto scrollbar-none">
+            {navLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="shrink-0 rounded-md px-3 py-1.5 text-sm text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-colors"
+              >
+                {link.label}
+              </Link>
+            ))}
+          </div>
+        </div>
+
+        {/* Desktop — один ряд */}
+        <div className="hidden sm:flex mx-auto max-w-6xl items-center justify-between px-6 py-3">
           <div className="flex items-center gap-8">
             <span className="font-semibold text-slate-900 dark:text-white">{org.name}</span>
             <nav className="flex gap-1">
@@ -85,15 +116,13 @@ export default async function OrgLayout({
               Аккаунт
             </Link>
             <form action={signOut}>
-              <Button type="submit" variant="ghost" className="text-sm py-1.5 px-3">
-                Выйти
-              </Button>
+              <Button type="submit" variant="ghost" className="text-sm py-1.5 px-3">Выйти</Button>
             </form>
           </div>
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-6 py-8">
+      <main className="mx-auto max-w-6xl px-4 sm:px-6 py-6 sm:py-8">
         {children}
       </main>
       <FeedbackWidget />
