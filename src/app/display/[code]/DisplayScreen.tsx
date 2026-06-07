@@ -94,6 +94,7 @@ export function DisplayScreen({
   const [quizReveal, setQuizReveal] = useState<QuizReveal | null>(null);
   const [announcement, setAnnouncement] = useState<AnnouncementData | null>(null);
   const [activeSlide, setActiveSlide] = useState<ActiveSlide>(initialActiveSlide ?? null);
+  const [slideShowKey, setSlideShowKey] = useState(0);
   const [revealedSlideId, setRevealedSlideId] = useState<string | null>(null);
   const [buzzers, setBuzzers] = useState<{ token: string; ts: number }[]>([]);
   const [announcementTimeLeft, setAnnouncementTimeLeft] = useState<number | null>(null);
@@ -190,6 +191,7 @@ export function DisplayScreen({
         const data = payload as { type: "show" | "hide"; slide?: ActiveSlide };
         if (data.type === "show" && data.slide) {
           setActiveSlide(data.slide);
+          setSlideShowKey(k => k + 1);
           setRevealedSlideId(null);
           setBuzzers([]);
         } else if (data.type === "hide") {
@@ -348,6 +350,7 @@ export function DisplayScreen({
         <div className="absolute inset-0 z-20">
           <SlideView
             slide={activeSlide}
+            slideShowKey={slideShowKey}
             revealed={revealedSlideId === activeSlide.id}
             buzzers={buzzers}
           />

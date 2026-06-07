@@ -296,8 +296,9 @@ function RevealSlide({ c, revealed, buzzers }: {
   );
 }
 
-export function SlideView({ slide, revealed = false, buzzers = [] }: {
+export function SlideView({ slide, slideShowKey = 0, revealed = false, buzzers = [] }: {
   slide: SlideData;
+  slideShowKey?: number;
   revealed?: boolean;
   buzzers?: BuzzerEntry[];
 }) {
@@ -309,7 +310,7 @@ export function SlideView({ slide, revealed = false, buzzers = [] }: {
       {slide.type === "schedule"     && <ScheduleSlide     c={c as { items?: ScheduleItem[] }} />}
       {slide.type === "quote"        && <QuoteSlide        c={c as Record<string, string>} />}
       {slide.type === "final"        && <FinalSlide        c={c as Record<string, string>} />}
-      {slide.type === "spin_wheel"   && <SpinWheelSlide    c={c} />}
+      {slide.type === "spin_wheel"   && <SpinWheelSlide    key={`spin-${slideShowKey}`} c={c} />}
       {slide.type === "announcement" && <AnnouncementSlide c={c} />}
       {slide.type === "reveal"       && <RevealSlide       c={c} revealed={revealed} buzzers={buzzers} />}
     </div>

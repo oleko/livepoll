@@ -6,6 +6,8 @@ import { revalidatePath } from "next/cache";
 import type { PollType, OrgPlan } from "@/types/database";
 import { getLimits } from "@/lib/limits";
 import { getAuthUser, assertSessionMember } from "@/lib/actions/guards";
+import { headers } from "next/headers";
+import { checkRateLimit } from "@/lib/rateLimit";
 
 type PollState = { error: string } | { success: true } | null;
 
@@ -304,6 +306,9 @@ export async function closePoll(
 }
 
 export async function submitVote(formData: FormData) {
+  const ip = ((await headers()).get("x-forwarded-for") ?? "").split(",")[0].trim() || "unknown";
+  if (!checkRateLimit(`vote:${ip}`, 30, 60_000)) return { error: "Слишком много запросов. Подождите немного." };
+
   const admin = createAdminClient();
 
   const pollId = formData.get("poll_id") as string;
@@ -475,6 +480,9 @@ export async function submitVote(formData: FormData) {
 }
 
 export async function submitQuestion(formData: FormData) {
+  const ip = ((await headers()).get("x-forwarded-for") ?? "").split(",")[0].trim() || "unknown";
+  if (!checkRateLimit(`question:${ip}`, 15, 60_000)) return { error: "Слишком много запросов. Подождите немного." };
+
   const admin = createAdminClient();
 
   const sessionId = formData.get("session_id") as string;

@@ -377,7 +377,7 @@ function PollCard({
   draggingId, onDragStart, onDragEnd,
   editingId, editTitle, editOptions, editSaving, editError,
   onStartEdit, onSaveEdit, onCancelEdit, onEditTitleChange, onEditOptionsChange,
-  hiddenFromDisplay, onHide, onShow,
+  hiddenFromDisplay, onHide, onShow, otherActivePollTitle,
 }: {
   poll: PollRow;
   votesByPoll: Record<string, number>;
@@ -392,6 +392,7 @@ function PollCard({
   hiddenFromDisplay: boolean;
   onHide: () => void;
   onShow: () => void;
+  otherActivePollTitle?: string;
 }) {
   const isActive    = poll.status === "active";
   const isClosed    = poll.status === "closed";
@@ -466,7 +467,13 @@ function PollCard({
               {sessionStatus === "active" && (
                 <>
                   {!isActive && !isClosed && (
-                    <Button className="text-xs py-1.5 px-3" onClick={() => activatePoll(poll.id, sessionId, orgSlug)}>Запустить</Button>
+                    <Button
+                      className="text-xs py-1.5 px-3"
+                      onClick={() => {
+                        if (otherActivePollTitle && !confirm(`Запущен опрос «${otherActivePollTitle}» — он будет завершён. Продолжить?`)) return;
+                        activatePoll(poll.id, sessionId, orgSlug);
+                      }}
+                    >Запустить</Button>
                   )}
                   {isActive && hiddenFromDisplay && (
                     <Button className="text-xs py-1.5 px-3" onClick={onShow}>Показать</Button>
@@ -745,6 +752,8 @@ export function PollList({
     onEditTitleChange: setEditTitle, onEditOptionsChange: setEditOptions,
   };
 
+  const activePoll = optimisticPolls.find(p => p.status === "active");
+
   function renderPollCard(poll: PollRow) {
     return (
       <PollCard
@@ -754,6 +763,7 @@ export function PollList({
         hiddenFromDisplay={hiddenPollIds.has(poll.id)}
         onHide={() => handleHidePoll(poll.id)}
         onShow={() => handleShowPoll(poll.id)}
+        otherActivePollTitle={poll.status !== "active" && activePoll ? activePoll.title : undefined}
       />
     );
   }
