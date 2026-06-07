@@ -112,6 +112,12 @@ export async function deleteOrganization(orgId: string) {
   revalidatePath("/admin");
 }
 
+export async function confirmUserEmail(userId: string): Promise<void> {
+  const admin = await requirePlatformAdmin();
+  await admin.auth.admin.updateUserById(userId, { email_confirm: true });
+  revalidatePath("/admin/users");
+}
+
 export async function deleteUser(userId: string) {
   const admin = await requirePlatformAdmin();
 

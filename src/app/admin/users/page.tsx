@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { RoleToggle } from "./RoleToggle";
 import { DeleteUserButton } from "./DeleteUserButton";
 import { CreateUserForm } from "./CreateUserForm";
+import { ConfirmEmailButton } from "./ConfirmEmailButton";
 
 export default async function AdminUsersPage() {
   const supabase = await createClient();
@@ -17,6 +18,9 @@ export default async function AdminUsersPage() {
   const { data: authUsers } = await admin.auth.admin.listUsers();
   const emailById = Object.fromEntries(
     (authUsers?.users ?? []).map((u) => [u.id, u.email ?? ""])
+  );
+  const confirmedById = Object.fromEntries(
+    (authUsers?.users ?? []).map((u) => [u.id, !!u.email_confirmed_at])
   );
 
   const admins = (profiles ?? []).filter((p) => p.platform_role === "platform_admin");
@@ -41,6 +45,7 @@ export default async function AdminUsersPage() {
                 <th className="text-left px-5 py-3 font-medium">Имя</th>
                 <th className="text-left px-5 py-3 font-medium">Email</th>
                 <th className="text-left px-5 py-3 font-medium">Зарегистрирован</th>
+                <th className="text-left px-5 py-3 font-medium">Email</th>
                 <th className="px-5 py-3" />
               </tr>
             </thead>
@@ -55,6 +60,13 @@ export default async function AdminUsersPage() {
                   </td>
                   <td className="px-5 py-4 text-slate-400 dark:text-slate-500">
                     {new Date(p.created_at).toLocaleDateString("ru-RU")}
+                  </td>
+                  <td className="px-5 py-4">
+                    {confirmedById[p.id] ? (
+                      <span className="text-xs text-emerald-600 dark:text-emerald-400">✓ Подтверждён</span>
+                    ) : (
+                      <ConfirmEmailButton userId={p.id} />
+                    )}
                   </td>
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-3">
@@ -97,6 +109,7 @@ export default async function AdminUsersPage() {
                 <th className="text-left px-5 py-3 font-medium">Имя</th>
                 <th className="text-left px-5 py-3 font-medium">Email</th>
                 <th className="text-left px-5 py-3 font-medium">Зарегистрирован</th>
+                <th className="text-left px-5 py-3 font-medium">Email</th>
                 <th className="px-5 py-3" />
               </tr>
             </thead>
@@ -111,6 +124,13 @@ export default async function AdminUsersPage() {
                   </td>
                   <td className="px-5 py-4 text-slate-400 dark:text-slate-500">
                     {new Date(p.created_at).toLocaleDateString("ru-RU")}
+                  </td>
+                  <td className="px-5 py-4">
+                    {confirmedById[p.id] ? (
+                      <span className="text-xs text-emerald-600 dark:text-emerald-400">✓ Подтверждён</span>
+                    ) : (
+                      <ConfirmEmailButton userId={p.id} />
+                    )}
                   </td>
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-3">
