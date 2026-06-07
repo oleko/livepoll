@@ -21,6 +21,7 @@ export type SlideRow = {
   type: SlideType;
   content: Record<string, unknown>;
   sort_order: number;
+  section_id: string | null;
   created_at: string;
 };
 
@@ -46,7 +47,8 @@ export async function createSlide(
   sessionId: string,
   type: SlideType,
   content: Record<string, unknown>,
-  orgSlug: string
+  orgSlug: string,
+  sectionId?: string | null
 ): Promise<{ error: string } | { id: string }> {
   const { user, admin } = await getAuthUser();
   await assertSessionMember(user.id, sessionId, admin);
@@ -61,7 +63,7 @@ export async function createSlide(
 
   const { data, error } = await admin
     .from("session_slides")
-    .insert({ session_id: sessionId, type, content, sort_order: (last?.sort_order ?? -1) + 1 })
+    .insert({ session_id: sessionId, type, content, sort_order: (last?.sort_order ?? -1) + 1, section_id: sectionId ?? null } as never)
     .select("id")
     .single();
 
@@ -237,5 +239,21 @@ export async function hideSlide(
 
   await admin.from("sessions").update({ active_slide_id: null } as never).eq("id", sessionId);
   await broadcastRaw(messages);
+  revalidatePath(`/org/${orgSlug}/sessions/${sessionId}`);
+}
+
+export async function moveSlideToSection(
+  slideId: string,
+  sessionId: string,
+  sectionId: string | null,
+  orgSlug: string
+): Promise<void> {
+  const { user, admin } = await getAuthUser();
+  await assertSessionMember(user.id, sessionId, admin);
+
+  await admin.from("session_slides").update({ section_id: sectionId } as never)
+    .eq("id", slideId)
+    .eq("session_id", sessionId);
+
   revalidatePath(`/org/${orgSlug}/sessions/${sessionId}`);
 }

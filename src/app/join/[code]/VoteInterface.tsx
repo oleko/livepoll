@@ -60,6 +60,7 @@ export function VoteInterface({
   const [announcement, setAnnouncement] = useState<AnnouncementData | null>(null);
   const [announcementTimeLeft, setAnnouncementTimeLeft] = useState<number | null>(null);
   const [questionsSubmitted, setQuestionsSubmitted] = useState(0);
+  const [ideaText, setIdeaText] = useState("");
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sessionEnded, setSessionEnded] = useState(false);
@@ -89,6 +90,7 @@ export function VoteInterface({
           setPoll(data.poll);
           setVoted(false);
           setQuestionsSubmitted(0);
+          setIdeaText("");
           setError(null);
           setActiveSlide(null);
         } else if (data.type === "closed") {
@@ -208,6 +210,7 @@ export function VoteInterface({
       setError(result.error);
     } else {
       setQuestionsSubmitted((n) => n + 1);
+      setIdeaText("");
     }
   }
 
@@ -314,7 +317,14 @@ export function VoteInterface({
           <div className="text-center">
             <div className="text-6xl mb-4">💡</div>
             <p className="text-xl font-semibold text-slate-900 dark:text-white mb-2">Идея отправлена!</p>
-            <p className="text-sm text-slate-400 dark:text-slate-500">Ваша идея уже видна на экране</p>
+            <p className="text-sm text-slate-400 dark:text-slate-500 mb-5">Ваша идея уже видна на экране</p>
+            <Button
+              variant="secondary"
+              className="text-sm"
+              onClick={() => { setQuestionsSubmitted(0); setIdeaText(""); setError(null); }}
+            >
+              Отправить ещё
+            </Button>
           </div>
         ) : (
           <>
@@ -325,20 +335,18 @@ export function VoteInterface({
             )}
             <div className="flex flex-col gap-3">
               <textarea
-                key="idea-input"
                 rows={3}
                 maxLength={200}
                 placeholder="Введите вашу идею..."
+                value={ideaText}
+                onChange={(e) => setIdeaText(e.target.value)}
                 className="rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-5 py-4 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none text-base"
-                id="idea-input"
               />
               <Button
                 className="w-full py-4 text-base"
-                onClick={() => {
-                  const input = document.getElementById("idea-input") as HTMLTextAreaElement;
-                  if (input?.value.trim()) handleSubmitQuestion(input.value.trim());
-                }}
+                onClick={() => { if (ideaText.trim()) handleSubmitQuestion(ideaText.trim()); }}
                 loading={isPending}
+                disabled={!ideaText.trim()}
               >
                 Отправить идею
               </Button>

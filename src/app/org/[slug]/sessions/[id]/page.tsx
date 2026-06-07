@@ -90,7 +90,7 @@ export default async function SessionPage({
 
   const { data: slides } = await admin
     .from("session_slides")
-    .select("id, session_id, type, content, sort_order, created_at")
+    .select("id, session_id, type, content, sort_order, section_id, created_at")
     .eq("session_id", id)
     .order("sort_order");
 
@@ -186,7 +186,7 @@ export default async function SessionPage({
               ...p,
               section_id: (p as unknown as { section_id?: string | null }).section_id ?? null,
             }))}
-            slides={(slides ?? []) as import("@/lib/actions/slides").SlideRow[]}
+            slides={(slides ?? []) as unknown as import("@/lib/actions/slides").SlideRow[]}
             activeSlideId={activeSlideId}
             votesByPoll={votesByPoll}
             votesDataByPoll={votesDataByPoll}

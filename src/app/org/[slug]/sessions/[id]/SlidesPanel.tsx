@@ -315,7 +315,7 @@ function AddSlideForm({ sessionId, orgSlug, onClose, onCreated }: {
       if ("error" in result) {
         setError(result.error);
       } else {
-        onCreated({ id: result.id, session_id: sessionId, type, content, sort_order: 0, created_at: new Date().toISOString() });
+        onCreated({ id: result.id, session_id: sessionId, type, content, sort_order: 0, section_id: null, created_at: new Date().toISOString() });
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Ошибка создания");
