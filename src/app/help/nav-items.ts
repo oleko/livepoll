@@ -7,5 +7,6 @@ export const NAV_ITEMS = [
   { slug: "qa-and-ai",      title: "Q&A и AI-анализ",       icon: "✨" },
   { slug: "plans",          title: "Тарифы и лимиты",       icon: "💳" },
   { slug: "team",           title: "Команда",               icon: "👥" },
+  { slug: "account",        title: "Аккаунт",               icon: "👤" },
   { slug: "changelog",      title: "История обновлений",    icon: "📋" },
 ];

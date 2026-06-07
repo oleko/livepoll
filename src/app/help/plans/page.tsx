@@ -42,7 +42,7 @@ export default function PlansPage() {
                   { label: "Мероприятий в месяц",    free: "3",    starter: "∞",    pro: "∞",    team: "∞"     },
                   { label: "Опросов в мероприятии",  free: "5",    starter: "10",   pro: "∞",    team: "∞"     },
                   { label: "Ведущих",                free: "1",    starter: "1",    pro: "1",    team: "до 5"  },
-                  { label: "Все 7 типов опросов",    free: "✓",    starter: "✓",    pro: "✓",    team: "✓"     },
+                  { label: "Все 8 типов опросов",    free: "✓",    starter: "✓",    pro: "✓",    team: "✓"     },
                   { label: "Дисплейный экран",       free: "✓",    starter: "✓",    pro: "✓",    team: "✓"     },
                   { label: "Таймер и лимит голосов", free: "✓",    starter: "✓",    pro: "✓",    team: "✓"     },
                   { label: "Шаблоны мероприятий",    free: "✓",    starter: "✓",    pro: "✓",    team: "✓"     },
@@ -102,12 +102,17 @@ export default function PlansPage() {
 
         <section>
           <h2 className="text-base font-semibold text-slate-900 dark:text-white mb-3">Как перейти на другой тариф</h2>
+          <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed mb-3">
+            Перейдите в <b>Настройки организации</b> и нажмите <b>«Сменить тариф →»</b> —
+            откроется страница с ценами и кнопками оформления. Оплата картой через ЮKassa,
+            тариф активируется автоматически после подтверждения платежа.
+          </p>
           <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-            Напишите нам на{" "}
-            <a href="mailto:oleko85@gmail.com" className="py-2 text-indigo-600 dark:text-indigo-400 hover:underline">
+            Для тарифа «Команда» и корпоративных вопросов — напишите на{" "}
+            <a href="mailto:oleko85@gmail.com" className="text-indigo-600 dark:text-indigo-400 hover:underline">
               oleko85@gmail.com
-            </a>{" "}
-            — подберём подходящий вариант и активируем план. Текущие данные сохраняются при любом переходе.
+            </a>.
+            Текущие данные сохраняются при любом переходе.
           </p>
         </section>
 
