@@ -57,17 +57,62 @@ export default async function AdminOrgsPage() {
     unlimited: "text-violet-600 bg-violet-50 dark:text-violet-400 dark:bg-violet-950/40",
   };
 
+  const empty = !orgs || orgs.length === 0;
+
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold text-slate-900 dark:text-white">Организации</h1>
-          <p className="text-sm text-slate-400 dark:text-slate-500 mt-0.5">{orgs?.length ?? 0} всего</p>
-        </div>
+      <div className="mb-6">
+        <h1 className="text-xl font-semibold text-slate-900 dark:text-white">Организации</h1>
+        <p className="text-sm text-slate-400 dark:text-slate-500 mt-0.5">{orgs?.length ?? 0} всего</p>
       </div>
 
       <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden">
-        <table className="w-full text-sm">
+
+        {/* ── Mobile cards ── */}
+        <div className="sm:hidden divide-y divide-slate-100 dark:divide-slate-800">
+          {empty ? (
+            <p className="px-4 py-12 text-center text-slate-400 dark:text-slate-600">Нет организаций</p>
+          ) : (orgs ?? []).map((org) => {
+            const limits = getLimits(org.plan as OrgPlan);
+            const usedSessions = sessionsMonthBy[org.id] ?? 0;
+            const isOver = usedSessions >= limits.sessionsPerMonth;
+            return (
+              <div key={org.id} className="px-4 py-4 space-y-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="font-medium text-slate-900 dark:text-white truncate">{org.name}</p>
+                    <p className="text-xs text-slate-400 font-mono mt-0.5">{org.slug}</p>
+                  </div>
+                  <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold ${PLAN_COLOR[org.plan as OrgPlan]}`}>
+                    {PLAN_DISPLAY_NAME[org.plan as OrgPlan]}
+                  </span>
+                </div>
+
+                {org.plan_expires_at && (
+                  <p className={`text-xs ${new Date(org.plan_expires_at) < new Date() ? "text-red-400" : "text-slate-400"}`}>
+                    Тариф до {new Date(org.plan_expires_at).toLocaleDateString("ru-RU")}
+                  </p>
+                )}
+
+                <div className="flex items-center gap-4 text-xs text-slate-500 dark:text-slate-400">
+                  <span className={isOver ? "text-red-500 font-medium" : ""}>
+                    Мер./мес.: {usedSessions}/{limits.sessionsPerMonth === Infinity ? "∞" : limits.sessionsPerMonth}
+                  </span>
+                  <span>Уч.: {membersBy[org.id] ?? 0}/{limits.members === Infinity ? "∞" : limits.members}</span>
+                  <span>Всего: {sessionsBy[org.id] ?? 0}</span>
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap">
+                  <OrgPlanForm orgId={org.id} currentPlan={org.plan as OrgPlan} currentExpires={org.plan_expires_at} />
+                  <DeleteOrgButton orgId={org.id} name={org.name} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* ── Desktop table ── */}
+        <table className="hidden sm:table w-full text-sm">
           <thead>
             <tr className="border-b border-slate-100 dark:border-slate-800 text-xs text-slate-400 dark:text-slate-500 uppercase tracking-wide">
               <th className="text-left px-5 py-3 font-medium">Организация</th>
@@ -103,14 +148,16 @@ export default async function AdminOrgsPage() {
                     return (
                       <div>
                         <span className={`text-sm font-medium ${isOver ? "text-red-500" : "text-slate-700 dark:text-slate-300"}`}>
-                          {used} / {limits.sessionsPerMonth}
+                          {used} / {limits.sessionsPerMonth === Infinity ? "∞" : limits.sessionsPerMonth}
                         </span>
-                        <div className="mt-1 h-1 w-16 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
-                          <div
-                            className={`h-full rounded-full ${isOver ? "bg-red-500" : "bg-indigo-500"}`}
-                            style={{ width: `${Math.min(Math.round((used / limits.sessionsPerMonth) * 100), 100)}%` }}
-                          />
-                        </div>
+                        {limits.sessionsPerMonth < Infinity && (
+                          <div className="mt-1 h-1 w-16 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                            <div
+                              className={`h-full rounded-full ${isOver ? "bg-red-500" : "bg-indigo-500"}`}
+                              style={{ width: `${Math.min(Math.round((used / limits.sessionsPerMonth) * 100), 100)}%` }}
+                            />
+                          </div>
+                        )}
                       </div>
                     );
                   })()}
@@ -122,7 +169,7 @@ export default async function AdminOrgsPage() {
                     const isOver = used >= limits.members;
                     return (
                       <span className={`text-sm ${isOver ? "text-red-500 font-medium" : "text-slate-600 dark:text-slate-300"}`}>
-                        {used} / {limits.members}
+                        {used} / {limits.members === Infinity ? "∞" : limits.members}
                       </span>
                     );
                   })()}
@@ -132,24 +179,19 @@ export default async function AdminOrgsPage() {
                 </td>
                 <td className="px-5 py-4">
                   <div className="flex items-center gap-3 flex-wrap">
-                    <OrgPlanForm
-                      orgId={org.id}
-                      currentPlan={org.plan as OrgPlan}
-                      currentExpires={org.plan_expires_at}
-                    />
+                    <OrgPlanForm orgId={org.id} currentPlan={org.plan as OrgPlan} currentExpires={org.plan_expires_at} />
                     <DeleteOrgButton orgId={org.id} name={org.name} />
                   </div>
                 </td>
               </tr>
             ))}
+            {empty && (
+              <tr>
+                <td colSpan={6} className="px-5 py-16 text-center text-slate-400 dark:text-slate-600">Нет организаций</td>
+              </tr>
+            )}
           </tbody>
         </table>
-
-        {(!orgs || orgs.length === 0) && (
-          <div className="py-16 text-center text-slate-400 dark:text-slate-600">
-            Нет организаций
-          </div>
-        )}
       </div>
     </div>
   );

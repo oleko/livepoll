@@ -24,136 +24,110 @@ export default async function AdminUsersPage() {
   );
 
   const admins = (profiles ?? []).filter((p) => p.platform_role === "platform_admin");
-  const users = (profiles ?? []).filter((p) => p.platform_role !== "platform_admin");
+  const users  = (profiles ?? []).filter((p) => p.platform_role !== "platform_admin");
+
+  function UserTable({ list, isSelfCheck }: { list: typeof admins; isSelfCheck: boolean }) {
+    return (
+      <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden">
+
+        {/* ── Mobile cards ── */}
+        <div className="sm:hidden divide-y divide-slate-100 dark:divide-slate-800">
+          {list.length === 0 ? (
+            <p className="px-4 py-10 text-center text-slate-400 dark:text-slate-600">Нет пользователей</p>
+          ) : list.map((p) => (
+            <div key={p.id} className="px-4 py-4 space-y-2.5">
+              <div>
+                <p className="font-medium text-slate-900 dark:text-white text-sm">{p.full_name ?? "—"}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 break-all">{emailById[p.id] ?? "—"}</p>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                {confirmedById[p.id] ? (
+                  <span className="text-xs text-emerald-600 dark:text-emerald-400">✓ Email подтверждён</span>
+                ) : (
+                  <ConfirmEmailButton userId={p.id} />
+                )}
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <RoleToggle userId={p.id} currentRole={p.platform_role} isSelf={isSelfCheck && p.id === me?.id} />
+                {(!isSelfCheck || p.id !== me?.id) && (
+                  <DeleteUserButton userId={p.id} name={p.full_name ?? emailById[p.id] ?? p.id} />
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* ── Desktop table ── */}
+        <table className="hidden sm:table w-full text-sm">
+          <thead>
+            <tr className="border-b border-slate-100 dark:border-slate-800 text-xs text-slate-400 dark:text-slate-500 uppercase tracking-wide">
+              <th className="text-left px-5 py-3 font-medium">Имя</th>
+              <th className="text-left px-5 py-3 font-medium">Email</th>
+              <th className="text-left px-5 py-3 font-medium">Зарегистрирован</th>
+              <th className="text-left px-5 py-3 font-medium">Подтверждение</th>
+              <th className="px-5 py-3" />
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+            {list.map((p) => (
+              <tr key={p.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                <td className="px-5 py-4 font-medium text-slate-900 dark:text-white">
+                  {p.full_name ?? "—"}
+                </td>
+                <td className="px-5 py-4 text-slate-500 dark:text-slate-400">
+                  {emailById[p.id] ?? "—"}
+                </td>
+                <td className="px-5 py-4 text-slate-400 dark:text-slate-500">
+                  {new Date(p.created_at).toLocaleDateString("ru-RU")}
+                </td>
+                <td className="px-5 py-4">
+                  {confirmedById[p.id] ? (
+                    <span className="text-xs text-emerald-600 dark:text-emerald-400">✓ Подтверждён</span>
+                  ) : (
+                    <ConfirmEmailButton userId={p.id} />
+                  )}
+                </td>
+                <td className="px-5 py-4">
+                  <div className="flex items-center gap-3">
+                    <RoleToggle userId={p.id} currentRole={p.platform_role} isSelf={isSelfCheck && p.id === me?.id} />
+                    {(!isSelfCheck || p.id !== me?.id) && (
+                      <DeleteUserButton userId={p.id} name={p.full_name ?? emailById[p.id] ?? p.id} />
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {list.length === 0 && (
+              <tr>
+                <td colSpan={5} className="px-5 py-10 text-center text-slate-400 dark:text-slate-600">
+                  Нет пользователей
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-8">
       <CreateUserForm />
 
-      {/* Platform admins */}
       <div>
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-base font-semibold text-slate-900 dark:text-white">
-            Платформ-администраторы
-            <span className="ml-2 text-sm font-normal text-slate-400 dark:text-slate-500">{admins.length}</span>
-          </h2>
-        </div>
-        <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-slate-100 dark:border-slate-800 text-xs text-slate-400 dark:text-slate-500 uppercase tracking-wide">
-                <th className="text-left px-5 py-3 font-medium">Имя</th>
-                <th className="text-left px-5 py-3 font-medium">Email</th>
-                <th className="text-left px-5 py-3 font-medium">Зарегистрирован</th>
-                <th className="text-left px-5 py-3 font-medium">Email</th>
-                <th className="px-5 py-3" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {admins.map((p) => (
-                <tr key={p.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
-                  <td className="px-5 py-4 font-medium text-slate-900 dark:text-white">
-                    {p.full_name ?? "—"}
-                  </td>
-                  <td className="px-5 py-4 text-slate-500 dark:text-slate-400">
-                    {emailById[p.id] ?? "—"}
-                  </td>
-                  <td className="px-5 py-4 text-slate-400 dark:text-slate-500">
-                    {new Date(p.created_at).toLocaleDateString("ru-RU")}
-                  </td>
-                  <td className="px-5 py-4">
-                    {confirmedById[p.id] ? (
-                      <span className="text-xs text-emerald-600 dark:text-emerald-400">✓ Подтверждён</span>
-                    ) : (
-                      <ConfirmEmailButton userId={p.id} />
-                    )}
-                  </td>
-                  <td className="px-5 py-4">
-                    <div className="flex items-center gap-3">
-                      <RoleToggle
-                        userId={p.id}
-                        currentRole={p.platform_role}
-                        isSelf={p.id === me?.id}
-                      />
-                      {p.id !== me?.id && (
-                        <DeleteUserButton userId={p.id} name={p.full_name ?? emailById[p.id] ?? p.id} />
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {admins.length === 0 && (
-                <tr>
-                  <td colSpan={4} className="px-5 py-8 text-center text-slate-400 dark:text-slate-600">
-                    Нет администраторов
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+        <h2 className="text-base font-semibold text-slate-900 dark:text-white mb-4">
+          Платформ-администраторы
+          <span className="ml-2 text-sm font-normal text-slate-400 dark:text-slate-500">{admins.length}</span>
+        </h2>
+        <UserTable list={admins} isSelfCheck={true} />
       </div>
 
-      {/* Regular users */}
       <div>
-        <div className="mb-4">
-          <h2 className="text-base font-semibold text-slate-900 dark:text-white">
-            Пользователи
-            <span className="ml-2 text-sm font-normal text-slate-400 dark:text-slate-500">{users.length}</span>
-          </h2>
-        </div>
-        <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-slate-100 dark:border-slate-800 text-xs text-slate-400 dark:text-slate-500 uppercase tracking-wide">
-                <th className="text-left px-5 py-3 font-medium">Имя</th>
-                <th className="text-left px-5 py-3 font-medium">Email</th>
-                <th className="text-left px-5 py-3 font-medium">Зарегистрирован</th>
-                <th className="text-left px-5 py-3 font-medium">Email</th>
-                <th className="px-5 py-3" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {users.map((p) => (
-                <tr key={p.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
-                  <td className="px-5 py-4 font-medium text-slate-900 dark:text-white">
-                    {p.full_name ?? "—"}
-                  </td>
-                  <td className="px-5 py-4 text-slate-500 dark:text-slate-400">
-                    {emailById[p.id] ?? "—"}
-                  </td>
-                  <td className="px-5 py-4 text-slate-400 dark:text-slate-500">
-                    {new Date(p.created_at).toLocaleDateString("ru-RU")}
-                  </td>
-                  <td className="px-5 py-4">
-                    {confirmedById[p.id] ? (
-                      <span className="text-xs text-emerald-600 dark:text-emerald-400">✓ Подтверждён</span>
-                    ) : (
-                      <ConfirmEmailButton userId={p.id} />
-                    )}
-                  </td>
-                  <td className="px-5 py-4">
-                    <div className="flex items-center gap-3">
-                      <RoleToggle
-                        userId={p.id}
-                        currentRole={p.platform_role}
-                        isSelf={false}
-                      />
-                      <DeleteUserButton userId={p.id} name={p.full_name ?? emailById[p.id] ?? p.id} />
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {users.length === 0 && (
-                <tr>
-                  <td colSpan={4} className="px-5 py-8 text-center text-slate-400 dark:text-slate-600">
-                    Нет пользователей
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+        <h2 className="text-base font-semibold text-slate-900 dark:text-white mb-4">
+          Пользователи
+          <span className="ml-2 text-sm font-normal text-slate-400 dark:text-slate-500">{users.length}</span>
+        </h2>
+        <UserTable list={users} isSelfCheck={false} />
       </div>
     </div>
   );
