@@ -472,7 +472,12 @@ function PollCard({
                     <Button className="text-xs py-1.5 px-3" onClick={onShow}>Показать</Button>
                   )}
                   {isActive && !hiddenFromDisplay && (
-                    <Button variant="secondary" className="text-xs py-1.5 px-3" onClick={onHide}>Убрать с экрана</Button>
+                    <button type="button" onClick={onHide}
+                      className="flex items-center gap-1.5 rounded-lg border border-green-500/30 bg-green-500/10 px-2.5 py-1.5 text-xs font-medium text-green-600 dark:text-green-400 hover:bg-green-500/20 transition-colors"
+                    >
+                      <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse shrink-0" />
+                      На экране
+                    </button>
                   )}
                   {isActive && (
                     <Button variant="secondary" className="text-xs py-1.5 px-3" onClick={() => closePoll(poll.id, sessionId, orgSlug)}>Завершить</Button>
@@ -763,7 +768,7 @@ export function PollList({
     return (
       <div
         onDragOver={e => { e.preventDefault(); setOverSectionId(sectionId ?? "none"); }}
-        onDrop={e => { e.preventDefault(); handleDrop(sectionId); }}
+        onDrop={e => { e.preventDefault(); e.stopPropagation(); handleDrop(sectionId); }}
         className={`rounded-xl transition-[box-shadow,background-color] duration-150 ${isOver ? "ring-2 ring-indigo-400 ring-inset bg-indigo-50/60 dark:bg-indigo-500/10" : ""}`}
       >
         {zonePolls.length === 0 ? (
@@ -809,10 +814,14 @@ export function PollList({
     return slideList.map((slide) => (
       <div
         key={slide.id}
-        onDragOver={(e) => { e.preventDefault(); setOverSlideId(slide.id); }}
+        onDragOver={(e) => {
+          if (!draggingSlideId) return; // ignore poll drags — let them fall through to section container
+          e.preventDefault(); setOverSlideId(slide.id);
+        }}
         onDrop={(e) => {
+          if (!draggingSlideId) return; // ignore poll drags
           e.preventDefault();
-          if (!draggingSlideId || draggingSlideId === slide.id) {
+          if (draggingSlideId === slide.id) {
             setDraggingSlideId(null); setOverSlideId(null); return;
           }
           const next = [...optimisticSlides];
@@ -869,8 +878,16 @@ export function PollList({
         const sectionPolls = optimisticPolls.filter(p => p.section_id === section.id);
         const sectionSlides = optimisticSlides.filter(s => s.section_id === section.id).sort((a, b) => a.sort_order - b.sort_order);
         const isSlideOver = draggingSlideId !== null && overSlideSection === section.id;
+        const isPollOver = draggingId !== null && overSectionId === section.id;
         return (
-          <div key={section.id}>
+          <div
+            key={section.id}
+            onDragOver={e => { if (draggingId) { e.preventDefault(); setOverSectionId(section.id); } }}
+            onDrop={e => { if (draggingId) { e.preventDefault(); handleDrop(section.id); } }}
+            className={`rounded-xl transition-[box-shadow,background-color] duration-150 -mx-1 px-1 py-0.5 ${
+              isPollOver ? "ring-2 ring-indigo-400 ring-inset bg-indigo-50/40 dark:bg-indigo-500/10" : ""
+            }`}
+          >
             <SectionHeader section={section} orgSlug={orgSlug} sessionId={sessionId} isPending={isPending} />
             {/* Slide drop zone for this section — visible only while dragging a slide */}
             {draggingSlideId && (
