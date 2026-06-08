@@ -400,6 +400,7 @@ function PollCard({
   onShow: () => void;
   otherActivePollTitle?: string;
 }) {
+  const router = useRouter();
   const isActive    = poll.status === "active";
   const isClosed    = poll.status === "closed";
   const isEnded     = sessionStatus === "ended";
@@ -475,9 +476,10 @@ function PollCard({
                   {!isActive && !isClosed && (
                     <Button
                       className="text-xs py-1.5 px-3"
-                      onClick={() => {
+                      onClick={async () => {
                         if (otherActivePollTitle && !confirm(`Запущен опрос «${otherActivePollTitle}» — он будет завершён. Продолжить?`)) return;
-                        activatePoll(poll.id, sessionId, orgSlug);
+                        await activatePoll(poll.id, sessionId, orgSlug);
+                        router.refresh();
                       }}
                     >Запустить</Button>
                   )}
@@ -496,7 +498,7 @@ function PollCard({
                     <Button className="text-xs py-1.5 px-3 bg-purple-600 hover:bg-purple-700" onClick={() => revealPoker(sessionId, orgSlug)}>🃏 Раскрыть</Button>
                   )}
                   {isActive && (
-                    <Button variant="secondary" className="text-xs py-1.5 px-3" onClick={() => closePoll(poll.id, sessionId, orgSlug)}>Завершить</Button>
+                    <Button variant="secondary" className="text-xs py-1.5 px-3" onClick={async () => { await closePoll(poll.id, sessionId, orgSlug); router.refresh(); }}>Завершить</Button>
                   )}
                 </>
               )}
@@ -945,7 +947,35 @@ export function PollList({
         </div>
       )}
 
-      {/* Sections: their slides + their polls */}
+      {/* "Без секции" drop zones — shown at top when dragging out of a section */}
+      {sorted.length > 0 && draggingSlideId && optimisticSlides.find(s => s.id === draggingSlideId)?.section_id !== null && (
+        <div
+          onDragOver={e => { e.preventDefault(); setOverSlideSection("none"); }}
+          onDrop={e => { e.preventDefault(); handleSlideToSection(draggingSlideId, null); }}
+          className={`rounded-xl border-2 border-dashed py-3 text-center text-xs font-medium transition-colors ${
+            overSlideSection === "none"
+              ? "border-purple-400 bg-purple-50/30 dark:bg-purple-900/10 text-purple-500"
+              : "border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-600"
+          }`}
+        >
+          {overSlideSection === "none" ? "Убрать из секции" : "Экран → Без секции"}
+        </div>
+      )}
+      {sorted.length > 0 && draggingId && optimisticPolls.find(p => p.id === draggingId)?.section_id !== null && (
+        <div
+          onDragOver={e => { e.preventDefault(); setOverSectionId("none"); }}
+          onDrop={e => { e.preventDefault(); e.stopPropagation(); handleDrop(null); }}
+          className={`rounded-xl border-2 border-dashed py-3 text-center text-xs font-medium transition-colors ${
+            overSectionId === "none"
+              ? "border-indigo-400 bg-indigo-50/30 dark:bg-indigo-900/10 text-indigo-500"
+              : "border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-600"
+          }`}
+        >
+          {overSectionId === "none" ? "Убрать из секции" : "Опрос → Без секции"}
+        </div>
+      )}
+
+      {/* Sections: entire container is the drop zone */}
       {sorted.map(section => {
         const sectionPolls = optimisticPolls.filter(p => p.section_id === section.id);
         const sectionSlides = optimisticSlides.filter(s => s.section_id === section.id).sort((a, b) => a.sort_order - b.sort_order);
@@ -953,7 +983,28 @@ export function PollList({
         const isPollDropping = draggingId !== null && overSectionId === section.id;
         const isDragFromOtherSection = draggingId !== null && optimisticPolls.find(p => p.id === draggingId)?.section_id !== section.id;
         return (
-          <div key={section.id} className="rounded-xl -mx-1 px-1 py-0.5">
+          <div
+            key={section.id}
+            className={`rounded-xl -mx-1 px-1 py-0.5 transition-[box-shadow] ${
+              isPollDropping ? "ring-2 ring-indigo-400 ring-inset" :
+              isSlideOver   ? "ring-2 ring-purple-400 ring-inset" : ""
+            }`}
+            onDragOver={e => {
+              if (draggingId && isDragFromOtherSection) { e.preventDefault(); setOverSectionId(section.id); }
+              else if (draggingSlideId) { e.preventDefault(); setOverSlideSection(section.id); }
+            }}
+            onDragLeave={e => {
+              if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                if (overSectionId === section.id) setOverSectionId(null);
+                if (overSlideSection === section.id) setOverSlideSection(null);
+              }
+            }}
+            onDrop={e => {
+              if (e.defaultPrevented) return;
+              if (draggingId && isDragFromOtherSection) { e.preventDefault(); e.stopPropagation(); handleDrop(section.id); }
+              else if (draggingSlideId) { e.preventDefault(); handleSlideToSection(draggingSlideId, section.id); }
+            }}
+          >
             <SectionHeader
               section={section} orgSlug={orgSlug} sessionId={sessionId} isPending={isPending}
               onBeforeDelete={(sectionId) => {
@@ -962,34 +1013,6 @@ export function PollList({
                 setOptimisticSlides(prev => prev.map(s => s.section_id === sectionId ? { ...s, section_id: null } : s));
               }}
             />
-            {/* Poll drop zone — visible only when dragging a poll from a different section */}
-            {isDragFromOtherSection && (
-              <div
-                onDragOver={e => { e.preventDefault(); setOverSectionId(section.id); }}
-                onDrop={e => { e.preventDefault(); e.stopPropagation(); handleDrop(section.id); }}
-                className={`rounded-xl border-2 border-dashed mb-2 py-3 text-center text-xs font-medium transition-colors ${
-                  isPollDropping
-                    ? "border-indigo-400 bg-indigo-50/30 dark:bg-indigo-900/10 text-indigo-500"
-                    : "border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-600"
-                }`}
-              >
-                {isPollDropping ? "Перенести сюда" : `Опрос → ${section.title}`}
-              </div>
-            )}
-            {/* Slide drop zone — visible only while dragging a slide */}
-            {draggingSlideId && (
-              <div
-                onDragOver={e => { e.preventDefault(); setOverSlideSection(section.id); }}
-                onDrop={e => { e.preventDefault(); handleSlideToSection(draggingSlideId, section.id); }}
-                className={`rounded-xl border-2 border-dashed mb-2 py-3 text-center text-xs font-medium transition-colors ${
-                  isSlideOver
-                    ? "border-purple-400 bg-purple-50/30 dark:bg-purple-900/10 text-purple-500"
-                    : "border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-600"
-                }`}
-              >
-                {isSlideOver ? "Перенести экран сюда" : `Экран → ${section.title}`}
-              </div>
-            )}
             {sectionSlides.length > 0 && (
               <div className="flex flex-col gap-2 mb-2">
                 {renderSlideGroup(sectionSlides)}
@@ -1004,34 +1027,6 @@ export function PollList({
         renderPollZone(null, optimisticPolls)
       ) : (
         <>
-          {/* "Без секции" drop for slides — visible while dragging a slide that's in a section */}
-          {draggingSlideId && optimisticSlides.find(s => s.id === draggingSlideId)?.section_id !== null && (
-            <div
-              onDragOver={e => { e.preventDefault(); setOverSlideSection("none"); }}
-              onDrop={e => { e.preventDefault(); handleSlideToSection(draggingSlideId, null); }}
-              className={`rounded-xl border-2 border-dashed py-3 text-center text-xs font-medium transition-colors ${
-                overSlideSection === "none"
-                  ? "border-purple-400 bg-purple-50/30 dark:bg-purple-900/10 text-purple-500"
-                  : "border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-600"
-              }`}
-            >
-              {overSlideSection === "none" ? "Убрать из секции" : "Экран → Без секции"}
-            </div>
-          )}
-          {/* "Без секции" drop for polls — visible while dragging a poll that's in a section */}
-          {draggingId && optimisticPolls.find(p => p.id === draggingId)?.section_id !== null && (
-            <div
-              onDragOver={e => { e.preventDefault(); setOverSectionId("none"); }}
-              onDrop={e => { e.preventDefault(); e.stopPropagation(); handleDrop(null); }}
-              className={`rounded-xl border-2 border-dashed py-3 text-center text-xs font-medium transition-colors ${
-                overSectionId === "none"
-                  ? "border-indigo-400 bg-indigo-50/30 dark:bg-indigo-900/10 text-indigo-500"
-                  : "border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-600"
-              }`}
-            >
-              {overSectionId === "none" ? "Убрать из секции" : "Опрос → Без секции"}
-            </div>
-          )}
           {(unsectioned.length > 0 || draggingId) && (
             <div>
               <div className="flex items-center gap-3 mb-2 px-1">
