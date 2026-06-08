@@ -11,6 +11,7 @@ const TYPE_LABEL: Record<string, string> = {
   word_cloud:      "Облако слов",
   emoji_cloud:     "Облако эмодзи",
   planning_poker:  "Planning Poker",
+  idea_wall:       "Стена идей",
 };
 
 type PollExport = {

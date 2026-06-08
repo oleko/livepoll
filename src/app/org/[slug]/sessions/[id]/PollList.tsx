@@ -513,10 +513,12 @@ function PollCard({
 // ─── SectionHeader ────────────────────────────────────────────────────────────
 
 function SectionHeader({
-  section, orgSlug, sessionId, isPending,
+  section, orgSlug, sessionId, isPending, onBeforeDelete,
 }: {
   section: SectionItem; orgSlug: string; sessionId: string; isPending: boolean;
+  onBeforeDelete?: (sectionId: string) => void;
 }) {
+  const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(section.title);
   const [, startT] = useTransition();
@@ -526,12 +528,17 @@ function SectionHeader({
     startT(async () => {
       await renameSection(section.id, title, sessionId, orgSlug);
       setEditing(false);
+      router.refresh();
     });
   }
 
   function handleDelete() {
     if (!confirm(`Удалить секцию «${section.title}»? Опросы останутся, но потеряют привязку.`)) return;
-    startT(async () => { await deleteSection(section.id, sessionId, orgSlug); });
+    onBeforeDelete?.(section.id);
+    startT(async () => {
+      await deleteSection(section.id, sessionId, orgSlug);
+      router.refresh();
+    });
   }
 
   return (
@@ -573,6 +580,7 @@ function AddSectionBar({
 }: {
   sessionId: string; orgSlug: string; sectionsCount: number;
 }) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [isPending, startT] = useTransition();
@@ -586,6 +594,7 @@ function AddSectionBar({
       await createSection(sessionId, name.trim(), orgSlug);
       setTitle("");
       setOpen(false);
+      router.refresh();
     });
   }
 
@@ -595,6 +604,7 @@ function AddSectionBar({
         await createSection(sessionId, `День ${sectionsCount + i}`, orgSlug);
       }
       setOpen(false);
+      router.refresh();
     });
   }
 
@@ -714,6 +724,10 @@ export function PollList({
   const [overPollId, setOverPollId] = useState<string | null>(null);
   useEffect(() => { setOptimisticPolls(polls); }, [polls]);
 
+  // Optimistic sections state
+  const [optimisticSections, setOptimisticSections] = useState(initialSections);
+  useEffect(() => { setOptimisticSections(initialSections); }, [initialSections]);
+
   function startEdit(poll: PollRow) {
     setEditingId(poll.id);
     setEditTitle(poll.title);
@@ -778,7 +792,7 @@ export function PollList({
 
   const baseCardProps = {
     votesByPoll, votesDataByPoll, sessionId, orgSlug, sessionStatus, copyTargets,
-    draggingId, onDragStart: (id: string) => { setDraggingId(id); setHiddenPollIds(new Set()); },
+    draggingId, onDragStart: (id: string) => { setDraggingId(id); },
     onDragEnd: () => { setDraggingId(null); setOverSectionId(null); setOverPollId(null); },
     editingId, editTitle, editOptions, editSaving, editError,
     onStartEdit: startEdit, onSaveEdit: saveEdit, onCancelEdit: () => setEditingId(null),
@@ -801,7 +815,7 @@ export function PollList({
     );
   }
 
-  const sorted = [...initialSections].sort((a, b) => a.sort_order - b.sort_order);
+  const sorted = [...optimisticSections].sort((a, b) => a.sort_order - b.sort_order);
 
   // render function (NOT a component) — avoids remounting on every re-render during drag
   function renderPollZone(sectionId: string | null, zonePolls: PollRow[]) {
@@ -940,7 +954,14 @@ export function PollList({
         const isDragFromOtherSection = draggingId !== null && optimisticPolls.find(p => p.id === draggingId)?.section_id !== section.id;
         return (
           <div key={section.id} className="rounded-xl -mx-1 px-1 py-0.5">
-            <SectionHeader section={section} orgSlug={orgSlug} sessionId={sessionId} isPending={isPending} />
+            <SectionHeader
+              section={section} orgSlug={orgSlug} sessionId={sessionId} isPending={isPending}
+              onBeforeDelete={(sectionId) => {
+                setOptimisticSections(prev => prev.filter(s => s.id !== sectionId));
+                setOptimisticPolls(prev => prev.map(p => p.section_id === sectionId ? { ...p, section_id: null } : p));
+                setOptimisticSlides(prev => prev.map(s => s.section_id === sectionId ? { ...s, section_id: null } : s));
+              }}
+            />
             {/* Poll drop zone — visible only when dragging a poll from a different section */}
             {isDragFromOtherSection && (
               <div
