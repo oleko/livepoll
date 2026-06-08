@@ -39,7 +39,7 @@ jobs:
           script: |
             cd /var/www/livepoll
             git pull origin main
-            npm ci --omit=dev
+            npm ci
             npm run build
             pm2 reload livepoll --update-env || pm2 start npm --name livepoll -- start
             pm2 save
