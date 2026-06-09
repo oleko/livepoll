@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LabelList } from "recharts";
 import { closePoll } from "@/lib/actions/polls";
@@ -149,6 +150,8 @@ export function DisplayScreen({
   const [pokerRevealed, setPokerRevealed] = useState(false);
   const [connected, setConnected] = useState(true);
   const currentVotesRef = useRef<{ value: string; ts: string }[]>([]);
+  const wasDisconnected = useRef(false);
+  const router = useRouter();
   const supabase = useRef(createClient());
   const { theme } = useTheme();
   const isDark = theme === "dark";
@@ -225,7 +228,14 @@ export function DisplayScreen({
         }
       })
       .subscribe((status) => {
-        setConnected(status === "SUBSCRIBED");
+        const isConnected = status === "SUBSCRIBED";
+        setConnected(isConnected);
+        if (isConnected && wasDisconnected.current) {
+          wasDisconnected.current = false;
+          router.refresh();
+        } else if (!isConnected) {
+          wasDisconnected.current = true;
+        }
       });
 
     const slidesChannel = sb

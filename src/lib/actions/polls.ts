@@ -15,8 +15,9 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f
 function isValidUUID(s: string) { return UUID_RE.test(s); }
 
 async function realtimeBroadcast(messages: { topic: string; event: string; payload: unknown }[]) {
+  const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/realtime/v1/api/broadcast`;
   try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/realtime/v1/api/broadcast`, {
+    const res = await fetch(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -25,9 +26,14 @@ async function realtimeBroadcast(messages: { topic: string; event: string; paylo
       },
       body: JSON.stringify({ messages }),
     });
-    if (!res.ok) console.error("[broadcast] failed:", res.status);
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      console.error(`[broadcast] HTTP ${res.status} for topics [${messages.map(m => m.topic).join(", ")}]:`, body);
+    } else {
+      console.log(`[broadcast] OK — ${messages.map(m => `${m.topic}/${m.event}`).join(", ")}`);
+    }
   } catch (err) {
-    console.error("[broadcast] network error:", (err as Error).message);
+    console.error("[broadcast] network error:", (err as Error).message, "url:", url);
   }
 }
 
