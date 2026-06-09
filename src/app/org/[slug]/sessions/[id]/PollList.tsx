@@ -2,6 +2,7 @@
 
 import { useState, useTransition, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 import { activatePoll, closePoll, copyPoll, updatePoll, showPollOnDisplay, hidePollFromDisplay, reorderPolls } from "@/lib/actions/polls";
 import { movePollSection, createSection, deleteSection, renameSection } from "@/lib/actions/sections";
 import { showSlide, hideSlide, deleteSlide, updateSlide, reorderSlides, moveSlideToSection } from "@/lib/actions/slides";
@@ -729,6 +730,29 @@ export function PollList({
   // Optimistic sections state
   const [optimisticSections, setOptimisticSections] = useState(initialSections);
   useEffect(() => { setOptimisticSections(initialSections); }, [initialSections]);
+
+  // Realtime: refresh vote counts when active poll receives votes
+  const activePollId = optimisticPolls.find(p => p.status === "active")?.id ?? null;
+  useEffect(() => {
+    if (!activePollId) return;
+    const sb = createClient();
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const channel = sb
+      .channel(`poll-votes:${activePollId}`)
+      .on("broadcast", { event: "vote" }, () => {
+        if (timer) clearTimeout(timer);
+        timer = setTimeout(() => router.refresh(), 800);
+      })
+      .on("broadcast", { event: "revote" }, () => {
+        if (timer) clearTimeout(timer);
+        timer = setTimeout(() => router.refresh(), 800);
+      })
+      .subscribe();
+    return () => {
+      if (timer) clearTimeout(timer);
+      sb.removeChannel(channel);
+    };
+  }, [activePollId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function startEdit(poll: PollRow) {
     setEditingId(poll.id);
