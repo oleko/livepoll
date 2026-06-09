@@ -150,6 +150,7 @@ export function DisplayScreen({
   const [pokerRevealed, setPokerRevealed] = useState(false);
   const [connected, setConnected] = useState(true);
   const currentVotesRef = useRef<{ value: string; ts: string }[]>([]);
+  const hasEverConnected = useRef(false);
   const wasDisconnected = useRef(false);
   const router = useRouter();
   const supabase = useRef(createClient());
@@ -229,13 +230,17 @@ export function DisplayScreen({
       })
       .subscribe((status) => {
         const isConnected = status === "SUBSCRIBED";
-        setConnected(isConnected);
-        if (isConnected && wasDisconnected.current) {
-          wasDisconnected.current = false;
-          router.refresh();
-        } else if (!isConnected) {
+        if (isConnected) {
+          hasEverConnected.current = true;
+          if (wasDisconnected.current) {
+            wasDisconnected.current = false;
+            router.refresh();
+          }
+        } else if (hasEverConnected.current) {
           wasDisconnected.current = true;
         }
+        // Only show banner after first successful connect, not during initial setup
+        setConnected(!hasEverConnected.current || isConnected);
       });
 
     const slidesChannel = sb
