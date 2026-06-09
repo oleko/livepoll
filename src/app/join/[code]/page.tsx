@@ -2,6 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { VoteInterface } from "./VoteInterface";
 import type { BrandingSettings } from "@/lib/actions/branding";
 import Link from "next/link";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default async function JoinPage({
   params,
@@ -88,6 +89,9 @@ export default async function JoinPage({
         ) : (
           <p className="text-sm text-slate-500 dark:text-slate-400">{session.title}</p>
         )}
+        <div className="absolute right-2">
+          <ThemeToggle />
+        </div>
       </header>
 
       <div className="flex flex-1 items-center justify-center p-6">

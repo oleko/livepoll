@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LabelList } from "recharts";
 import { closePoll } from "@/lib/actions/polls";
 import { useTheme } from "@/components/ThemeProvider";
@@ -486,6 +487,7 @@ export function DisplayScreen({
           {poll && poll.type !== "qa" && totalVotes > 0 && (
             <span className="text-2xl font-bold text-slate-900 dark:text-white tabular-nums">{totalVotes}</span>
           )}
+          <ThemeToggle className="opacity-40 hover:opacity-100" />
           {quizReveal ? (
             <span className="flex items-center gap-2 rounded-full bg-green-500/15 border border-green-500/30 px-3 py-1 text-sm font-semibold text-green-400">
               ✓ Ответ
