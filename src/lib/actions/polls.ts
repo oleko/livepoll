@@ -273,7 +273,8 @@ export async function activatePoll(
 export async function closePoll(
   pollId: string,
   sessionId: string,
-  orgSlug: string
+  orgSlug: string,
+  showResult = false
 ) {
   const { user, admin } = await getAuthUser();
   await assertSessionMember(user.id, sessionId, admin);
@@ -301,6 +302,7 @@ export async function closePoll(
       ...(pollSettings.explanation ? { explanation: pollSettings.explanation } : {}),
     };
   }
+  if (showResult) closePayload.show_result = true;
 
   await realtimeBroadcast([{
     topic: `session-polls:${sessionId}`,

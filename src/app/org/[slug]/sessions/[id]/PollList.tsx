@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { activatePoll, closePoll, copyPoll, updatePoll, showPollOnDisplay, hidePollFromDisplay, reorderPolls } from "@/lib/actions/polls";
 import { movePollSection, createSection, deleteSection, renameSection } from "@/lib/actions/sections";
-import { showSlide, hideSlide, deleteSlide, updateSlide, reorderSlides, moveSlideToSection } from "@/lib/actions/slides";
+import { showSlide, hideSlide, deleteSlide, updateSlide, reorderSlides, moveSlideToSection, startSpinWheel } from "@/lib/actions/slides";
 import { revealPoker } from "@/lib/actions/sessions";
 import { Button } from "@/components/ui/Button";
 import { EditIcon } from "@/components/icons";
@@ -203,17 +203,24 @@ function SlideLineupCard({
               {sections.map(s => <option key={s.id} value={s.id}>{s.title}</option>)}
             </select>
           )}
-          <button type="button" onClick={() => setEditing(v => !v)}
-            className="rounded-lg border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 bg-white dark:bg-slate-900 px-2 py-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
-          ><EditIcon size={13} /></button>
-          {isActive ? (
-            <Button variant="secondary" className="text-xs py-1.5 px-3" onClick={handleHide} disabled={pending}>Убрать</Button>
-          ) : (
-            <Button className="text-xs py-1.5 px-3" onClick={handleShow} disabled={pending}>Показать</Button>
+          <Button variant="ghost" size="sm" onClick={() => setEditing(v => !v)} disabled={pending}>
+            <EditIcon size={13} />
+          </Button>
+          {isActive && slide.type === "spin_wheel" && (
+            <Button size="sm" className="bg-purple-600 hover:bg-purple-500" onClick={async () => {
+              setPending(true);
+              await startSpinWheel(slide.id, sessionId, orgSlug);
+              setPending(false);
+            }} disabled={pending}>🎡 Запустить</Button>
           )}
-          <button type="button" onClick={handleDelete} disabled={pending}
-            className="rounded-lg border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 bg-white dark:bg-slate-900 px-2 py-1.5 text-slate-300 dark:text-slate-600 hover:text-red-400 dark:hover:text-red-500 transition-colors disabled:opacity-50"
-          >✕</button>
+          {isActive ? (
+            <Button variant="secondary" size="sm" onClick={handleHide} disabled={pending}>Убрать</Button>
+          ) : (
+            <Button size="sm" onClick={handleShow} disabled={pending}>Показать</Button>
+          )}
+          <Button variant="ghost" size="sm" onClick={handleDelete} disabled={pending} className="hover:text-red-500 dark:hover:text-red-400">
+            ✕
+          </Button>
         </div>
       </div>
 
@@ -438,8 +445,8 @@ function PollCard({
           )}
           {editError && <p className="text-xs text-red-500">{editError}</p>}
           <div className="flex gap-2">
-            <Button className="text-xs py-1.5 px-3" loading={editSaving} onClick={() => onSaveEdit(poll)}>Сохранить</Button>
-            <Button variant="ghost" className="text-xs py-1.5 px-3" onClick={onCancelEdit}>Отмена</Button>
+            <Button size="sm" loading={editSaving} onClick={() => onSaveEdit(poll)}>Сохранить</Button>
+            <Button variant="ghost" size="sm" onClick={onCancelEdit}>Отмена</Button>
           </div>
         </div>
       ) : (
@@ -468,15 +475,15 @@ function PollCard({
             )}
             <div className="flex items-center gap-2 shrink-0">
               {canEdit && (
-                <button onClick={() => onStartEdit(poll)} title="Редактировать (10 мин после создания)"
-                  className="rounded-lg border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 bg-white dark:bg-slate-900 px-2 py-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
-                ><EditIcon size={13} /></button>
+                <Button variant="ghost" size="sm" onClick={() => onStartEdit(poll)} title="Редактировать (10 мин после создания)">
+                  <EditIcon size={13} />
+                </Button>
               )}
               {sessionStatus === "active" && (
                 <>
                   {!isActive && !isClosed && (
                     <Button
-                      className="text-xs py-1.5 px-3"
+                      size="sm"
                       onClick={async () => {
                         if (otherActivePollTitle && !confirm(`Запущен опрос «${otherActivePollTitle}» — он будет завершён. Продолжить?`)) return;
                         await activatePoll(poll.id, sessionId, orgSlug);
@@ -485,7 +492,7 @@ function PollCard({
                     >Запустить</Button>
                   )}
                   {isActive && hiddenFromDisplay && (
-                    <Button className="text-xs py-1.5 px-3" onClick={onShow}>Показать</Button>
+                    <Button size="sm" onClick={onShow}>Показать</Button>
                   )}
                   {isActive && !hiddenFromDisplay && (
                     <button type="button" onClick={onHide}
@@ -496,10 +503,13 @@ function PollCard({
                     </button>
                   )}
                   {isActive && poll.type === "planning_poker" && (
-                    <Button className="text-xs py-1.5 px-3 bg-purple-600 hover:bg-purple-700" onClick={() => revealPoker(sessionId, orgSlug)}>🃏 Раскрыть</Button>
+                    <Button size="sm" className="bg-purple-600 hover:bg-purple-700" onClick={() => revealPoker(sessionId, orgSlug)}>🃏 Раскрыть</Button>
                   )}
                   {isActive && (
-                    <Button variant="secondary" className="text-xs py-1.5 px-3" onClick={async () => { await closePoll(poll.id, sessionId, orgSlug); router.refresh(); }}>Завершить</Button>
+                    <>
+                      <Button size="sm" className="bg-slate-700 hover:bg-slate-600 text-white" onClick={async () => { await closePoll(poll.id, sessionId, orgSlug, true); router.refresh(); }}>Итог</Button>
+                      <Button variant="secondary" size="sm" onClick={async () => { await closePoll(poll.id, sessionId, orgSlug); router.refresh(); }}>Завершить</Button>
+                    </>
                   )}
                 </>
               )}

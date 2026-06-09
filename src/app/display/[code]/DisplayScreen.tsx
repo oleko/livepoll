@@ -149,6 +149,9 @@ export function DisplayScreen({
   const [quizTotal, setQuizTotal] = useState(0);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [pokerRevealed, setPokerRevealed] = useState(false);
+  const [pollEnded, setPollEnded] = useState(false);
+  const [spinPhase, setSpinPhase] = useState<"idle" | "countdown" | "spinning">("idle");
+  const [spinCountdown, setSpinCountdown] = useState(3);
   const [connected, setConnected] = useState(true);
   const currentVotesRef = useRef<{ value: string; ts: string }[]>([]);
   const hasEverConnected = useRef(false);
@@ -172,16 +175,18 @@ export function DisplayScreen({
         if (data.type === "activated" && data.poll) {
           setQuizReveal(null);
           setPokerRevealed(false);
+          setPollEnded(false);
           setPoll(data.poll);
           setVotes([]);
           setActiveSlide(null);
         } else if (data.type === "display_hidden") {
           setPoll(null);
+          setPollEnded(false);
         } else if (data.type === "closed") {
-          const reveal = (data as { quiz_reveal?: QuizReveal }).quiz_reveal;
+          const d = data as { quiz_reveal?: QuizReveal; show_result?: boolean };
+          const reveal = d.quiz_reveal;
           if (reveal) {
             setQuizReveal(reveal);
-            // Compute scores from this question's votes
             const buf = currentVotesRef.current;
             if (buf.length > 0) {
               setQuizScores((prev) => {
@@ -200,6 +205,8 @@ export function DisplayScreen({
             currentVotesRef.current = [];
             setShowLeaderboard(true);
             setTimeout(() => setShowLeaderboard(false), 7000);
+          } else if (d.show_result) {
+            setPollEnded(true);
           } else {
             setQuizReveal(null);
             setPoll((prev) => (prev?.id === data.poll_id ? null : prev));
@@ -253,15 +260,23 @@ export function DisplayScreen({
           setSlideShowKey(k => k + 1);
           setRevealedSlideId(null);
           setBuzzers([]);
+          setSpinPhase("idle");
+          setSpinCountdown(3);
         } else if (data.type === "hide") {
           setActiveSlide(null);
           setRevealedSlideId(null);
           setBuzzers([]);
+          setSpinPhase("idle");
+          setSpinCountdown(3);
         }
       })
       .on("broadcast", { event: "slide_reveal" }, ({ payload }) => {
         const { slide_id } = payload as { slide_id: string };
         setRevealedSlideId(slide_id);
+      })
+      .on("broadcast", { event: "spin_start" }, () => {
+        setSpinCountdown(3);
+        setSpinPhase("countdown");
       })
       .subscribe();
 
@@ -303,6 +318,17 @@ export function DisplayScreen({
     const id = setInterval(update, 500);
     return () => clearInterval(id);
   }, [announcement]);
+
+  // Spin wheel countdown: 3→2→1→spinning
+  useEffect(() => {
+    if (spinPhase !== "countdown") return;
+    if (spinCountdown <= 0) {
+      setSpinPhase("spinning");
+      return;
+    }
+    const id = setTimeout(() => setSpinCountdown(n => n - 1), 1000);
+    return () => clearTimeout(id);
+  }, [spinPhase, spinCountdown]);
 
   // Countdown timer — auto-close when duration expires
   useEffect(() => {
@@ -423,6 +449,8 @@ export function DisplayScreen({
             slideShowKey={slideShowKey}
             revealed={revealedSlideId === activeSlide.id}
             buzzers={buzzers}
+            spinPhase={spinPhase}
+            spinCountdown={spinCountdown}
           />
         </div>
       )}
@@ -581,6 +609,15 @@ export function DisplayScreen({
               </div>
 
               <h2 className="text-4xl font-bold text-slate-900 dark:text-white text-center mb-10 leading-tight">{poll.title}</h2>
+
+              {pollEnded && (
+                <div className="flex justify-center mb-6">
+                  <span className="inline-flex items-center gap-2 rounded-full border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 px-5 py-2 text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest">
+                    <span className="h-2 w-2 rounded-full bg-slate-400 dark:bg-slate-500" />
+                    Голосование окончено
+                  </span>
+                </div>
+              )}
 
               {poll.type === "planning_poker" && !pokerRevealed && (
                 <div className="flex flex-col items-center justify-center gap-6 py-12">

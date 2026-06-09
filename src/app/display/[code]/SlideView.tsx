@@ -162,13 +162,18 @@ function AnnouncementSlide({ c }: { c: Record<string, unknown> }) {
   );
 }
 
-function SpinWheelSlide({ c }: { c: Record<string, unknown> }) {
+function SpinWheelSlide({ c, phase, countdown }: {
+  c: Record<string, unknown>;
+  phase: "idle" | "countdown" | "spinning";
+  countdown: number;
+}) {
   const options = (c.options as string[] | undefined) ?? [];
   const title = c.title as string | undefined;
   const [displayIdx, setDisplayIdx] = useState(0);
   const [winner, setWinner] = useState<string | null>(null);
 
   useEffect(() => {
+    if (phase !== "spinning") return;
     if (options.length === 0) return;
     if (options.length === 1) { setWinner(options[0]); return; }
 
@@ -193,10 +198,10 @@ function SpinWheelSlide({ c }: { c: Record<string, unknown> }) {
         setTimeout(() => setWinner(options[winnerIdx]), 250);
       }
     };
-    tid = setTimeout(spin, 400);
+    tid = setTimeout(spin, 200);
     return () => clearTimeout(tid);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [phase]);
 
   if (options.length === 0) {
     return (
@@ -206,6 +211,41 @@ function SpinWheelSlide({ c }: { c: Record<string, unknown> }) {
     );
   }
 
+  // Idle — show all options as a list
+  if (phase === "idle") {
+    return (
+      <div className="flex flex-col items-center justify-center h-full gap-8 px-16 text-center">
+        {title && <h2 className="text-4xl font-bold text-white">{title}</h2>}
+        <p className="text-slate-400 text-lg uppercase tracking-widest font-medium">🎡 Варианты</p>
+        <div className="flex flex-wrap gap-3 justify-center max-w-4xl">
+          {options.map((opt, i) => (
+            <span key={i} className="text-white text-2xl font-semibold px-6 py-3 rounded-2xl border border-slate-700 bg-slate-800/60">
+              {opt}
+            </span>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // Countdown — 3, 2, 1
+  if (phase === "countdown") {
+    return (
+      <div className="flex flex-col items-center justify-center h-full gap-6 text-center">
+        {title && <h2 className="text-4xl font-bold text-white">{title}</h2>}
+        <p className="text-slate-400 text-xl uppercase tracking-widest font-medium">🎡 Приготовьтесь…</p>
+        <p
+          key={countdown}
+          className="font-black text-white tabular-nums animate-ping-once"
+          style={{ fontSize: "clamp(8rem, 28vh, 18rem)", lineHeight: 1 }}
+        >
+          {countdown > 0 ? countdown : ""}
+        </p>
+      </div>
+    );
+  }
+
+  // Spinning / result
   return (
     <div className="flex flex-col items-center justify-center h-full gap-10 px-16 text-center">
       {title && <h2 className="text-4xl font-bold text-white">{title}</h2>}
@@ -239,10 +279,7 @@ function SpinWheelSlide({ c }: { c: Record<string, unknown> }) {
       {winner && options.length > 1 && (
         <div className="flex flex-wrap gap-2 justify-center max-w-3xl">
           {options.filter((o) => o !== winner).map((opt, i) => (
-            <span
-              key={i}
-              className="text-slate-600 text-lg px-4 py-1.5 border border-slate-800 rounded-full"
-            >
+            <span key={i} className="text-slate-600 text-lg px-4 py-1.5 border border-slate-800 rounded-full">
               {opt}
             </span>
           ))}
@@ -296,11 +333,13 @@ function RevealSlide({ c, revealed, buzzers }: {
   );
 }
 
-export function SlideView({ slide, slideShowKey = 0, revealed = false, buzzers = [] }: {
+export function SlideView({ slide, slideShowKey = 0, revealed = false, buzzers = [], spinPhase = "idle", spinCountdown = 3 }: {
   slide: SlideData;
   slideShowKey?: number;
   revealed?: boolean;
   buzzers?: BuzzerEntry[];
+  spinPhase?: "idle" | "countdown" | "spinning";
+  spinCountdown?: number;
 }) {
   const c = slide.content as Record<string, unknown>;
   return (
@@ -310,7 +349,7 @@ export function SlideView({ slide, slideShowKey = 0, revealed = false, buzzers =
       {slide.type === "schedule"     && <ScheduleSlide     c={c as { items?: ScheduleItem[] }} />}
       {slide.type === "quote"        && <QuoteSlide        c={c as Record<string, string>} />}
       {slide.type === "final"        && <FinalSlide        c={c as Record<string, string>} />}
-      {slide.type === "spin_wheel"   && <SpinWheelSlide    key={`spin-${slideShowKey}`} c={c} />}
+      {slide.type === "spin_wheel"   && <SpinWheelSlide    key={`spin-${slideShowKey}`} c={c} phase={spinPhase} countdown={spinCountdown} />}
       {slide.type === "announcement" && <AnnouncementSlide c={c} />}
       {slide.type === "reveal"       && <RevealSlide       c={c} revealed={revealed} buzzers={buzzers} />}
     </div>

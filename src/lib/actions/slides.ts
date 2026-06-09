@@ -242,6 +242,30 @@ export async function hideSlide(
   revalidatePath(`/org/${orgSlug}/sessions/${sessionId}`);
 }
 
+export async function startSpinWheel(
+  slideId: string,
+  sessionId: string,
+  orgSlug: string
+): Promise<void> {
+  const { user, admin } = await getAuthUser();
+  await assertSessionMember(user.id, sessionId, admin);
+
+  // Only broadcast if this slide is currently active
+  const { data: sess } = await admin
+    .from("sessions")
+    .select("active_slide_id")
+    .eq("id", sessionId)
+    .single();
+
+  if ((sess as unknown as { active_slide_id?: string })?.active_slide_id !== slideId) return;
+
+  await broadcastRaw([{
+    topic: `session-slides:${sessionId}`,
+    event: "spin_start",
+    payload: { slide_id: slideId },
+  }]);
+}
+
 export async function moveSlideToSection(
   slideId: string,
   sessionId: string,

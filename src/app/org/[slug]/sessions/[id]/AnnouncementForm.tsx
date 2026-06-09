@@ -54,7 +54,7 @@ export function AnnouncementForm({ sessionId, orgSlug }: { sessionId: string; or
             </p>
           )}
         </div>
-        <Button variant="ghost" className="text-xs py-1.5 px-3 shrink-0" loading={pending} onClick={handleClear}>
+        <Button variant="ghost" size="sm" className="shrink-0" loading={pending} onClick={handleClear}>
           Завершить
         </Button>
       </div>
