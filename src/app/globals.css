@@ -23,6 +23,11 @@
   border-radius: 4px;
 }
 
+/* ─── Prevent horizontal page scroll on mobile ─── */
+html, body {
+  overflow-x: hidden;
+}
+
 /* ─── text-wrap ─── */
 h1, h2, h3, h4 {
   text-wrap: balance;

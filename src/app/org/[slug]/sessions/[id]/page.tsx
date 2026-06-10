@@ -122,7 +122,7 @@ export default async function SessionPage({
     <div className="flex flex-col gap-6">
 
       {/* ── 1. Header ────────────────────────────────────────────────────────── */}
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex items-start justify-between gap-4 flex-wrap">
         <div className="flex flex-col gap-1 min-w-0">
           <Link
             href={`/org/${slug}`}

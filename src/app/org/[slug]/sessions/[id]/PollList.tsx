@@ -226,19 +226,23 @@ function SlideLineupCard({
           : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
         }`}
     >
-      <div className="flex items-center gap-3">
-        <span className="text-slate-300 dark:text-slate-600 text-base leading-none shrink-0 select-none">⠿</span>
-        <span className="text-xl shrink-0">{meta.icon}</span>
-        <div className="flex-1 min-w-0">
-          <p className="font-medium text-sm truncate text-slate-900 dark:text-white">{slidePreview(slide)}</p>
-          <p className="text-xs text-purple-500 dark:text-purple-400 mt-0.5">{meta.label}</p>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+        {/* info row */}
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <span className="text-slate-300 dark:text-slate-600 text-base leading-none shrink-0 select-none">⠿</span>
+          <span className="text-xl shrink-0">{meta.icon}</span>
+          <div className="flex-1 min-w-0">
+            <p className="font-medium text-sm truncate text-slate-900 dark:text-white">{slidePreview(slide)}</p>
+            <p className="text-xs text-purple-500 dark:text-purple-400 mt-0.5">{meta.label}</p>
+          </div>
+          {isActive && (
+            <span className="flex items-center gap-1.5 text-xs font-semibold text-purple-600 dark:text-purple-400 shrink-0">
+              <span className="h-1.5 w-1.5 rounded-full bg-purple-500 animate-pulse" />На экране
+            </span>
+          )}
         </div>
-        {isActive && (
-          <span className="flex items-center gap-1.5 text-xs font-semibold text-purple-600 dark:text-purple-400 shrink-0">
-            <span className="h-1.5 w-1.5 rounded-full bg-purple-500 animate-pulse" />На экране
-          </span>
-        )}
-        <div className="flex items-center gap-2 shrink-0">
+        {/* actions row */}
+        <div className="flex items-center gap-1.5 flex-wrap shrink-0">
           {sections && sections.length > 0 && (
             <select
               value={slide.section_id ?? ""}
@@ -536,29 +540,32 @@ function PollCard({
         </div>
       ) : (
         <>
-          <div className="flex items-center gap-3">
-            {/* drag handle */}
-            {!isEnded && (
-              <span className="text-slate-300 dark:text-slate-600 text-base leading-none shrink-0 cursor-grab select-none" title="Перетащить в секцию">
-                ⠿
-              </span>
-            )}
-            <span className="text-xl shrink-0">{TYPE_ICON[poll.type]}</span>
-            <div className="flex-1 min-w-0">
-              <p className={`font-medium text-sm truncate ${isClosed && !isEnded ? "text-slate-400 dark:text-slate-500" : "text-slate-900 dark:text-white"}`}>
-                {poll.title}
-              </p>
-              <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
-                {TYPE_LABEL[poll.type]}
-                {voteCount > 0 && <span className="text-slate-300 dark:text-slate-600"> · {voteCount} голосов</span>}
-              </p>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+            {/* info row */}
+            <div className="flex items-center gap-3 flex-1 min-w-0">
+              {!isEnded && (
+                <span className="text-slate-300 dark:text-slate-600 text-base leading-none shrink-0 cursor-grab select-none" title="Перетащить в секцию">
+                  ⠿
+                </span>
+              )}
+              <span className="text-xl shrink-0">{TYPE_ICON[poll.type]}</span>
+              <div className="flex-1 min-w-0">
+                <p className={`font-medium text-sm truncate ${isClosed && !isEnded ? "text-slate-400 dark:text-slate-500" : "text-slate-900 dark:text-white"}`}>
+                  {poll.title}
+                </p>
+                <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
+                  {TYPE_LABEL[poll.type]}
+                  {voteCount > 0 && <span className="text-slate-300 dark:text-slate-600"> · {voteCount} голосов</span>}
+                </p>
+              </div>
+              {isActive && (
+                <span className="flex items-center gap-1.5 text-xs font-semibold text-green-600 dark:text-green-400 shrink-0">
+                  <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />Идёт
+                </span>
+              )}
             </div>
-            {isActive && (
-              <span className="flex items-center gap-1.5 text-xs font-semibold text-green-600 dark:text-green-400 shrink-0">
-                <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />Идёт
-              </span>
-            )}
-            <div className="flex items-center gap-2 shrink-0">
+            {/* actions row */}
+            <div className="flex items-center gap-1.5 flex-wrap shrink-0">
               {canEdit && (
                 <Button variant="ghost" size="sm" onClick={() => onStartEdit(poll)} title="Редактировать (10 мин после создания)">
                   <EditIcon size={13} />
