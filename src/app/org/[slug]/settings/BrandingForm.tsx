@@ -36,6 +36,8 @@ export function BrandingForm({
 
   const [useCustomBg, setUseCustomBg]     = useState(!!initial.display_bg);
   const [displayBg,   setDisplayBg]       = useState(initial.display_bg ?? "#0f172a");
+  const [displayBgImage, setDisplayBgImage] = useState(initial.display_bg_image ?? "");
+  const [displayFont, setDisplayFont]     = useState(initial.display_font ?? "sans");
   const [displayHeader, setDisplayHeader] = useState(initial.display_header ?? "");
   const [whiteLabel, setWhiteLabel] = useState(!!initial.white_label);
 
@@ -78,10 +80,12 @@ export function BrandingForm({
     const fd = new FormData();
     if (logoFile)        fd.append("logo_file",      logoFile);
     if (removeLogo)      fd.append("remove_logo",    "1");
-    if (accentColor)     fd.append("accent_color",   accentColor);
-    if (useCustomBg)     fd.append("display_bg",     displayBg);
-    fd.append("display_header", displayHeader);
-    if (whiteLabel)      fd.append("white_label",    "1");
+    if (accentColor)          fd.append("accent_color",     accentColor);
+    if (useCustomBg)          fd.append("display_bg",       displayBg);
+    fd.append("display_bg_image", displayBgImage.trim());
+    fd.append("display_font",     displayFont);
+    fd.append("display_header",   displayHeader);
+    if (whiteLabel)             fd.append("white_label",    "1");
 
     const result = await saveBranding(fd, orgSlug);
     setSaving(false);
@@ -231,6 +235,48 @@ export function BrandingForm({
               </div>
             )}
           </div>
+        </div>
+      </section>
+
+      {/* ── Background image ───────────────────────────────── */}
+      <section className="flex flex-col gap-2">
+        <Label>Фоновое изображение дисплея</Label>
+        <input
+          type="url"
+          value={displayBgImage}
+          onChange={(e) => setDisplayBgImage(e.target.value)}
+          placeholder="https://example.com/background.jpg"
+          className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        />
+        <p className="text-xs text-slate-400 dark:text-slate-500">
+          Прямая ссылка на изображение (16:9). Перекрывает фоновый цвет.
+        </p>
+      </section>
+
+      {/* ── Display font ───────────────────────────────────── */}
+      <section className="flex flex-col gap-2">
+        <Label>Шрифт экрана</Label>
+        <div className="flex gap-2 flex-wrap">
+          {([
+            { value: "sans",  label: "Современный",  hint: "sans-serif" },
+            { value: "serif", label: "Классический",  hint: "serif" },
+            { value: "mono",  label: "Технический",   hint: "monospace" },
+          ] as const).map(opt => (
+            <label key={opt.value} className={`flex items-center gap-2 rounded-lg border px-3 py-2 cursor-pointer transition-colors ${displayFont === opt.value ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-950/40" : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-slate-300"}`}>
+              <input
+                type="radio"
+                name="display_font"
+                value={opt.value}
+                checked={displayFont === opt.value}
+                onChange={() => setDisplayFont(opt.value)}
+                className="accent-indigo-600 shrink-0"
+              />
+              <div>
+                <p className="text-sm text-slate-900 dark:text-white">{opt.label}</p>
+                <p className="text-xs text-slate-400">{opt.hint}</p>
+              </div>
+            </label>
+          ))}
         </div>
       </section>
 

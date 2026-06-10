@@ -119,6 +119,12 @@ export function DisplayScreen({
   initialActiveSlide?: ActiveSlide;
 }) {
   const accent = branding?.accent_color ?? "#6366f1";
+  const displayFontFamily: Record<string, string> = {
+    sans:  "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+    serif: "Georgia, 'Times New Roman', serif",
+    mono:  "'Courier New', Courier, monospace",
+  };
+  const fontFamily = displayFontFamily[branding?.display_font ?? "sans"] ?? displayFontFamily.sans;
   const [poll, setPoll] = useState<PollData>(initialPoll);
   const [quizReveal, setQuizReveal] = useState<QuizReveal | null>(null);
   const [announcement, setAnnouncement] = useState<AnnouncementData | null>(null);
@@ -455,9 +461,13 @@ export function DisplayScreen({
   return (
     <main
       className={`relative h-screen overflow-hidden flex flex-col ${
-        !branding?.display_bg ? "bg-white dark:bg-slate-950" : ""
+        !branding?.display_bg && !branding?.display_bg_image ? "bg-white dark:bg-slate-950" : ""
       }`}
-      style={branding?.display_bg ? { backgroundColor: branding.display_bg } : undefined}
+      style={{
+        ...(branding?.display_bg ? { backgroundColor: branding.display_bg } : {}),
+        ...(branding?.display_bg_image ? { backgroundImage: `url(${branding.display_bg_image})`, backgroundSize: "cover", backgroundPosition: "center" } : {}),
+        fontFamily,
+      }}
     >
 
       {!connected && (

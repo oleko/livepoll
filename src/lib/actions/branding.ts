@@ -8,6 +8,8 @@ export type BrandingSettings = {
   logo_url?: string | null;
   accent_color?: string | null;
   display_bg?: string | null;
+  display_bg_image?: string | null;
+  display_font?: string | null;
   display_header?: string | null;
   white_label?: boolean | null;
 };
@@ -84,14 +86,16 @@ export async function saveBranding(
 
   if (formData.get("remove_logo") === "1") logo_url = null;
 
-  const accent_color   = (formData.get("accent_color")   as string | null) || null;
-  const display_bg     = (formData.get("display_bg")     as string | null) || null;
-  const display_header = ((formData.get("display_header") as string | null) ?? "").trim() || null;
-  const white_label    = formData.get("white_label") === "1" ? true : null;
+  const accent_color    = (formData.get("accent_color")    as string | null) || null;
+  const display_bg      = (formData.get("display_bg")      as string | null) || null;
+  const display_bg_image = ((formData.get("display_bg_image") as string | null) ?? "").trim() || null;
+  const display_font    = (formData.get("display_font")    as string | null) || null;
+  const display_header  = ((formData.get("display_header")  as string | null) ?? "").trim() || null;
+  const white_label     = formData.get("white_label") === "1" ? true : null;
 
   const { error } = await admin
     .from("organizations")
-    .update({ settings: { ...current, logo_url, accent_color, display_bg, display_header, white_label } })
+    .update({ settings: { ...current, logo_url, accent_color, display_bg, display_bg_image, display_font, display_header, white_label } })
     .eq("id", org.id);
 
   if (error) return { error: error.message };

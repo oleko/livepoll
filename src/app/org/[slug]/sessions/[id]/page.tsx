@@ -60,7 +60,7 @@ export default async function SessionPage({
 
   const { data: voteRows } = await admin
     .from("votes")
-    .select("poll_id, value")
+    .select("poll_id, value, created_at")
     .in("poll_id", polls?.map((p) => p.id) ?? []);
 
   const votesByPoll = (voteRows ?? []).reduce<Record<string, number>>((acc, v) => {
@@ -75,6 +75,15 @@ export default async function SessionPage({
       try { vals = v.value.startsWith("[") ? (JSON.parse(v.value) as string[]) : [v.value]; }
       catch { vals = [v.value]; }
       vals.forEach((val) => { acc[v.poll_id][val] = (acc[v.poll_id][val] ?? 0) + 1; });
+      return acc;
+    },
+    {}
+  );
+
+  const votesTimelineByPoll = (voteRows ?? []).reduce<Record<string, string[]>>(
+    (acc, v) => {
+      if (!acc[v.poll_id]) acc[v.poll_id] = [];
+      acc[v.poll_id].push(v.created_at);
       return acc;
     },
     {}
@@ -108,6 +117,7 @@ export default async function SessionPage({
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
   const joinUrl = `${baseUrl}/join/${session.join_code}`;
   const displayUrl = `${baseUrl}/display/${session.join_code}`;
+  const presenterUrl = `${baseUrl}/display/${session.join_code}/presenter`;
 
   return (
     <div>
@@ -145,6 +155,9 @@ export default async function SessionPage({
             <>
               <Link href={displayUrl} target="_blank">
                 <Button variant="secondary" className="text-sm">Экран</Button>
+              </Link>
+              <Link href={presenterUrl} target="_blank">
+                <Button variant="ghost" className="text-sm">Ведущий</Button>
               </Link>
               <Link href={joinUrl} target="_blank">
                 <Button variant="ghost" className="text-sm">Открыть как участник</Button>
@@ -190,6 +203,7 @@ export default async function SessionPage({
             activeSlideId={activeSlideId}
             votesByPoll={votesByPoll}
             votesDataByPoll={votesDataByPoll}
+            votesTimelineByPoll={votesTimelineByPoll}
             sessionId={id}
             orgSlug={slug}
             sessionStatus={session.status}

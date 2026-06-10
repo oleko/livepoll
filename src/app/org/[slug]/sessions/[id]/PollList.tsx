@@ -447,10 +447,31 @@ function PollResults({ poll, valueCounts, total }: { poll: PollRow; valueCounts:
   );
 }
 
+function VoteTimeline({ timestamps }: { timestamps: string[] }) {
+  if (timestamps.length < 3) return null;
+  const times = timestamps.map(t => new Date(t).getTime()).sort((a, b) => a - b);
+  const start = times[0], end = times[times.length - 1];
+  const duration = end - start;
+  if (duration < 1000) return null;
+  const N = 14;
+  const bucketMs = duration / N;
+  const buckets = Array(N).fill(0);
+  times.forEach(t => { buckets[Math.min(Math.floor((t - start) / bucketMs), N - 1)]++; });
+  const max = Math.max(...buckets);
+  return (
+    <div className="mt-2 flex items-end gap-px h-7" title="Активность голосования по времени">
+      {buckets.map((count, i) => (
+        <div key={i} className="flex-1 rounded-sm bg-indigo-400/50 dark:bg-indigo-500/40 transition-all"
+          style={{ height: count > 0 ? `${Math.max(12, Math.round((count / max) * 100))}%` : "2px", opacity: count > 0 ? 1 : 0.2 }} />
+      ))}
+    </div>
+  );
+}
+
 // ─── PollCard ─────────────────────────────────────────────────────────────────
 
 function PollCard({
-  poll, votesByPoll, votesDataByPoll, sessionId, orgSlug, sessionStatus, copyTargets,
+  poll, votesByPoll, votesDataByPoll, votesTimeline, sessionId, orgSlug, sessionStatus, copyTargets,
   draggingId, onDragStart, onDragEnd,
   editingId, editTitle, editOptions, editSaving, editError,
   onStartEdit, onSaveEdit, onCancelEdit, onEditTitleChange, onEditOptionsChange,
@@ -459,6 +480,7 @@ function PollCard({
   poll: PollRow;
   votesByPoll: Record<string, number>;
   votesDataByPoll: Record<string, Record<string, number>>;
+  votesTimeline?: string[];
   sessionId: string; orgSlug: string; sessionStatus: SessionStatus; copyTargets: CopyTarget[];
   draggingId: string | null;
   onDragStart: (id: string) => void;
@@ -590,6 +612,9 @@ function PollCard({
             </div>
           </div>
           {showResults && <PollResults poll={poll} valueCounts={valueCounts} total={voteCount} />}
+          {isClosed && votesTimeline && votesTimeline.length >= 3 && (
+            <VoteTimeline timestamps={votesTimeline} />
+          )}
         </>
       )}
     </div>
@@ -752,6 +777,7 @@ export function PollList({
   activeSlideId,
   votesByPoll,
   votesDataByPoll,
+  votesTimelineByPoll,
   sessionId,
   orgSlug,
   sessionStatus,
@@ -763,6 +789,7 @@ export function PollList({
   activeSlideId: string | null;
   votesByPoll: Record<string, number>;
   votesDataByPoll: Record<string, Record<string, number>>;
+  votesTimelineByPoll?: Record<string, string[]>;
   sessionId: string; orgSlug: string; sessionStatus: SessionStatus;
   copyTargets: CopyTarget[];
   sections: SectionItem[];
@@ -916,6 +943,7 @@ export function PollList({
         key={poll.id}
         poll={poll}
         {...baseCardProps}
+        votesTimeline={votesTimelineByPoll?.[poll.id]}
         hiddenFromDisplay={hiddenPollIds.has(poll.id)}
         onHide={() => handleHidePoll(poll.id)}
         onShow={() => handleShowPoll(poll.id)}
