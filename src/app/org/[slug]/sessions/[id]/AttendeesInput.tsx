@@ -37,11 +37,11 @@ export function AttendeesInput({
   }
 
   return (
-    <div className="flex items-center gap-1.5">
-      <span className="text-xs text-slate-500 dark:text-slate-400">Присутствующих:</span>
+    <div className="flex items-center gap-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-1 py-0.5">
+      <span className="text-[11px] text-slate-400 dark:text-slate-500 pl-1.5 pr-0.5 select-none">👥</span>
       <button
         onClick={() => update(count - 1)}
-        className="w-6 h-6 rounded-md border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm flex items-center justify-center"
+        className="w-5 h-5 rounded text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 text-xs flex items-center justify-center transition-colors"
       >
         −
       </button>
@@ -52,11 +52,11 @@ export function AttendeesInput({
         onChange={handleInputChange}
         onBlur={handleInputBlur}
         onKeyDown={handleKeyDown}
-        className="w-14 text-center text-sm font-semibold text-slate-900 dark:text-white tabular-nums rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 py-0.5 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+        className="w-10 text-center text-xs font-semibold text-slate-900 dark:text-white tabular-nums bg-transparent focus:outline-none"
       />
       <button
         onClick={() => update(count + 1)}
-        className="w-6 h-6 rounded-md border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm flex items-center justify-center"
+        className="w-5 h-5 rounded text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 text-xs flex items-center justify-center transition-colors"
       >
         +
       </button>

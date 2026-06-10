@@ -2,12 +2,11 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { Button } from "@/components/ui/Button";
 import { SessionControls } from "./SessionControls";
 import { PollList } from "./PollList";
 import { QAPanel } from "./QAPanel";
 import { CreationTabs } from "./CreationTabs";
-import { SharePanel } from "./SharePanel";
+import { SessionConnectPanel } from "./SessionConnectPanel";
 import { AttendeesInput } from "./AttendeesInput";
 import { ExportButton } from "./ExportButton";
 import { SessionSummaryButton } from "./SessionSummaryButton";
@@ -120,22 +119,23 @@ export default async function SessionPage({
   const presenterUrl = `${baseUrl}/display/${session.join_code}/presenter`;
 
   return (
-    <div>
-      {/* Session header */}
-      <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-3 mb-1">
-            <Link href={`/org/${slug}`} className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 text-sm">
-              ← Мероприятия
-            </Link>
-          </div>
-          <h1 className="text-xl font-semibold text-slate-900 dark:text-white">{session.title}</h1>
-          <div className="flex items-center gap-3 mt-2 flex-wrap">
-            <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_COLOR[session.status]}`}>
+    <div className="flex flex-col gap-6">
+
+      {/* ── 1. Header ────────────────────────────────────────────────────────── */}
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-col gap-1 min-w-0">
+          <Link
+            href={`/org/${slug}`}
+            className="text-xs text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors w-fit"
+          >
+            ← Мероприятия
+          </Link>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white truncate">
+            {session.title}
+          </h1>
+          <div className="flex items-center gap-3 flex-wrap mt-0.5">
+            <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_COLOR[session.status]}`}>
               {STATUS_LABEL[session.status]}
-            </span>
-            <span className="text-sm text-slate-400 dark:text-slate-500">
-              Код: <span className="font-mono text-slate-600 dark:text-slate-300 text-base tracking-widest">{session.join_code}</span>
             </span>
             {session.status !== "ended" && (
               <AttendeesInput
@@ -145,25 +145,10 @@ export default async function SessionPage({
               />
             )}
           </div>
-          {session.status !== "ended" && (
-            <SharePanel joinUrl={joinUrl} joinCode={session.join_code} />
-          )}
         </div>
 
-        <div className="flex gap-2 shrink-0 flex-wrap">
-          {session.status !== "ended" && (
-            <>
-              <Link href={displayUrl} target="_blank">
-                <Button variant="secondary" className="text-sm">Экран</Button>
-              </Link>
-              <Link href={presenterUrl} target="_blank">
-                <Button variant="ghost" className="text-sm">Ведущий</Button>
-              </Link>
-              <Link href={joinUrl} target="_blank">
-                <Button variant="ghost" className="text-sm">Открыть как участник</Button>
-              </Link>
-            </>
-          )}
+        {/* Primary actions */}
+        <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
           {(session.status === "active" || session.status === "ended") && (polls?.length ?? 0) > 0 && (
             <SessionSummaryButton sessionId={id} />
           )}
@@ -183,16 +168,23 @@ export default async function SessionPage({
               questions={(questions ?? []).map((q) => ({ text: q.text, status: q.status }))}
             />
           )}
-          <SessionControls
-            sessionId={session.id}
-            status={session.status}
-            orgSlug={slug}
-          />
+          <SessionControls sessionId={session.id} status={session.status} orgSlug={slug} />
         </div>
       </div>
 
+      {/* ── 2. Share & Screens ───────────────────────────────────────────────── */}
+      {session.status !== "ended" && (
+        <SessionConnectPanel
+          joinUrl={joinUrl}
+          joinCode={session.join_code}
+          displayUrl={displayUrl}
+          presenterUrl={presenterUrl}
+        />
+      )}
+
+      {/* ── 3 & 4. Lineup + Creation ─────────────────────────────────────────── */}
       <div className="grid gap-6 lg:grid-cols-3">
-        {/* Poll list */}
+        {/* 3. Poll & slide lineup */}
         <div className="lg:col-span-2">
           <PollList
             polls={(polls ?? []).map((p) => ({
@@ -212,19 +204,17 @@ export default async function SessionPage({
           />
         </div>
 
+        {/* 4. Creation & moderation */}
         <div className="flex flex-col gap-6">
-          {/* Creation tools — tabbed poll / slide */}
           {session.status !== "ended" && (
             <CreationTabs sessionId={id} orgSlug={slug} sections={sections ?? []} />
           )}
-
-          {/* Q&A moderation */}
           {hasQA && (
             <QAPanel sessionId={id} orgSlug={slug} initialQuestions={questions ?? []} />
           )}
-
         </div>
       </div>
+
     </div>
   );
 }
