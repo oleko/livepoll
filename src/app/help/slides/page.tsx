@@ -123,6 +123,23 @@ export default function SlidesPage() {
         </section>
 
         <section>
+          <h2 className="text-base font-semibold text-slate-900 dark:text-white mb-3">Предпросмотр и дублирование</h2>
+          <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed mb-3">
+            На каждой карточке слайда в лайн-апе есть две вспомогательные кнопки:
+          </p>
+          <ul className="space-y-2 text-sm text-slate-600 dark:text-slate-300">
+            <li className="flex gap-2.5">
+              <span className="text-purple-500 shrink-0 mt-0.5">👁</span>
+              <span><b>Предпросмотр</b> — открывает модальное окно с реальным рендером слайда в масштабе 1:3. Показывает точно то, что увидит аудитория на проекторе, без переключения на дисплейный экран.</span>
+            </li>
+            <li className="flex gap-2.5">
+              <span className="text-purple-500 shrink-0 mt-0.5">⎘</span>
+              <span><b>Дублировать</b> — создаёт полную копию слайда в конце лайн-апа. Удобно для похожих карточек спикеров или расписаний в разные дни.</span>
+            </li>
+          </ul>
+        </section>
+
+        <section>
           <h2 className="text-base font-semibold text-slate-900 dark:text-white mb-4">Восемь типов экранов</h2>
           <div className="space-y-4">
             {SCREENS.map(s => (

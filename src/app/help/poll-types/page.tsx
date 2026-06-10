@@ -145,6 +145,23 @@ export default function PollTypesPage() {
         </p>
       </div>
 
+      <div className="mt-8 rounded-xl border border-slate-200 dark:border-slate-800 p-5 space-y-3">
+        <h2 className="text-base font-semibold text-slate-900 dark:text-white">📥 Результаты и аналитика</h2>
+        <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+          После завершения опроса в его карточке появляются дополнительные инструменты:
+        </p>
+        <ul className="space-y-2 text-sm text-slate-600 dark:text-slate-300">
+          <li className="flex gap-2.5">
+            <span className="text-indigo-500 shrink-0 mt-0.5">•</span>
+            <span><b>↓ CSV</b> — скачать результаты в виде таблицы: варианты ответов, количество голосов, проценты. Открывается в Excel, Google Sheets и LibreOffice Calc.</span>
+          </li>
+          <li className="flex gap-2.5">
+            <span className="text-indigo-500 shrink-0 mt-0.5">•</span>
+            <span><b>Временная шкала</b> — спарк-бар под результатами показывает, как распределялась активность голосования по времени. Помогает увидеть, когда большинство участников проголосовало.</span>
+          </li>
+        </ul>
+      </div>
+
       <div className="mt-12 pt-8 border-t border-slate-200 dark:border-slate-800 flex gap-6 text-sm">
         <Link href="/help/getting-started" className="py-2 text-indigo-600 dark:text-indigo-400 hover:underline">
           ← Быстрый старт

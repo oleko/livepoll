@@ -42,6 +42,26 @@ export default function DisplayScreenPage() {
         </section>
 
         <section>
+          <h2 className="text-base font-semibold text-slate-900 dark:text-white mb-3">Режим ведущего</h2>
+          <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed mb-2">
+            Кнопка <b>«Ведущий»</b> рядом с «Экраном» открывает отдельную страницу для ноутбука ведущего,
+            пока проектор показывает основной экран. Она не скроллируется и не требует авторизации.
+          </p>
+          <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed mb-3">
+            На странице ведущего:
+          </p>
+          <ul className="space-y-1.5 text-sm text-slate-600 dark:text-slate-300 mb-3">
+            <li className="flex gap-2.5"><span className="text-indigo-500 shrink-0 mt-0.5">•</span><span><b>Сейчас на экране</b> — текущий активный опрос с живыми результатами или тип активного слайда</span></li>
+            <li className="flex gap-2.5"><span className="text-indigo-500 shrink-0 mt-0.5">•</span><span><b>Следующие</b> — три следующих элемента лайн-апа (опросы и слайды)</span></li>
+            <li className="flex gap-2.5"><span className="text-indigo-500 shrink-0 mt-0.5">•</span><span><b>Вопросы</b> — свежие вопросы из зала по числу лайков</span></li>
+            <li className="flex gap-2.5"><span className="text-indigo-500 shrink-0 mt-0.5">•</span><span>Часы, код мероприятия, счётчик участников — в шапке</span></li>
+          </ul>
+          <Tip>
+            Откройте режим ведущего на своём ноутбуке, а основной экран — на отдельном мониторе или проекторе. Так вы будете видеть результаты и очередь программы, не отвлекаясь от аудитории.
+          </Tip>
+        </section>
+
+        <section>
           <h2 className="text-base font-semibold text-slate-900 dark:text-white mb-4">Режимы экрана</h2>
           <div className="space-y-3">
             <Mode
@@ -51,6 +71,10 @@ export default function DisplayScreenPage() {
             <Mode
               label="Активный опрос"
               desc="Когда опрос запущен. На экране — вопрос и живые результаты, которые обновляются по мере поступления голосов. Показывается тип опроса, количество проголосовавших и, если задан таймер, обратный отсчёт. В шапке — бейдж LIVE."
+            />
+            <Mode
+              label="Итог опроса"
+              desc="Кнопка «Итог» в панели ведущего завершает голосование, но оставляет финальный результат на экране с пометкой «Голосование окончено». Результаты автоматически сортируются по популярности. Кнопка «Убрать с экрана» возвращает экран в режим ожидания."
             />
             <Mode
               label="Квиз — раскрытие ответа"
@@ -105,6 +129,23 @@ export default function DisplayScreenPage() {
           </p>
           <Tip>
             Тёмный фон хорошо смотрится на большинстве проекторов — меньше засвет, выше контраст.
+          </Tip>
+        </section>
+
+        <section>
+          <h2 className="text-base font-semibold text-slate-900 dark:text-white mb-3">Брендинг экрана</h2>
+          <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed mb-3">
+            В разделе <b>«Настройки → Брендинг»</b> доступны параметры для кастомизации дисплейного экрана:
+          </p>
+          <ul className="space-y-2 text-sm text-slate-600 dark:text-slate-300">
+            <li className="flex gap-2.5"><span className="text-indigo-500 shrink-0 mt-0.5">•</span><span><b>Фоновое изображение</b> — прямая ссылка на картинку (рекомендуемый формат 16:9). Перекрывает цвет фона.</span></li>
+            <li className="flex gap-2.5"><span className="text-indigo-500 shrink-0 mt-0.5">•</span><span><b>Фоновый цвет</b> — конкретный HEX, независимо от темы браузера.</span></li>
+            <li className="flex gap-2.5"><span className="text-indigo-500 shrink-0 mt-0.5">•</span><span><b>Шрифт</b> — Современный (sans-serif, по умолчанию), Классический (serif) или Технический (monospace).</span></li>
+            <li className="flex gap-2.5"><span className="text-indigo-500 shrink-0 mt-0.5">•</span><span><b>Логотип</b> — отображается в шапке дисплейного экрана и страницы участника.</span></li>
+            <li className="flex gap-2.5"><span className="text-indigo-500 shrink-0 mt-0.5">•</span><span><b>Цвет акцента</b> — применяется к графикам, кнопкам и бейджам.</span></li>
+          </ul>
+          <Tip>
+            Все изменения брендинга применяются сразу при следующей загрузке страницы. Для проектора — обновите вкладку после сохранения настроек.
           </Tip>
         </section>
 
