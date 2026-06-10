@@ -9,6 +9,7 @@ import { showSlide, hideSlide, deleteSlide, duplicateSlide, updateSlide, reorder
 import { revealPoker } from "@/lib/actions/sessions";
 import { Button } from "@/components/ui/Button";
 import { EditIcon } from "@/components/icons";
+import { SlideView } from "@/app/display/[code]/SlideView";
 import type { Poll, SessionStatus } from "@/types/database";
 import type { SlideRow, SlideType } from "@/lib/actions/slides";
 
@@ -36,6 +37,35 @@ function slidePreview(slide: SlideRow): string {
 }
 
 type ScheduleItem = { time: string; title: string; active?: boolean };
+
+function downloadPollCSV(poll: PollRow, valueCounts: Record<string, number>, voteCount: number) {
+  let rows: string[][];
+  if (poll.type === "word_cloud" || poll.type === "emoji_cloud") {
+    rows = [["Значение", "Кол-во"]];
+    Object.entries(valueCounts).sort((a, b) => b[1] - a[1]).forEach(([k, v]) => rows.push([k, String(v)]));
+  } else if (poll.type === "like_dislike") {
+    rows = [["Вариант", "Голосов", "Процент"]];
+    const likes = valueCounts["like"] ?? 0;
+    const dislikes = valueCounts["dislike"] ?? 0;
+    rows.push(["👍 Нравится", String(likes), voteCount > 0 ? `${Math.round((likes / voteCount) * 100)}%` : "0%"]);
+    rows.push(["👎 Не нравится", String(dislikes), voteCount > 0 ? `${Math.round((dislikes / voteCount) * 100)}%` : "0%"]);
+  } else {
+    rows = [["Вариант", "Голосов", "Процент"]];
+    Object.entries(valueCounts).sort((a, b) => b[1] - a[1]).forEach(([k, v]) => {
+      rows.push([k, String(v), voteCount > 0 ? `${Math.round((v / voteCount) * 100)}%` : "0%"]);
+    });
+  }
+  const csv = rows.map(r => r.map(cell => `"${cell.replace(/"/g, '""')}"`).join(",")).join("\n");
+  const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${poll.title.slice(0, 40).replace(/[<>:"/\\|?*]/g, "").trim() || "poll"}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
 
 function SlideEditForm({ slide, onDone, onCancel }: {
   slide: SlideRow;
@@ -122,6 +152,27 @@ function SlideEditForm({ slide, onDone, onCancel }: {
   );
 }
 
+function SlidePreviewModal({ slide, onClose }: { slide: SlideRow; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 animate-overlay-in" onClick={onClose}>
+      <div className="relative animate-modal-in" onClick={e => e.stopPropagation()}>
+        <div style={{ width: 480, height: 270, overflow: "hidden", borderRadius: 8, position: "relative" }}>
+          <div style={{ width: 1440, height: 810, transformOrigin: "top left", transform: "scale(0.3333)", position: "absolute", top: 0, left: 0 }}>
+            <SlideView slide={{ id: slide.id, type: slide.type, content: slide.content }} />
+          </div>
+        </div>
+        <button
+          onClick={onClose}
+          className="absolute -top-3 -right-3 h-7 w-7 rounded-full bg-slate-700 text-white text-xs flex items-center justify-center hover:bg-slate-600 transition-colors"
+        >✕</button>
+        <p className="mt-2 text-center text-xs text-slate-400">
+          {SLIDE_TYPE_META[slide.type]?.label} — {slidePreview(slide)}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function SlideLineupCard({
   slide, isActive, sessionId, orgSlug, isDragging, onDragStart, onDragEnd, sections,
   onShowSlide, onHideSlide,
@@ -137,6 +188,7 @@ function SlideLineupCard({
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [pending, setPending] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const meta = SLIDE_TYPE_META[slide.type];
 
   async function handleShow() {
@@ -203,6 +255,9 @@ function SlideLineupCard({
               {sections.map(s => <option key={s.id} value={s.id}>{s.title}</option>)}
             </select>
           )}
+          <Button variant="ghost" size="sm" onClick={() => setPreviewOpen(true)} disabled={pending} title="Предпросмотр">
+            👁
+          </Button>
           <Button variant="ghost" size="sm" onClick={() => setEditing(v => !v)} disabled={pending} title="Редактировать">
             <EditIcon size={13} />
           </Button>
@@ -233,6 +288,7 @@ function SlideLineupCard({
       {editing && (
         <SlideEditForm slide={slide} onDone={() => setEditing(false)} onCancel={() => setEditing(false)} />
       )}
+      {previewOpen && <SlidePreviewModal slide={slide} onClose={() => setPreviewOpen(false)} />}
     </div>
   );
 }
@@ -523,6 +579,11 @@ function PollCard({
               {isClosed && !!poll.settings?.result_on_display && (
                 <Button variant="ghost" size="sm" className="text-slate-400 hover:text-slate-600" onClick={async () => { await clearPollResult(poll.id, sessionId, orgSlug); router.refresh(); }}>
                   Убрать с экрана
+                </Button>
+              )}
+              {isClosed && voteCount > 0 && (
+                <Button variant="ghost" size="sm" title="Скачать CSV" onClick={() => downloadPollCSV(poll, valueCounts, voteCount)}>
+                  ↓ CSV
                 </Button>
               )}
               {copyTargets.length > 0 && <CopyPollButton pollId={poll.id} orgSlug={orgSlug} targets={copyTargets} />}

@@ -64,7 +64,10 @@ export function VoteInterface({
   initialActiveSlide?: { type: string; content: Record<string, unknown> } | null;
 }) {
   const [poll, setPoll] = useState<PollData>(initialPoll);
-  const [voted, setVoted] = useState(false);
+  const [voted, setVoted] = useState(() => {
+    if (typeof window === "undefined" || !initialPoll) return false;
+    try { return localStorage.getItem(`voted_${initialPoll.id}`) === "1"; } catch { return false; }
+  });
   const [myVote, setMyVote] = useState<string | null>(null);
   const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
   const [quizReveal, setQuizReveal] = useState<QuizReveal | null>(null);
@@ -264,6 +267,7 @@ export function VoteInterface({
       setError(result.error === "Вы уже проголосовали" ? "Вы уже проголосовали" : "Ошибка, попробуйте снова");
     } else {
       setVoted(true);
+      try { localStorage.setItem(`voted_${poll.id}`, "1"); } catch {}
       if (poll?.type === "multiple_choice" || poll?.type === "planning_poker") setMyVote(value);
     }
   }
@@ -535,7 +539,7 @@ export function VoteInterface({
           </>
         ) : (
           <>
-            <div className="text-6xl mb-5">✅</div>
+            <div className="text-6xl mb-5 inline-block animate-vote-pop">✅</div>
             <p className="text-2xl font-semibold text-slate-900 dark:text-white mb-2">Голос принят!</p>
             <p className="text-slate-500 text-sm">Ожидайте следующего вопроса</p>
             {voterCount > 0 && (
