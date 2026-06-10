@@ -3,7 +3,7 @@
 import { useState, useTransition, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { activatePoll, closePoll, copyPoll, updatePoll, showPollOnDisplay, hidePollFromDisplay, reorderPolls } from "@/lib/actions/polls";
+import { activatePoll, closePoll, clearPollResult, copyPoll, updatePoll, showPollOnDisplay, hidePollFromDisplay, reorderPolls } from "@/lib/actions/polls";
 import { movePollSection, createSection, deleteSection, renameSection } from "@/lib/actions/sections";
 import { showSlide, hideSlide, deleteSlide, updateSlide, reorderSlides, moveSlideToSection, startSpinWheel } from "@/lib/actions/slides";
 import { revealPoker } from "@/lib/actions/sessions";
@@ -237,6 +237,7 @@ type PollRow = Pick<Poll, "id" | "title" | "type" | "status" | "sort_order"> & {
   options: unknown[];
   created_at: string;
   section_id: string | null;
+  settings?: Record<string, unknown> | null;
 };
 
 // ─── CopyPollButton ───────────────────────────────────────────────────────────
@@ -512,6 +513,11 @@ function PollCard({
                     </>
                   )}
                 </>
+              )}
+              {isClosed && !!poll.settings?.result_on_display && (
+                <Button variant="ghost" size="sm" className="text-slate-400 hover:text-slate-600" onClick={async () => { await clearPollResult(poll.id, sessionId, orgSlug); router.refresh(); }}>
+                  Убрать с экрана
+                </Button>
               )}
               {copyTargets.length > 0 && <CopyPollButton pollId={poll.id} orgSlug={orgSlug} targets={copyTargets} />}
             </div>

@@ -127,10 +127,13 @@ function AnnouncementForm({ v, set }: { v: Record<string, unknown>; set: (v: Rec
   );
 }
 
+const SPIN_OPTION_MAX = 40;
+
 function SpinWheelForm({ v, set }: { v: Record<string, unknown>; set: (v: Record<string, unknown>) => void }) {
   const [rawText, setRawText] = useState(
     ((v.options as string[] | undefined) ?? []).join("\n")
   );
+  const tooLong = rawText.split("\n").some(s => s.trim().length > SPIN_OPTION_MAX);
   return (
     <div className="space-y-2">
       <Input placeholder="Заголовок (необязательно)" value={(v.title as string) ?? ""}
@@ -141,12 +144,19 @@ function SpinWheelForm({ v, set }: { v: Record<string, unknown>; set: (v: Record
           value={rawText}
           onChange={e => {
             setRawText(e.target.value);
-            set({ ...v, options: e.target.value.split("\n").map(s => s.trim()).filter(Boolean) });
+            set({ ...v, options: e.target.value.split("\n").map(s => s.trim().slice(0, SPIN_OPTION_MAX)).filter(Boolean) });
           }}
           rows={5}
           placeholder={"Анна\nИван\nМария\nПётр"}
-          className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+          className={`w-full rounded-lg border bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 resize-none ${
+            tooLong
+              ? "border-amber-400 dark:border-amber-500 focus:ring-amber-400"
+              : "border-slate-300 dark:border-slate-700 focus:ring-purple-500"
+          }`}
         />
+        {tooLong && (
+          <p className="text-xs text-amber-500">Некоторые варианты длиннее {SPIN_OPTION_MAX} символов — они будут обрезаны</p>
+        )}
       </div>
     </div>
   );

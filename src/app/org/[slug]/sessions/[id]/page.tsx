@@ -48,7 +48,7 @@ export default async function SessionPage({
 
   const { data: polls } = await admin
     .from("polls")
-    .select("id, title, type, status, sort_order, section_id, options, created_at")
+    .select("id, title, type, status, sort_order, section_id, options, created_at, settings")
     .eq("session_id", id)
     .order("sort_order");
 

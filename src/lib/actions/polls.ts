@@ -288,13 +288,16 @@ export async function closePoll(
 
   if (!pollMeta) return;
 
+  const pollSettings = pollMeta?.settings as { quiz_mode?: boolean; correct_option?: string; explanation?: string } | null;
+  const updatedSettings = { ...(pollMeta?.settings as object ?? {}) };
+  if (showResult) Object.assign(updatedSettings, { result_on_display: true });
+
   await admin
     .from("polls")
-    .update({ status: "closed", closed_at: new Date().toISOString() })
+    .update({ status: "closed", closed_at: new Date().toISOString(), settings: updatedSettings } as never)
     .eq("id", pollId)
     .eq("session_id", sessionId);
 
-  const pollSettings = pollMeta?.settings as { quiz_mode?: boolean; correct_option?: string; explanation?: string } | null;
   const closePayload: Record<string, unknown> = { type: "closed", poll_id: pollId };
   if (pollSettings?.quiz_mode && pollSettings.correct_option) {
     closePayload.quiz_reveal = {
@@ -308,6 +311,36 @@ export async function closePoll(
     topic: `session-polls:${sessionId}`,
     event: "poll_change",
     payload: closePayload,
+  }]);
+
+  revalidatePath(`/org/${orgSlug}/sessions/${sessionId}`);
+}
+
+export async function clearPollResult(
+  pollId: string,
+  sessionId: string,
+  orgSlug: string
+): Promise<void> {
+  const { user, admin } = await getAuthUser();
+  await assertSessionMember(user.id, sessionId, admin);
+
+  const { data: pollMeta } = await admin
+    .from("polls")
+    .select("settings")
+    .eq("id", pollId)
+    .eq("session_id", sessionId)
+    .single();
+
+  const updatedSettings = { ...(pollMeta?.settings as object ?? {}), result_on_display: false };
+  await admin.from("polls")
+    .update({ settings: updatedSettings } as never)
+    .eq("id", pollId)
+    .eq("session_id", sessionId);
+
+  await realtimeBroadcast([{
+    topic: `session-polls:${sessionId}`,
+    event: "poll_change",
+    payload: { type: "display_hidden" },
   }]);
 
   revalidatePath(`/org/${orgSlug}/sessions/${sessionId}`);

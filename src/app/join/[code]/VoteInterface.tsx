@@ -96,6 +96,8 @@ export function VoteInterface({
   const [activeSlide, setActiveSlide] = useState<{ type: string; content: Record<string, unknown> } | null>(initialActiveSlide);
   const [buzzed, setBuzzed] = useState(false);
   const [connected, setConnected] = useState(true);
+  const [voterCount, setVoterCount] = useState(0);
+  const hasEverConnected = useRef(false);
   const supabase = useRef(createClient());
   const channelRef = useRef<ReturnType<typeof supabase.current.channel> | null>(null);
   const buzzChannelRef = useRef<ReturnType<typeof supabase.current.channel> | null>(null);
@@ -130,6 +132,9 @@ export function VoteInterface({
           setPoll((prev) => prev?.id === data.poll!.id ? { ...prev, title: data.poll!.title, options: data.poll!.options } : prev);
         }
       })
+      .on("broadcast", { event: "voter_count" }, ({ payload }) => {
+        setVoterCount((payload as { count: number }).count);
+      })
       .on("broadcast", { event: "session_ended" }, ({ payload }) => {
         setSessionEnded(true);
         setFarewell((payload as { farewell?: string }).farewell ?? null);
@@ -143,7 +148,9 @@ export function VoteInterface({
         }
       })
       .subscribe((status) => {
-        setConnected(status === "SUBSCRIBED");
+        const isConnected = status === "SUBSCRIBED";
+        if (isConnected) hasEverConnected.current = true;
+        setConnected(!hasEverConnected.current || isConnected);
       });
 
     channelRef.current = channel;
@@ -531,6 +538,11 @@ export function VoteInterface({
             <div className="text-6xl mb-5">✅</div>
             <p className="text-2xl font-semibold text-slate-900 dark:text-white mb-2">Голос принят!</p>
             <p className="text-slate-500 text-sm">Ожидайте следующего вопроса</p>
+            {voterCount > 0 && (
+              <p className="mt-3 text-xs text-slate-400 dark:text-slate-500 tabular-nums">
+                {voterCount} {voterCount === 1 ? "участник проголосовал" : voterCount < 5 ? "участника проголосовали" : "участников проголосовали"}
+              </p>
+            )}
           </>
         )}
         {poll?.settings?.allow_revote && (
