@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { activatePoll, closePoll, clearPollResult, copyPoll, updatePoll, showPollOnDisplay, hidePollFromDisplay, reorderPolls } from "@/lib/actions/polls";
 import { movePollSection, createSection, deleteSection, renameSection } from "@/lib/actions/sections";
-import { showSlide, hideSlide, deleteSlide, updateSlide, reorderSlides, moveSlideToSection, startSpinWheel } from "@/lib/actions/slides";
+import { showSlide, hideSlide, deleteSlide, duplicateSlide, updateSlide, reorderSlides, moveSlideToSection, startSpinWheel } from "@/lib/actions/slides";
 import { revealPoker } from "@/lib/actions/sessions";
 import { Button } from "@/components/ui/Button";
 import { EditIcon } from "@/components/icons";
@@ -203,9 +203,15 @@ function SlideLineupCard({
               {sections.map(s => <option key={s.id} value={s.id}>{s.title}</option>)}
             </select>
           )}
-          <Button variant="ghost" size="sm" onClick={() => setEditing(v => !v)} disabled={pending}>
+          <Button variant="ghost" size="sm" onClick={() => setEditing(v => !v)} disabled={pending} title="Редактировать">
             <EditIcon size={13} />
           </Button>
+          <Button variant="ghost" size="sm" disabled={pending} title="Дублировать" onClick={async () => {
+            setPending(true);
+            await duplicateSlide(slide.id, sessionId, orgSlug);
+            router.refresh();
+            setPending(false);
+          }}>⎘</Button>
           {isActive && slide.type === "spin_wheel" && (
             <Button size="sm" className="bg-purple-600 hover:bg-purple-500" onClick={async () => {
               setPending(true);

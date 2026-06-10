@@ -162,20 +162,26 @@ function AnnouncementSlide({ c }: { c: Record<string, unknown> }) {
   );
 }
 
-function SpinWheelSlide({ c, phase, countdown }: {
+function SpinWheelSlide({ c, phase, countdown, forcedWinner, onWinner }: {
   c: Record<string, unknown>;
   phase: "idle" | "countdown" | "spinning";
   countdown: number;
+  forcedWinner?: string | null;
+  onWinner?: (w: string) => void;
 }) {
   const options = (c.options as string[] | undefined) ?? [];
   const title = c.title as string | undefined;
   const [displayIdx, setDisplayIdx] = useState(0);
-  const [winner, setWinner] = useState<string | null>(null);
+  const [winner, setWinner] = useState<string | null>(forcedWinner ?? null);
 
   useEffect(() => {
     if (phase !== "spinning") return;
     if (options.length === 0) return;
-    if (options.length === 1) { setWinner(options[0]); return; }
+    if (options.length === 1) {
+      setWinner(options[0]);
+      onWinner?.(options[0]);
+      return;
+    }
 
     setWinner(null);
     setDisplayIdx(0);
@@ -195,7 +201,10 @@ function SpinWheelSlide({ c, phase, countdown }: {
         tid = setTimeout(spin, delay);
       } else {
         setDisplayIdx(winnerIdx);
-        setTimeout(() => setWinner(options[winnerIdx]), 250);
+        setTimeout(() => {
+          setWinner(options[winnerIdx]);
+          onWinner?.(options[winnerIdx]);
+        }, 250);
       }
     };
     tid = setTimeout(spin, 200);
@@ -207,6 +216,26 @@ function SpinWheelSlide({ c, phase, countdown }: {
     return (
       <div className="flex items-center justify-center h-full">
         <p className="text-slate-400 text-2xl">Нет вариантов</p>
+      </div>
+    );
+  }
+
+  // Idle with saved winner (page refresh) — show result directly
+  if (phase === "idle" && forcedWinner) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full gap-10 px-16 text-center">
+        {title && <h2 className="text-4xl font-bold text-white">{title}</h2>}
+        <p className="text-indigo-400 text-2xl font-semibold uppercase tracking-widest">🎉 Победитель!</p>
+        <p className="font-bold text-white leading-none" style={{ fontSize: "clamp(3.5rem, 12vh, 9rem)" }}>
+          {forcedWinner}
+        </p>
+        {options.length > 1 && (
+          <div className="flex flex-wrap gap-2 justify-center max-w-3xl">
+            {options.filter(o => o !== forcedWinner).map((opt, i) => (
+              <span key={i} className="text-slate-600 text-lg px-4 py-1.5 border border-slate-800 rounded-full">{opt}</span>
+            ))}
+          </div>
+        )}
       </div>
     );
   }
@@ -333,13 +362,15 @@ function RevealSlide({ c, revealed, buzzers }: {
   );
 }
 
-export function SlideView({ slide, slideShowKey = 0, revealed = false, buzzers = [], spinPhase = "idle", spinCountdown = 3 }: {
+export function SlideView({ slide, slideShowKey = 0, revealed = false, buzzers = [], spinPhase = "idle", spinCountdown = 3, spinWinner, onSpinWinner }: {
   slide: SlideData;
   slideShowKey?: number;
   revealed?: boolean;
   buzzers?: BuzzerEntry[];
   spinPhase?: "idle" | "countdown" | "spinning";
   spinCountdown?: number;
+  spinWinner?: string | null;
+  onSpinWinner?: (w: string) => void;
 }) {
   const c = slide.content as Record<string, unknown>;
   return (
@@ -349,7 +380,7 @@ export function SlideView({ slide, slideShowKey = 0, revealed = false, buzzers =
       {slide.type === "schedule"     && <ScheduleSlide     c={c as { items?: ScheduleItem[] }} />}
       {slide.type === "quote"        && <QuoteSlide        c={c as Record<string, string>} />}
       {slide.type === "final"        && <FinalSlide        c={c as Record<string, string>} />}
-      {slide.type === "spin_wheel"   && <SpinWheelSlide    key={`spin-${slideShowKey}`} c={c} phase={spinPhase} countdown={spinCountdown} />}
+      {slide.type === "spin_wheel"   && <SpinWheelSlide    key={`spin-${slideShowKey}`} c={c} phase={spinPhase} countdown={spinCountdown} forcedWinner={spinWinner} onWinner={onSpinWinner} />}
       {slide.type === "announcement" && <AnnouncementSlide c={c} />}
       {slide.type === "reveal"       && <RevealSlide       c={c} revealed={revealed} buzzers={buzzers} />}
     </div>

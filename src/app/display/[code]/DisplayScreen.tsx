@@ -150,8 +150,15 @@ export function DisplayScreen({
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [pokerRevealed, setPokerRevealed] = useState(false);
   const [pollEnded, setPollEnded] = useState(false);
+  const [sortByPopularity, setSortByPopularity] = useState(false);
   const [spinPhase, setSpinPhase] = useState<"idle" | "countdown" | "spinning">("idle");
   const [spinCountdown, setSpinCountdown] = useState(3);
+  const [spinWinner, setSpinWinner] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    if (!initialActiveSlide || initialActiveSlide.type !== "spin_wheel") return null;
+    try { return sessionStorage.getItem(`spin-winner-${initialActiveSlide.id}`); } catch { return null; }
+  });
+  const seenWordsRef = useRef<Set<string>>(new Set());
   const [connected, setConnected] = useState(true);
   const currentVotesRef = useRef<{ value: string; ts: string }[]>([]);
   const hasEverConnected = useRef(false);
@@ -176,6 +183,8 @@ export function DisplayScreen({
           setQuizReveal(null);
           setPokerRevealed(false);
           setPollEnded(false);
+          setSortByPopularity(false);
+          seenWordsRef.current = new Set();
           setPoll(data.poll);
           setVotes([]);
           setActiveSlide(null);
@@ -262,12 +271,14 @@ export function DisplayScreen({
           setBuzzers([]);
           setSpinPhase("idle");
           setSpinCountdown(3);
+          setSpinWinner(null);
         } else if (data.type === "hide") {
           setActiveSlide(null);
           setRevealedSlideId(null);
           setBuzzers([]);
           setSpinPhase("idle");
           setSpinCountdown(3);
+          setSpinWinner(null);
         }
       })
       .on("broadcast", { event: "slide_reveal" }, ({ payload }) => {
@@ -418,8 +429,22 @@ export function DisplayScreen({
 
   const chartData = useMemo(() => {
     if (!poll) return [];
-    return aggregateVotes(votes, poll.type, poll.options as string[]);
-  }, [votes, poll]);
+    const data = aggregateVotes(votes, poll.type, poll.options as string[]);
+    return (sortByPopularity || pollEnded) ? [...data].sort((a, b) => b.count - a.count) : data;
+  }, [votes, poll, sortByPopularity, pollEnded]);
+
+  // Track seen words for fade-in animation
+  useEffect(() => {
+    if (poll?.type !== "word_cloud" && poll?.type !== "emoji_cloud") return;
+    votes.forEach(v => seenWordsRef.current.add(v.value.toLowerCase().trim()));
+  }, [votes, poll?.type]);
+
+  function handleSpinWinner(winner: string) {
+    if (activeSlide) {
+      try { sessionStorage.setItem(`spin-winner-${activeSlide.id}`, winner); } catch {}
+    }
+    setSpinWinner(winner);
+  }
 
   const totalVotes = votes.length;
   const visibleQuestions = useMemo(
@@ -451,6 +476,8 @@ export function DisplayScreen({
             buzzers={buzzers}
             spinPhase={spinPhase}
             spinCountdown={spinCountdown}
+            spinWinner={spinWinner}
+            onSpinWinner={handleSpinWinner}
           />
         </div>
       )}
@@ -514,6 +541,15 @@ export function DisplayScreen({
           )}
           {poll && poll.type !== "qa" && totalVotes > 0 && (
             <span className="text-2xl font-bold text-slate-900 dark:text-white tabular-nums">{totalVotes}</span>
+          )}
+          {poll && (poll.type === "multiple_choice" || poll.type === "planning_poker") && !pollEnded && totalVotes > 0 && (
+            <button
+              onClick={() => setSortByPopularity(v => !v)}
+              title={sortByPopularity ? "Порядок вариантов" : "По популярности"}
+              className={`text-xs px-2 py-1 rounded-md border transition-colors ${sortByPopularity ? "border-indigo-500/50 bg-indigo-500/10 text-indigo-400" : "border-slate-200 dark:border-slate-700 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"}`}
+            >
+              {sortByPopularity ? "↓ рейтинг" : "A→Z"}
+            </button>
           )}
           <ThemeToggle className="opacity-40 hover:opacity-100" />
           {quizReveal ? (
@@ -749,11 +785,12 @@ export function DisplayScreen({
                       .sort((a, b) => b[1] - a[1])
                       .map(([word, count]) => {
                         const scale = max === min ? 0.5 : (count - min) / (max - min);
+                        const isNew = !seenWordsRef.current.has(word);
                         return (
                           <span
                             key={word}
                             style={{ fontSize: `${(1.5 + scale * 3.5).toFixed(2)}rem`, opacity: 0.55 + scale * 0.45, color: accent }}
-                            className="font-bold leading-tight"
+                            className={`font-bold leading-tight ${isNew ? "animate-fade-in" : ""}`}
                           >
                             {word}
                           </span>

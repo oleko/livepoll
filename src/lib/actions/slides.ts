@@ -242,6 +242,43 @@ export async function hideSlide(
   revalidatePath(`/org/${orgSlug}/sessions/${sessionId}`);
 }
 
+export async function duplicateSlide(
+  slideId: string,
+  sessionId: string,
+  orgSlug: string
+): Promise<void> {
+  const { user, admin } = await getAuthUser();
+  await assertSessionMember(user.id, sessionId, admin);
+
+  const { data: srcRaw } = await admin
+    .from("session_slides")
+    .select("type, content, section_id")
+    .eq("id", slideId)
+    .eq("session_id", sessionId)
+    .single();
+
+  if (!srcRaw) return;
+  const src = srcRaw as unknown as { type: string; content: Record<string, unknown>; section_id: string | null };
+
+  const { data: last } = await admin
+    .from("session_slides")
+    .select("sort_order")
+    .eq("session_id", sessionId)
+    .order("sort_order", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  await admin.from("session_slides").insert({
+    session_id: sessionId,
+    type: src.type,
+    content: src.content,
+    section_id: src.section_id,
+    sort_order: (last?.sort_order ?? -1) + 1,
+  } as never);
+
+  revalidatePath(`/org/${orgSlug}/sessions/${sessionId}`);
+}
+
 export async function startSpinWheel(
   slideId: string,
   sessionId: string,
