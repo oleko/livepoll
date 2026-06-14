@@ -1,0 +1,251 @@
+{
+  "Common": {
+    "error": "Error",
+    "loading": "Loading...",
+    "poweredBy": "Powered by LivePoll AI"
+  },
+  "Landing": {
+    "nav": {
+      "signIn": "Sign in",
+      "getStarted": "Get started free"
+    },
+    "hero": {
+      "badge": "Powered by YandexGPT",
+      "headline1": "Your audience speaks.",
+      "headline2": "You hear everyone.",
+      "subtext": "Real-time polls, slides, and AI analysis for presenters. Participants vote by QR code — no app required.",
+      "ctaPrimary": "Create your first poll",
+      "ctaSecondary": "Sign in",
+      "liveLabel": "247 votes · live",
+      "joinLabel": "Join"
+    },
+    "pillars": {
+      "heading": "Everything a presenter needs in one place",
+      "subtext": "From the first slide to the final summary without switching between tools",
+      "poll": {
+        "title": "Engage the room",
+        "desc": "8 real-time poll formats: from mood temperature to Planning Poker. Participants vote by QR code without installing any app.",
+        "tags": ["8 formats", "Quiz + leaderboard", "Moderated Q&A"]
+      },
+      "screen": {
+        "title": "Control the screen",
+        "desc": "Splash slides, speaker cards, schedules, Spin Wheel, and announcements — all displayed on the projector with one click from the host panel.",
+        "tags": ["7 screen types", "Spin Wheel", "Announcements"]
+      },
+      "ai": {
+        "title": "Analyse the results",
+        "desc": "YandexGPT surfaces key themes from hundreds of questions in seconds. After the event, hit 'AI Summary': 3–5 sentences with insights from all polls.",
+        "tags": ["AI Q&A analysis", "AI summary", "PDF/CSV export"]
+      }
+    },
+    "ai": {
+      "heading1": "AI works",
+      "heading2": "while you present",
+      "features": [
+        {
+          "title": "Q&A without chaos",
+          "desc": "200 questions from the audience? AI highlights 3 main themes in seconds. You answer what matters, not drown in the stream."
+        },
+        {
+          "title": "Full control",
+          "desc": "Questions don't appear on screen automatically. You choose what to show with one click."
+        },
+        {
+          "title": "AI summary after the event",
+          "desc": "Click '✨ AI Summary' after finishing. YandexGPT analyses all polls and questions, producing 3–5 sentences of insights for your report."
+        }
+      ]
+    },
+    "slides": {
+      "badge": "Presentation screens",
+      "heading1": "Slides, timers,",
+      "heading2": "and prize giveaways",
+      "desc": "Control what the room sees without leaving the host panel. Slides launch with one click next to polls in a unified lineup.",
+      "items": [
+        { "title": "Splash screen", "desc": "Event name, date and venue while the audience gathers" },
+        { "title": "Speaker card", "desc": "Photo, title, topic — automatically displayed before they take the stage" },
+        { "title": "Schedule", "desc": "Current block highlighted, past blocks crossed out" },
+        { "title": "Spin Wheel", "desc": "Prize draw or random participant selection in 3 seconds" }
+      ],
+      "lineupTitle": "Event lineup"
+    },
+    "quiz": {
+      "badge": "Quiz mode",
+      "heading1": "Correct answers are hidden.",
+      "heading2": "Leaderboard on the main screen.",
+      "desc": "Enable quiz mode and a poll becomes a game. Answers are hidden, results locked — you reveal them when you want. The room waits to see their place on the leaderboard.",
+      "features": [
+        {
+          "title": "Answers hidden until you signal",
+          "desc": "Nobody knows the result until you reveal it. Maximum suspense in the room."
+        },
+        {
+          "title": "Instant feedback on phones",
+          "desc": "'Correct' or 'Wrong': everyone knows their result in the same second."
+        },
+        {
+          "title": "Leaderboard fires up the room",
+          "desc": "Top 5 on the main screen. The audience cheers the winner and asks for another round."
+        }
+      ]
+    },
+    "pollTypes": {
+      "badge": "Poll formats",
+      "heading": "8 formats for any task",
+      "desc": "One click changes the question type. Mix formats within a single event.",
+      "types": [
+        { "label": "Multiple choice" },
+        { "label": "Temperature" },
+        { "label": "Word cloud" },
+        { "label": "Emoji cloud" },
+        { "label": "Like / Dislike" },
+        { "label": "Q&A" },
+        { "label": "Planning Poker" },
+        { "label": "Idea wall" }
+      ]
+    },
+    "howItWorks": {
+      "badge": "How it works",
+      "heading": "Three steps to your first poll",
+      "steps": [
+        {
+          "step": "1",
+          "title": "Create an event",
+          "desc": "Add polls and slides in a unified lineup. Templates speed up the start."
+        },
+        {
+          "step": "2",
+          "title": "Show the QR code",
+          "desc": "One screen with the code and the audience connects. No app, no sign-up."
+        },
+        {
+          "step": "3",
+          "title": "Launch and analyse",
+          "desc": "Activate questions in real time. AI processes Q&A and prepares a summary."
+        }
+      ],
+      "features": [
+        { "label": "QR code", "desc": "No app installation required" },
+        { "label": "Wi-Fi", "desc": "Works without participant internet" },
+        { "label": "Shield", "desc": "Data stored in Russia" }
+      ]
+    },
+    "pricing": {
+      "badge": "Pricing",
+      "heading": "Start for free",
+      "desc": "Upgrade to a paid plan when you grow.",
+      "plans": [
+        {
+          "name": "Free",
+          "price": "₽0",
+          "period": "/mo",
+          "features": ["3 events per month", "Up to 5 polls", "Up to 30 participants", "All 8 formats", "Slides"],
+          "cta": "Get started free"
+        },
+        {
+          "name": "Starter",
+          "price": "₽990",
+          "period": "/mo",
+          "badge": "Popular",
+          "features": ["Unlimited events", "Up to 10 polls", "Up to 100 participants", "AI session summary", "CSV/PDF export"],
+          "cta": "Choose Starter"
+        },
+        {
+          "name": "Pro",
+          "price": "₽2 490",
+          "period": "/mo",
+          "features": ["Unlimited events", "Unlimited polls", "Up to 500 participants", "White label", "Branding"],
+          "cta": "Choose Pro"
+        }
+      ]
+    },
+    "cta": {
+      "heading": "Ready to engage the room?",
+      "subtext": "Create your first event in 2 minutes. No credit card required.",
+      "button": "Get started free"
+    },
+    "footer": {
+      "product": "Product",
+      "legal": "Legal",
+      "links": {
+        "login": "Sign in",
+        "register": "Sign up",
+        "help": "Help",
+        "changelog": "Changelog",
+        "privacy": "Privacy policy"
+      },
+      "copyright": "© {year} LivePoll AI"
+    }
+  },
+  "Auth": {
+    "login": {
+      "title": "LivePoll AI",
+      "subtitle": "Sign in to your account",
+      "email": "Email",
+      "password": "Password",
+      "submit": "Sign in",
+      "noAccount": "No account?",
+      "register": "Sign up",
+      "errorFallback": "Authentication error, please try again"
+    },
+    "register": {
+      "title": "LivePoll AI",
+      "subtitle": "Create an account",
+      "name": "Your name",
+      "email": "Email",
+      "password": "Password",
+      "submit": "Sign up",
+      "hasAccount": "Already have an account?",
+      "login": "Sign in",
+      "errorFallback": "Registration error, please try again"
+    }
+  },
+  "Join": {
+    "notFound": "Event not found",
+    "notFoundHint": "Check the code and try again",
+    "ended": "Event has ended",
+    "endedThanks": "Thank you for joining!",
+    "logoAlt": "Logo"
+  },
+  "VoteInterface": {
+    "alreadyVoted": "You have already voted",
+    "errorRetry": "Error, please try again",
+    "waitNext": "Wait for the next question",
+    "quizCorrect": "Correct!",
+    "quizWrong": "Incorrect",
+    "quizYourAnswer": "Your answer: {answer}",
+    "quizRevealTitle": "Correct answer",
+    "sessionEnded": "Event has ended",
+    "thankYou": "Thank you for joining!",
+    "waiting": "Waiting for a question",
+    "waitingHint": "The host will start a poll soon",
+    "sendReaction": "Send reaction",
+    "voted": "Vote received",
+    "votedWait": "Waiting for others",
+    "submitIdea": "Submit idea",
+    "ideaPlaceholder": "Your idea...",
+    "ideaSent": "Idea submitted!",
+    "ideaSentHint": "Add another one",
+    "askQuestion": "Ask a question",
+    "questionPlaceholder": "Your question...",
+    "upvote": "Upvote",
+    "upvoted": "Upvoted",
+    "questionsCount": "{count} question(s)",
+    "noQuestions": "No questions yet. Be the first!",
+    "planningPokerHidden": "Answers hidden until the host reveals",
+    "planningPokerVoted": "Your vote: {value}"
+  },
+  "Display": {
+    "joinLink": "Go to:",
+    "qrAlt": "QR code to join",
+    "joinCode": "Code: {code}",
+    "votesCount": "{count} votes",
+    "noVotes": "No votes yet",
+    "waitingForPoll": "Waiting for poll",
+    "slideTitle": "Slide",
+    "leaderboard": "Leaderboard",
+    "rank": "Rank",
+    "score": "Score",
+    "hiddenResults": "Results hidden"
+  }
+}

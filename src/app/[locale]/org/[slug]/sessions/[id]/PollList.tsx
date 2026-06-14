@@ -9,7 +9,7 @@ import { showSlide, hideSlide, deleteSlide, duplicateSlide, updateSlide, reorder
 import { revealPoker } from "@/lib/actions/sessions";
 import { Button } from "@/components/ui/Button";
 import { EditIcon } from "@/components/icons";
-import { SlideView } from "@/app/display/[code]/SlideView";
+import { SlideView } from "@/app/[locale]/display/[code]/SlideView";
 import type { Poll, SessionStatus } from "@/types/database";
 import type { SlideRow, SlideType } from "@/lib/actions/slides";
 import { buildCsvRows } from "@/lib/csv";

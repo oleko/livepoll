@@ -6,8 +6,10 @@ import { signUp/*, signInWithYandex*/ } from "@/lib/actions/auth";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { useTranslations } from "next-intl";
 
 export default function RegisterPage() {
+  const t = useTranslations("Auth.register");
   const [state, action, isPending] = useActionState(
     async (_: unknown, formData: FormData) => signUp(formData),
     null
@@ -20,8 +22,8 @@ export default function RegisterPage() {
       </div>
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">LivePoll AI</h1>
-          <p className="mt-1 text-sm text-slate-500">Создайте аккаунт</p>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t("title")}</h1>
+          <p className="mt-1 text-sm text-slate-500">{t("subtitle")}</p>
         </div>
 
         <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6">
@@ -33,15 +35,15 @@ export default function RegisterPage() {
 
           <form action={action} className="flex flex-col gap-4">
             <Input
-              label="Имя"
+              label={t("name")}
               name="full_name"
               type="text"
               autoComplete="name"
-              placeholder="Иван Иванов"
+              placeholder="Ivan Ivanov"
               required
             />
             <Input
-              label="Email"
+              label={t("email")}
               name="email"
               type="email"
               autoComplete="email"
@@ -49,16 +51,16 @@ export default function RegisterPage() {
               required
             />
             <Input
-              label="Пароль"
+              label={t("password")}
               name="password"
               type="password"
               autoComplete="new-password"
-              placeholder="Минимум 8 символов"
+              placeholder="••••••••"
               minLength={8}
               required
             />
             <Button type="submit" loading={isPending} className="w-full mt-2">
-              Создать аккаунт
+              {t("submit")}
             </Button>
           </form>
 
@@ -80,9 +82,9 @@ export default function RegisterPage() {
         </div>
 
         <p className="mt-6 text-center text-sm text-slate-500">
-          Уже есть аккаунт?{" "}
+          {t("hasAccount")}{" "}
           <Link href="/auth/login" className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-300">
-            Войти
+            {t("login")}
           </Link>
         </p>
       </div>

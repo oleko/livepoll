@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { submitVote, submitQuestion, upvoteQuestion } from "@/lib/actions/polls";
 import { Button } from "@/components/ui/Button";
 import type { PollType } from "@/types/database";
+import { useTranslations } from "next-intl";
 
 type PollData = {
   id: string;
@@ -264,7 +265,7 @@ export function VoteInterface({
     const result = await submitVote(fd);
     setIsPending(false);
     if (result?.error) {
-      setError(result.error === "Вы уже проголосовали" ? "Вы уже проголосовали" : "Ошибка, попробуйте снова");
+      setError(result.error === "Вы уже проголосовали" ? t("alreadyVoted") : t("errorRetry"));
     } else {
       setVoted(true);
       try { localStorage.setItem(`voted_${poll.id}`, "1"); } catch {}
@@ -305,6 +306,7 @@ export function VoteInterface({
   }
 
   const showPulseButton = !sessionEnded && sessionStatus === "active";
+  const t = useTranslations("VoteInterface");
 
   let content: React.ReactNode;
 
@@ -317,16 +319,16 @@ export function VoteInterface({
           <>
             <div className="text-6xl mb-4">{isCorrect ? "🎉" : "😔"}</div>
             <p className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
-              {isCorrect ? "Правильно!" : "Неправильно"}
+              {isCorrect ? t("quizCorrect") : t("quizWrong")}
             </p>
             {!isCorrect && (
-              <p className="text-sm text-slate-400 dark:text-slate-500 mb-4">Ваш ответ: {myVote}</p>
+              <p className="text-sm text-slate-400 dark:text-slate-500 mb-4">{t("quizYourAnswer", { answer: myVote })}</p>
             )}
           </>
         ) : (
           <>
             <div className="text-6xl mb-4">🎯</div>
-            <p className="text-2xl font-bold text-slate-900 dark:text-white mb-4">Правильный ответ</p>
+            <p className="text-2xl font-bold text-slate-900 dark:text-white mb-4">{t("quizRevealTitle")}</p>
           </>
         )}
         <div className="rounded-xl border border-green-500/30 bg-green-500/10 px-5 py-3 mb-3">
@@ -335,18 +337,18 @@ export function VoteInterface({
         {quizReveal.explanation && (
           <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed italic mt-1">{quizReveal.explanation}</p>
         )}
-        <p className="text-slate-400 dark:text-slate-500 text-xs mt-6">Ожидайте следующего вопроса</p>
+        <p className="text-slate-400 dark:text-slate-500 text-xs mt-6">{t("waitNext")}</p>
       </div>
     );
   } else if (sessionEnded) {
     content = (
       <div className="text-center px-6 max-w-sm">
         <div className="text-6xl mb-5">🌟</div>
-        <p className="text-2xl font-semibold text-slate-900 dark:text-white mb-3">Мероприятие завершено</p>
+        <p className="text-2xl font-semibold text-slate-900 dark:text-white mb-3">{t("sessionEnded")}</p>
         {farewell && (
           <p className="text-slate-600 dark:text-slate-300 text-base leading-relaxed italic">«{farewell}»</p>
         )}
-        <p className="text-slate-400 dark:text-slate-500 text-sm mt-5">Спасибо за участие!</p>
+        <p className="text-slate-400 dark:text-slate-500 text-sm mt-5">{t("thankYou")}</p>
       </div>
     );
   } else if (sessionStatus === "draft") {
@@ -389,8 +391,8 @@ export function VoteInterface({
     content = (
       <div className="text-center px-6">
         <div className="text-5xl mb-5">⏳</div>
-        <p className="text-2xl font-semibold text-slate-900 dark:text-white mb-2">Ожидайте вопроса</p>
-        <p className="text-slate-500 text-sm">Страница обновится автоматически</p>
+        <p className="text-2xl font-semibold text-slate-900 dark:text-white mb-2">{t("waiting")}</p>
+        <p className="text-slate-500 text-sm">{t("waitingHint")}</p>
       </div>
     );
   } else if (poll.type === "idea_wall") {

@@ -3,13 +3,15 @@ import { VoteInterface } from "./VoteInterface";
 import type { BrandingSettings } from "@/lib/actions/branding";
 import Link from "next/link";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { getTranslations } from "next-intl/server";
 
 export default async function JoinPage({
   params,
 }: {
-  params: Promise<{ code: string }>;
+  params: Promise<{ code: string; locale: string }>;
 }) {
   const { code } = await params;
+  const t = await getTranslations("Join");
   const admin = createAdminClient();
 
   const { data: session } = await admin
@@ -22,8 +24,8 @@ export default async function JoinPage({
     return (
       <main className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-950 pb-16">
         <div className="text-center">
-          <p className="text-2xl text-slate-500 dark:text-slate-400">Мероприятие не найдено</p>
-          <p className="text-slate-400 dark:text-slate-600 mt-2">Проверьте код и попробуйте снова</p>
+          <p className="text-2xl text-slate-500 dark:text-slate-400">{t("notFound")}</p>
+          <p className="text-slate-400 dark:text-slate-600 mt-2">{t("notFoundHint")}</p>
         </div>
       </main>
     );
@@ -33,8 +35,8 @@ export default async function JoinPage({
     return (
       <main className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-950 pb-16">
         <div className="text-center">
-          <p className="text-2xl text-slate-500 dark:text-slate-400">Мероприятие завершено</p>
-          <p className="text-slate-400 dark:text-slate-600 mt-2">Спасибо за участие!</p>
+          <p className="text-2xl text-slate-500 dark:text-slate-400">{t("ended")}</p>
+          <p className="text-slate-400 dark:text-slate-600 mt-2">{t("endedThanks")}</p>
         </div>
       </main>
     );
@@ -77,13 +79,15 @@ export default async function JoinPage({
       ).data ?? []
     : [];
 
+  const tCommon = await getTranslations("Common");
+
   return (
     <main className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col">
       <header className="border-b border-slate-200 dark:border-slate-800 px-6 py-3 flex items-center justify-center relative">
         {branding.logo_url ? (
           <img
             src={branding.logo_url}
-            alt="Логотип"
+            alt={t("logoAlt")}
             className="h-8 max-w-[160px] object-contain"
           />
         ) : (
@@ -111,7 +115,7 @@ export default async function JoinPage({
             href="/"
             className="text-xs text-slate-400 dark:text-slate-600 hover:text-slate-500 dark:hover:text-slate-500 transition-colors"
           >
-            Powered by LivePoll AI
+            {tCommon("poweredBy")}
           </Link>
         </footer>
       )}

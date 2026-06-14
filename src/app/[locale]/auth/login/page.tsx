@@ -8,8 +8,10 @@ import { signIn/*, signInWithYandex*/ } from "@/lib/actions/auth";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { useTranslations } from "next-intl";
 
 function LoginForm() {
+  const t = useTranslations("Auth.login");
   const router = useRouter();
   const searchParams = useSearchParams();
   const urlError = searchParams.get("error");
@@ -29,13 +31,13 @@ function LoginForm() {
     <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6">
       {((state && "error" in state && state.error) || urlError) && (
         <div className="mb-4 rounded-lg bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-red-500 dark:text-red-400">
-          {(state && "error" in state && state.error) ?? "Ошибка авторизации, попробуйте снова"}
+          {(state && "error" in state && state.error) ?? t("errorFallback")}
         </div>
       )}
 
       <form action={action} className="flex flex-col gap-4">
         <Input
-          label="Email"
+          label={t("email")}
           name="email"
           type="email"
           autoComplete="email"
@@ -43,7 +45,7 @@ function LoginForm() {
           required
         />
         <Input
-          label="Пароль"
+          label={t("password")}
           name="password"
           type="password"
           autoComplete="current-password"
@@ -51,7 +53,7 @@ function LoginForm() {
           required
         />
         <Button type="submit" loading={isPending} className="w-full mt-2">
-          Войти
+          {t("submit")}
         </Button>
       </form>
 
@@ -75,6 +77,8 @@ function LoginForm() {
 }
 
 export default function LoginPage() {
+  const t = useTranslations("Auth.login");
+
   return (
     <main className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-950 px-4 pb-16">
       <div className="absolute top-4 right-4">
@@ -82,8 +86,8 @@ export default function LoginPage() {
       </div>
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">LivePoll AI</h1>
-          <p className="mt-1 text-sm text-slate-500">Войдите в свой аккаунт</p>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t("title")}</h1>
+          <p className="mt-1 text-sm text-slate-500">{t("subtitle")}</p>
         </div>
 
         <Suspense fallback={<div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 h-64 animate-pulse" />}>
@@ -91,9 +95,9 @@ export default function LoginPage() {
         </Suspense>
 
         <p className="mt-6 text-center text-sm text-slate-500">
-          Нет аккаунта?{" "}
+          {t("noAccount")}{" "}
           <Link href="/auth/register" className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-300">
-            Зарегистрироваться
+            {t("register")}
           </Link>
         </p>
       </div>

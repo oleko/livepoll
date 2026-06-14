@@ -14,8 +14,11 @@ import {
 import { InViewSection } from "@/components/InViewSection";
 import { InViewAnimate } from "@/components/InViewAnimate";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { LangToggle } from "@/components/LangToggle";
+import { useTranslations } from "next-intl";
 
 export function LandingPage() {
+  const t = useTranslations("Landing");
   return (
     <div className="min-h-screen bg-white dark:bg-zinc-950 text-zinc-900 dark:text-white">
 
@@ -23,12 +26,13 @@ export function LandingPage() {
       <nav aria-label="Основная навигация" className="sticky top-0 z-50 flex items-center justify-between px-6 md:px-10 py-4 border-b border-zinc-200/70 dark:border-zinc-800/70 bg-white/90 dark:bg-zinc-950/90 backdrop-blur-md">
         <Link href="/" className="text-lg font-bold tracking-tight">LivePoll AI</Link>
         <div className="flex items-center gap-2">
+          <LangToggle />
           <ThemeToggle />
           <Link href="/auth/login" className="hidden sm:block text-sm text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors px-3 py-2.5">
-            Войти
+            {t("nav.signIn")}
           </Link>
           <Link href="/auth/register" className="rounded-lg bg-indigo-600 hover:bg-indigo-500 active:scale-[0.97] px-4 py-2.5 text-sm font-semibold text-white transition-[background-color,transform] duration-150">
-            Начать бесплатно
+            {t("nav.getStarted")}
           </Link>
         </div>
       </nav>
@@ -51,19 +55,19 @@ export function LandingPage() {
                 Powered by YandexGPT
               </div>
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold leading-[1.05] tracking-tight text-white animate-fade-in" style={{ animationDelay: "200ms" }}>
-                Аудитория говорит.
+                {t("hero.headline1")}
                 <br />
-                <span className="text-indigo-400">Вы слышите каждого.</span>
+                <span className="text-indigo-400">{t("hero.headline2")}</span>
               </h1>
               <p className="mt-6 text-lg text-zinc-400 leading-relaxed animate-fade-in" style={{ animationDelay: "350ms" }}>
-                Опросы в реальном времени, слайды и AI-анализ для ведущего. Участники голосуют по QR-коду без установки приложений.
+                {t("hero.subtext")}
               </p>
               <div className="mt-8 flex flex-col sm:flex-row gap-3 animate-fade-in" style={{ animationDelay: "500ms" }}>
                 <Link href="/auth/register" className="rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-[0.98] px-8 py-3.5 text-base font-semibold text-white transition-[background-color,transform,box-shadow] duration-150 shadow-lg shadow-indigo-600/40 hover:shadow-indigo-500/50 hover:-translate-y-0.5 hover:shadow-xl">
-                  Создать первый опрос
+                  {t("hero.ctaPrimary")}
                 </Link>
                 <Link href="/auth/login" className="rounded-xl border border-white/15 hover:border-white/30 hover:bg-white/8 active:scale-[0.98] px-8 py-3.5 text-base font-semibold text-white/90 transition-[background-color,border-color,transform] duration-150 hover:-translate-y-0.5">
-                  Войти в аккаунт
+                  {t("hero.ctaSecondary")}
                 </Link>
               </div>
             </div>
@@ -497,10 +501,10 @@ export function LandingPage() {
       <footer className="border-t border-zinc-200 dark:border-zinc-800 px-6 md:px-10 py-8">
         <div className="mx-auto max-w-6xl flex flex-col md:flex-row items-center justify-between gap-4">
           <span className="font-bold text-zinc-900 dark:text-white">LivePoll AI</span>
-          <p className="text-xs text-zinc-400 dark:text-zinc-600">© {new Date().getFullYear()} LivePoll AI. Все права защищены.</p>
+          <p className="text-xs text-zinc-400 dark:text-zinc-600">{t("footer.copyright", { year: new Date().getFullYear() })}</p>
           <div className="flex gap-6 text-xs text-zinc-400 dark:text-zinc-600">
-            <Link href="/help" className="hover:text-zinc-600 dark:hover:text-zinc-400 transition-colors">Помощь</Link>
-            <Link href="/docs/privacy" className="hover:text-zinc-600 dark:hover:text-zinc-400 transition-colors">Политика конфиденциальности</Link>
+            <Link href="/help" className="hover:text-zinc-600 dark:hover:text-zinc-400 transition-colors">{t("footer.links.help")}</Link>
+            <Link href="/docs/privacy" className="hover:text-zinc-600 dark:hover:text-zinc-400 transition-colors">{t("footer.links.privacy")}</Link>
           </div>
         </div>
       </footer>
