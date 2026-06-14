@@ -33,6 +33,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     { href: "/admin",          label: "Организации" },
     { href: "/admin/users",    label: "Пользователи" },
     { href: "/admin/feedback", label: "Обратная связь" },
+    { href: "/admin/stats",    label: "Статистика" },
   ];
 
   return (

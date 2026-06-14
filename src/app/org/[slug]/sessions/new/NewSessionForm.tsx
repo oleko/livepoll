@@ -13,7 +13,10 @@ export function NewSessionForm({ orgId, orgSlug }: { orgId: string; orgSlug: str
   const [selectedTemplate, setSelectedTemplate] = useState<string>("");
 
   useEffect(() => {
-    if (state && "redirectTo" in state) router.push(state.redirectTo);
+    if (state && "redirectTo" in state) {
+      try { (window as any).ym?.(Number(process.env.NEXT_PUBLIC_YANDEX_METRIKA_ID), "reachGoal", "session_created"); } catch {}
+      router.push(state.redirectTo);
+    }
   }, [state, router]);
 
   return (

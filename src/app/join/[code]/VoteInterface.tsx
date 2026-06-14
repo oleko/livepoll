@@ -269,6 +269,7 @@ export function VoteInterface({
       setVoted(true);
       try { localStorage.setItem(`voted_${poll.id}`, "1"); } catch {}
       if (poll?.type === "multiple_choice" || poll?.type === "planning_poker") setMyVote(value);
+      try { (window as any).ym?.(Number(process.env.NEXT_PUBLIC_YANDEX_METRIKA_ID), "reachGoal", "vote_submitted"); } catch {}
     }
   }
 
