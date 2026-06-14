@@ -12,6 +12,8 @@ import { EditIcon } from "@/components/icons";
 import { SlideView } from "@/app/display/[code]/SlideView";
 import type { Poll, SessionStatus } from "@/types/database";
 import type { SlideRow, SlideType } from "@/lib/actions/slides";
+import { buildCsvRows } from "@/lib/csv";
+import { bucketTimestamps } from "@/lib/timeline";
 
 const SLIDE_TYPE_META: Record<SlideType, { label: string; icon: string }> = {
   splash:     { label: "Заставка",   icon: "🎯" },
@@ -39,22 +41,7 @@ function slidePreview(slide: SlideRow): string {
 type ScheduleItem = { time: string; title: string; active?: boolean };
 
 function downloadPollCSV(poll: PollRow, valueCounts: Record<string, number>, voteCount: number) {
-  let rows: string[][];
-  if (poll.type === "word_cloud" || poll.type === "emoji_cloud") {
-    rows = [["Значение", "Кол-во"]];
-    Object.entries(valueCounts).sort((a, b) => b[1] - a[1]).forEach(([k, v]) => rows.push([k, String(v)]));
-  } else if (poll.type === "like_dislike") {
-    rows = [["Вариант", "Голосов", "Процент"]];
-    const likes = valueCounts["like"] ?? 0;
-    const dislikes = valueCounts["dislike"] ?? 0;
-    rows.push(["👍 Нравится", String(likes), voteCount > 0 ? `${Math.round((likes / voteCount) * 100)}%` : "0%"]);
-    rows.push(["👎 Не нравится", String(dislikes), voteCount > 0 ? `${Math.round((dislikes / voteCount) * 100)}%` : "0%"]);
-  } else {
-    rows = [["Вариант", "Голосов", "Процент"]];
-    Object.entries(valueCounts).sort((a, b) => b[1] - a[1]).forEach(([k, v]) => {
-      rows.push([k, String(v), voteCount > 0 ? `${Math.round((v / voteCount) * 100)}%` : "0%"]);
-    });
-  }
+  const rows = buildCsvRows(poll, valueCounts, voteCount);
   const csv = rows.map(r => r.map(cell => `"${cell.replace(/"/g, '""')}"`).join(",")).join("\n");
   const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
@@ -453,15 +440,10 @@ function PollResults({ poll, valueCounts, total }: { poll: PollRow; valueCounts:
 
 function VoteTimeline({ timestamps }: { timestamps: string[] }) {
   if (timestamps.length < 3) return null;
-  const times = timestamps.map(t => new Date(t).getTime()).sort((a, b) => a - b);
-  const start = times[0], end = times[times.length - 1];
-  const duration = end - start;
-  if (duration < 1000) return null;
   const N = 14;
-  const bucketMs = duration / N;
-  const buckets = Array(N).fill(0);
-  times.forEach(t => { buckets[Math.min(Math.floor((t - start) / bucketMs), N - 1)]++; });
+  const buckets = bucketTimestamps(timestamps, N);
   const max = Math.max(...buckets);
+  if (max === 0) return null;
   return (
     <div className="mt-2 flex items-end gap-px h-7" title="Активность голосования по времени">
       {buckets.map((count, i) => (
