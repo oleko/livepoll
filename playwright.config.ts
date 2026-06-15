@@ -5,6 +5,8 @@ export default defineConfig({
   timeout: 30_000,
   use: {
     baseURL: process.env.BASE_URL ?? "http://localhost:3000",
+    locale: "ru",
+    extraHTTPHeaders: { "Accept-Language": "ru" },
   },
   projects: [
     { name: "chromium", use: { ...devices["Desktop Chrome"] } },
