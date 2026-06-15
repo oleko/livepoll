@@ -71,8 +71,8 @@ export default async function JoinPage({
   const initialQuestions = activePoll?.type === "qa"
     ? (await admin
         .from("questions")
-        .select("id, text, status, upvotes")
-        .eq("session_id", session.id)
+        .select("id, text, status, upvotes, poll_id")
+        .eq("poll_id", activePoll.id)
         .neq("status", "hidden")
         .order("upvotes", { ascending: false })
         .order("created_at", { ascending: false })

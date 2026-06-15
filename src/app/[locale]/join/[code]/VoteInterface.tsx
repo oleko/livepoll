@@ -151,8 +151,18 @@ export function VoteInterface({
           setAnnouncement({ text: data.text, duration: data.duration ?? 0, started_at: data.started_at });
         }
       })
-      .subscribe((status) => {
+      .subscribe(async (status) => {
         const isConnected = status === "SUBSCRIBED";
+        if (isConnected && !hasEverConnected.current) {
+          // First connect: sync active poll in case broadcasts were sent before subscription was ready
+          const { data: activePoll } = await supabase.current
+            .from("polls")
+            .select("id, title, type, options, status, settings")
+            .eq("session_id", sessionId)
+            .eq("status", "active")
+            .maybeSingle();
+          setPoll(activePoll ? (activePoll as unknown as NonNullable<PollData>) : null);
+        }
         if (isConnected) hasEverConnected.current = true;
         setConnected(!hasEverConnected.current || isConnected);
       });

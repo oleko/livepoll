@@ -46,12 +46,17 @@ export default async function DisplayPage({
     initialVotes = data ?? [];
   }
 
-  const { data: initialQuestionsData } = await admin
+  const questionsQuery = admin
     .from("questions")
-    .select("id, text, status, upvotes")
-    .eq("session_id", session.id)
+    .select("id, text, status, upvotes, poll_id")
     .neq("status", "hidden")
     .order("upvotes", { ascending: false });
+  if (activePoll?.type === "qa" || activePoll?.type === "idea_wall") {
+    questionsQuery.eq("poll_id", activePoll.id);
+  } else {
+    questionsQuery.eq("session_id", session.id);
+  }
+  const { data: initialQuestionsData } = await questionsQuery;
 
   // Count unique voters across all session polls
   const { data: sessionPolls } = await admin

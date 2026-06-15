@@ -71,6 +71,7 @@ type QuestionRow = {
   text: string;
   status: string;
   upvotes: number;
+  poll_id?: string | null;
 };
 
 const TEMP_LABELS = ["❄️", "🥶", "😐", "🌡️", "🔥"];
@@ -165,6 +166,8 @@ export function DisplayScreen({
     try { return sessionStorage.getItem(`spin-winner-${initialActiveSlide.id}`); } catch { return null; }
   });
   const seenWordsRef = useRef<Set<string>>(new Set());
+  const pollRef = useRef(poll);
+  useEffect(() => { pollRef.current = poll; }, [poll]);
   const [connected, setConnected] = useState(true);
   const currentVotesRef = useRef<{ value: string; ts: string }[]>([]);
   const hasEverConnected = useRef(false);
@@ -193,6 +196,7 @@ export function DisplayScreen({
           seenWordsRef.current = new Set();
           setPoll(data.poll);
           setVotes([]);
+          setQuestions([]);
           setActiveSlide(null);
         } else if (data.type === "display_hidden") {
           setPoll(null);
@@ -381,7 +385,9 @@ export function DisplayScreen({
       .on("broadcast", { event: "question_change" }, ({ payload }) => {
         const data = payload as { type: string; question?: QuestionRow; pinned?: QuestionRow | null };
         if (data.type === "new" && data.question) {
-          if (data.question.status !== "hidden") {
+          const currentPoll = pollRef.current;
+          const belongs = !data.question.poll_id || !currentPoll || data.question.poll_id === currentPoll.id;
+          if (data.question.status !== "hidden" && belongs) {
             setQuestions((prev) => [data.question!, ...prev]);
           }
         } else if (data.type === "updated" && data.question) {

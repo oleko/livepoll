@@ -239,6 +239,7 @@ export type Database = {
         Row: {
           id: string
           session_id: string
+          poll_id: string | null
           voter_token: string
           text: string
           status: "pending" | "answered" | "hidden"
@@ -248,6 +249,7 @@ export type Database = {
         Insert: {
           id?: string
           session_id: string
+          poll_id?: string | null
           voter_token: string
           text: string
           status?: "pending" | "answered" | "hidden"
@@ -255,6 +257,7 @@ export type Database = {
           created_at?: string
         }
         Update: {
+          poll_id?: string | null
           status?: "pending" | "answered" | "hidden"
           upvotes?: number
         }
@@ -264,6 +267,13 @@ export type Database = {
             columns: ["session_id"]
             isOneToOne: false
             referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "questions_poll_id_fkey"
+            columns: ["poll_id"]
+            isOneToOne: false
+            referencedRelation: "polls"
             referencedColumns: ["id"]
           }
         ]

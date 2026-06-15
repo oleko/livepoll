@@ -560,8 +560,8 @@ export async function submitQuestion(formData: FormData) {
 
   const { data, error } = await admin
     .from("questions")
-    .insert({ session_id: sessionId, voter_token: voterToken, text })
-    .select("id, text, status, upvotes")
+    .insert({ session_id: sessionId, voter_token: voterToken, text, ...(pollId ? { poll_id: pollId } : {}) })
+    .select("id, text, status, upvotes, poll_id")
     .single();
 
   if (error) return { error: error.message };
