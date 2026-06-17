@@ -1,6 +1,7 @@
 "use client";
 
 import { useTransition, useState } from "react";
+import { useTranslations } from "next-intl";
 import { setOrgPlan } from "@/lib/actions/admin";
 import type { OrgPlan } from "@/types/database";
 import { PLAN_DISPLAY_NAME } from "@/lib/limits";
@@ -16,6 +17,7 @@ export function OrgPlanForm({
   currentPlan: OrgPlan;
   currentExpires: string | null;
 }) {
+  const t = useTranslations("Admin.orgPlan");
   const [pending, startTransition] = useTransition();
   const [plan, setPlan] = useState<OrgPlan>(currentPlan);
   const [expires, setExpires] = useState(
@@ -36,7 +38,6 @@ export function OrgPlanForm({
   function applyPeriod(months: number | "event") {
     const base = new Date();
     if (months === "event") {
-      // Одно мероприятие — 30 дней, ведущий сам контролирует лимит сессий
       base.setDate(base.getDate() + 30);
     } else {
       base.setMonth(base.getMonth() + months);
@@ -45,11 +46,11 @@ export function OrgPlanForm({
     setSaved(false);
   }
 
-  const periods: { label: string; value: number | "event" }[] = [
-    { label: "1 мер.", value: "event" },
-    { label: "1 мес", value: 1 },
-    { label: "6 мес", value: 6 },
-    { label: "1 год", value: 12 },
+  const periods: { labelKey: string; value: number | "event" }[] = [
+    { labelKey: "period1event", value: "event" },
+    { labelKey: "period1mo",   value: 1 },
+    { labelKey: "period6mo",   value: 6 },
+    { labelKey: "period1yr",   value: 12 },
   ];
 
   return (
@@ -73,7 +74,7 @@ export function OrgPlanForm({
               onClick={() => applyPeriod(p.value)}
               className="rounded-md border border-slate-200 dark:border-slate-700 px-2 py-1 text-xs text-slate-500 dark:text-slate-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 hover:border-indigo-300 dark:hover:border-indigo-700 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
             >
-              {p.label}
+              {t(p.labelKey as Parameters<typeof t>[0])}
             </button>
           ))}
         </div>
@@ -82,7 +83,7 @@ export function OrgPlanForm({
           type="date"
           value={expires}
           onChange={(e) => { setExpires(e.target.value); setSaved(false); }}
-          title="Дата истечения тарифа (пусто — бессрочно)"
+          title={t("expiresTitle")}
           className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
         />
 
@@ -97,13 +98,13 @@ export function OrgPlanForm({
                 : "bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-default"
           }`}
         >
-          {saved ? "Сохранено" : pending ? "…" : "Сохранить"}
+          {saved ? t("saved") : pending ? "…" : t("save")}
         </button>
       </div>
 
       {expires && (
         <p className="text-xs text-slate-400 dark:text-slate-500">
-          Истекает: {new Date(expires).toLocaleDateString("ru-RU")}
+          {t("expires", { date: new Date(expires).toLocaleDateString() })}
         </p>
       )}
     </div>

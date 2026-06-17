@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 import { signOut } from "@/lib/actions/auth";
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 import { Button } from "@/components/ui/Button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { FeedbackWidget } from "@/components/FeedbackWidget";
@@ -49,12 +50,14 @@ export default async function OrgLayout({
 
   const isPlatformAdmin = profile?.platform_role === "platform_admin";
 
+  const t = await getTranslations("Org.layout");
+
   const navLinks = [
-    { href: `/org/${slug}`, label: "Мероприятия" },
-    ...(isOwner ? [{ href: `/org/${slug}/members`, label: "Команда" }] : []),
-    ...(isOwner ? [{ href: `/org/${slug}/settings`, label: "Настройки" }] : []),
-    ...(isPlatformAdmin ? [{ href: "/admin", label: "⚙ Платформа" }] : []),
-    { href: "/help", label: "Помощь" },
+    { href: `/org/${slug}`, label: t("events") },
+    ...(isOwner ? [{ href: `/org/${slug}/members`, label: t("team") }] : []),
+    ...(isOwner ? [{ href: `/org/${slug}/settings`, label: t("settings") }] : []),
+    ...(isPlatformAdmin ? [{ href: "/admin", label: t("platform") }] : []),
+    { href: "/help", label: t("help") },
   ];
 
   return (
@@ -70,10 +73,10 @@ export default async function OrgLayout({
                 href="/account"
                 className="rounded-md px-2.5 py-1.5 text-sm text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               >
-                Аккаунт
+                {t("account")}
               </Link>
               <form action={signOut}>
-                <Button type="submit" variant="ghost" className="text-sm py-1.5 px-2.5">Выйти</Button>
+                <Button type="submit" variant="ghost" className="text-sm py-1.5 px-2.5">{t("signOut")}</Button>
               </form>
             </div>
           </div>
@@ -113,10 +116,10 @@ export default async function OrgLayout({
               href="/account"
               className="rounded-md px-3 py-1.5 text-sm text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-colors"
             >
-              Аккаунт
+              {t("account")}
             </Link>
             <form action={signOut}>
-              <Button type="submit" variant="ghost" className="text-sm py-1.5 px-3">Выйти</Button>
+              <Button type="submit" variant="ghost" className="text-sm py-1.5 px-3">{t("signOut")}</Button>
             </form>
           </div>
         </div>

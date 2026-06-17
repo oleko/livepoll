@@ -2,10 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { NAV_ITEMS } from "./nav-items";
+import { useTranslations } from "next-intl";
+import { NAV_ITEMS, slugToNavKey } from "./nav-items";
 
 export function HelpNavMobile() {
   const pathname = usePathname();
+  const t = useTranslations("Help.nav");
   return (
     <div className="md:hidden overflow-x-auto border-b border-slate-100 dark:border-slate-800 px-4 pb-0">
       <nav className="flex gap-1.5 w-max py-3">
@@ -23,7 +25,7 @@ export function HelpNavMobile() {
               }`}
             >
               <span className="text-sm leading-none">{item.icon}</span>
-              {item.title}
+              {t(slugToNavKey(item.slug) as Parameters<typeof t>[0])}
             </Link>
           );
         })}
@@ -34,11 +36,13 @@ export function HelpNavMobile() {
 
 export default function HelpNav() {
   const pathname = usePathname();
+  const t = useTranslations("Help.nav");
+  const tLayout = useTranslations("Help.layout");
 
   return (
     <aside className="md:w-44 lg:w-52 shrink-0 hidden md:block">
       <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-3 px-3">
-        Статьи
+        {tLayout("articles")}
       </p>
       <nav className="flex flex-col gap-0.5">
         {NAV_ITEMS.map((item) => {
@@ -55,7 +59,7 @@ export default function HelpNav() {
               }`}
             >
               <span className="text-base leading-none">{item.icon}</span>
-              {item.title}
+              {t(slugToNavKey(item.slug) as Parameters<typeof t>[0])}
             </Link>
           );
         })}

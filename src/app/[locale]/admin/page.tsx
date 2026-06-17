@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getTranslations, getLocale } from "next-intl/server";
 import { PLAN_DISPLAY_NAME, getLimits } from "@/lib/limits";
 import { OrgPlanForm } from "./OrgPlanForm";
 import { DeleteOrgButton } from "./DeleteOrgButton";
@@ -6,6 +7,9 @@ import type { OrgPlan } from "@/types/database";
 
 export default async function AdminOrgsPage() {
   const admin = createAdminClient();
+  const t = await getTranslations("Admin.orgs");
+  const locale = await getLocale();
+  const dateLocale = locale === "ru" ? "ru-RU" : "en-US";
 
   const { data: orgs } = await admin
     .from("organizations")
@@ -62,8 +66,8 @@ export default async function AdminOrgsPage() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-xl font-semibold text-slate-900 dark:text-white">Организации</h1>
-        <p className="text-sm text-slate-400 dark:text-slate-500 mt-0.5">{orgs?.length ?? 0} всего</p>
+        <h1 className="text-xl font-semibold text-slate-900 dark:text-white">{t("title")}</h1>
+        <p className="text-sm text-slate-400 dark:text-slate-500 mt-0.5">{t("count", { count: orgs?.length ?? 0 })}</p>
       </div>
 
       <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden">
@@ -71,7 +75,7 @@ export default async function AdminOrgsPage() {
         {/* ── Mobile cards ── */}
         <div className="sm:hidden divide-y divide-slate-100 dark:divide-slate-800">
           {empty ? (
-            <p className="px-4 py-12 text-center text-slate-400 dark:text-slate-600">Нет организаций</p>
+            <p className="px-4 py-12 text-center text-slate-400 dark:text-slate-600">{t("empty")}</p>
           ) : (orgs ?? []).map((org) => {
             const limits = getLimits(org.plan as OrgPlan);
             const usedSessions = sessionsMonthBy[org.id] ?? 0;
@@ -90,16 +94,22 @@ export default async function AdminOrgsPage() {
 
                 {org.plan_expires_at && (
                   <p className={`text-xs ${new Date(org.plan_expires_at) < new Date() ? "text-red-400" : "text-slate-400"}`}>
-                    Тариф до {new Date(org.plan_expires_at).toLocaleDateString("ru-RU")}
+                    {t("planExpires", { date: new Date(org.plan_expires_at).toLocaleDateString(dateLocale) })}
                   </p>
                 )}
 
                 <div className="flex items-center gap-4 text-xs text-slate-500 dark:text-slate-400">
                   <span className={isOver ? "text-red-500 font-medium" : ""}>
-                    Мер./мес.: {usedSessions}/{limits.sessionsPerMonth === Infinity ? "∞" : limits.sessionsPerMonth}
+                    {t("sessionsMonth", {
+                      used: usedSessions,
+                      limit: limits.sessionsPerMonth === Infinity ? "∞" : limits.sessionsPerMonth,
+                    })}
                   </span>
-                  <span>Уч.: {membersBy[org.id] ?? 0}/{limits.members === Infinity ? "∞" : limits.members}</span>
-                  <span>Всего: {sessionsBy[org.id] ?? 0}</span>
+                  <span>{t("membersCount", {
+                    used: membersBy[org.id] ?? 0,
+                    limit: limits.members === Infinity ? "∞" : limits.members,
+                  })}</span>
+                  <span>{t("totalSessions", { count: sessionsBy[org.id] ?? 0 })}</span>
                 </div>
 
                 <div className="flex items-center gap-2 flex-wrap">
@@ -115,11 +125,11 @@ export default async function AdminOrgsPage() {
         <table className="hidden sm:table w-full text-sm">
           <thead>
             <tr className="border-b border-slate-100 dark:border-slate-800 text-xs text-slate-400 dark:text-slate-500 uppercase tracking-wide">
-              <th className="text-left px-5 py-3 font-medium">Организация</th>
-              <th className="text-left px-5 py-3 font-medium">Тариф / до</th>
-              <th className="text-left px-5 py-3 font-medium">Мер. в месяц</th>
-              <th className="text-left px-5 py-3 font-medium">Участники</th>
-              <th className="text-left px-5 py-3 font-medium">Всего мер.</th>
+              <th className="text-left px-5 py-3 font-medium">{t("thOrg")}</th>
+              <th className="text-left px-5 py-3 font-medium">{t("thPlan")}</th>
+              <th className="text-left px-5 py-3 font-medium">{t("thSessionsMonth")}</th>
+              <th className="text-left px-5 py-3 font-medium">{t("thMembers")}</th>
+              <th className="text-left px-5 py-3 font-medium">{t("thTotal")}</th>
               <th className="px-5 py-3" />
             </tr>
           </thead>
@@ -136,7 +146,7 @@ export default async function AdminOrgsPage() {
                   </span>
                   {org.plan_expires_at && (
                     <p className={`text-xs mt-0.5 ${new Date(org.plan_expires_at) < new Date() ? "text-red-400" : "text-slate-400 dark:text-slate-500"}`}>
-                      до {new Date(org.plan_expires_at).toLocaleDateString("ru-RU")}
+                      до {new Date(org.plan_expires_at).toLocaleDateString(dateLocale)}
                     </p>
                   )}
                 </td>
@@ -187,7 +197,7 @@ export default async function AdminOrgsPage() {
             ))}
             {empty && (
               <tr>
-                <td colSpan={6} className="px-5 py-16 text-center text-slate-400 dark:text-slate-600">Нет организаций</td>
+                <td colSpan={6} className="px-5 py-16 text-center text-slate-400 dark:text-slate-600">{t("empty")}</td>
               </tr>
             )}
           </tbody>

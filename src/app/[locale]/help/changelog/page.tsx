@@ -1,6 +1,7 @@
 import Link from "next/link";
+import { getLocale } from "next-intl/server";
 
-export const metadata = { title: "История обновлений" };
+export const metadata = { title: "Changelog" };
 
 type ChangeType = "new" | "improved" | "fixed";
 
@@ -173,22 +174,25 @@ const RELEASES: Release[] = [
   },
 ];
 
-const TYPE_CONFIG: Record<ChangeType, { icon: string; label: string; color: string }> = {
-  new:      { icon: "🆕", label: "Новое",    color: "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400" },
-  improved: { icon: "⚡", label: "Улучшено", color: "bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-400" },
-  fixed:    { icon: "🐛", label: "Исправлено", color: "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400" },
-};
+export default async function ChangelogPage() {
+  const locale = await getLocale();
+  const isEn = locale === "en";
 
-export default function ChangelogPage() {
+  const TYPE_CONFIG: Record<ChangeType, { icon: string; label: string; color: string }> = {
+    new:      { icon: "🆕", label: isEn ? "New"      : "Новое",      color: "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400" },
+    improved: { icon: "⚡", label: isEn ? "Improved"  : "Улучшено",  color: "bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-400" },
+    fixed:    { icon: "🐛", label: isEn ? "Fixed"     : "Исправлено", color: "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400" },
+  };
+
   return (
     <div className="max-w-prose">
       <Link href="/help" className="py-2 text-sm text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors md:hidden inline-block mb-6">
-        ← Помощь
+        {isEn ? "← Help" : "← Помощь"}
       </Link>
 
-      <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">История обновлений</h1>
+      <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">{isEn ? "Changelog" : "История обновлений"}</h1>
       <p className="text-slate-500 dark:text-slate-400 mb-10">
-        Все новые функции, улучшения и исправления по версиям.
+        {isEn ? "All new features, improvements, and fixes by version." : "Все новые функции, улучшения и исправления по версиям."}
       </p>
 
       <div className="flex gap-3 mb-10 flex-wrap">

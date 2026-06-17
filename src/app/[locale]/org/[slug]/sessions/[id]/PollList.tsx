@@ -2,6 +2,7 @@
 
 import { useState, useTransition, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { createClient } from "@/lib/supabase/client";
 import { activatePoll, closePoll, clearPollResult, copyPoll, updatePoll, showPollOnDisplay, hidePollFromDisplay, reorderPolls } from "@/lib/actions/polls";
 import { movePollSection, createSection, deleteSection, renameSection } from "@/lib/actions/sections";
@@ -15,26 +16,20 @@ import type { SlideRow, SlideType } from "@/lib/actions/slides";
 import { buildCsvRows } from "@/lib/csv";
 import { bucketTimestamps } from "@/lib/timeline";
 
-const SLIDE_TYPE_META: Record<SlideType, { label: string; icon: string }> = {
-  splash:     { label: "Заставка",   icon: "🎯" },
-  speaker:    { label: "Спикер",     icon: "🎤" },
-  schedule:   { label: "Расписание", icon: "🗓" },
-  quote:      { label: "Цитата",     icon: "💬" },
-  final:      { label: "Финал",      icon: "🎉" },
-  spin_wheel:   { label: "Колесо",      icon: "🎡" },
-  announcement: { label: "Объявление",  icon: "📢" },
-  reveal:       { label: "Вопрос-ответ", icon: "❓" },
+const SLIDE_TYPE_ICON: Record<SlideType, string> = {
+  splash: "🎯", speaker: "🎤", schedule: "🗓", quote: "💬", final: "🎉",
+  spin_wheel: "🎡", announcement: "📢", reveal: "❓",
 };
 
-function slidePreview(slide: SlideRow): string {
+function slidePreview(slide: SlideRow, t: (key: string) => string): string {
   const c = slide.content as Record<string, string>;
   switch (slide.type) {
-    case "splash":   return c.title || "Без названия";
-    case "speaker":  return c.name  || "Без имени";
-    case "schedule": return "Расписание";
-    case "quote":    return c.text ? `"${c.text.slice(0, 50)}${c.text.length > 50 ? "…" : ""}"` : "Цитата";
-    case "final":    return c.title || "Финальный экран";
-    default:         return "Слайд";
+    case "splash":   return c.title || t("slidePreview.untitled");
+    case "speaker":  return c.name  || t("slidePreview.unnamed");
+    case "schedule": return t("slidePreview.schedule");
+    case "quote":    return c.text ? `"${c.text.slice(0, 50)}${c.text.length > 50 ? "…" : ""}"` : t("slidePreview.quote");
+    case "final":    return c.title || t("slidePreview.finalScreen");
+    default:         return t("slidePreview.slide");
   }
 }
 
@@ -59,6 +54,7 @@ function SlideEditForm({ slide, onDone, onCancel }: {
   onDone: (content: Record<string, unknown>) => void;
   onCancel: () => void;
 }) {
+  const t = useTranslations("Org.session.pollList.slideEdit");
   const [content, setContent] = useState<Record<string, unknown>>(slide.content);
   const [saving, setSaving] = useState(false);
   const router = useRouter();
@@ -80,26 +76,26 @@ function SlideEditForm({ slide, onDone, onCancel }: {
   return (
     <div className="space-y-2 pt-3 border-t border-purple-100 dark:border-purple-900/40">
       {slide.type === "splash" && <>
-        <input placeholder="Название *" {...inp("title")} />
-        <input placeholder="Подзаголовок" {...inp("subtitle")} />
-        <input placeholder="Дата" {...inp("date")} />
-        <input placeholder="Место" {...inp("location")} />
+        <input placeholder={t("name")} {...inp("title")} />
+        <input placeholder={t("subtitle")} {...inp("subtitle")} />
+        <input placeholder={t("date")} {...inp("date")} />
+        <input placeholder={t("location")} {...inp("location")} />
       </>}
       {slide.type === "speaker" && <>
-        <input placeholder="Имя *" {...inp("name")} />
-        <input placeholder="Должность" {...inp("role")} />
-        <input placeholder="Компания" {...inp("company")} />
-        <input placeholder="Тема доклада" {...inp("topic")} />
-        <input placeholder="URL фото" {...inp("photo_url")} />
+        <input placeholder={t("fullName")} {...inp("name")} />
+        <input placeholder={t("role")} {...inp("role")} />
+        <input placeholder={t("company")} {...inp("company")} />
+        <input placeholder={t("topic")} {...inp("topic")} />
+        <input placeholder={t("photoUrl")} {...inp("photo_url")} />
       </>}
       {slide.type === "quote" && <>
         <textarea
           value={(content as Record<string, string>).text ?? ""}
           onChange={e => setContent({ ...content, text: e.target.value })}
-          placeholder="Текст цитаты *" rows={2}
+          placeholder={t("quoteText")} rows={2}
           className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
         />
-        <input placeholder="Автор" {...inp("author")} />
+        <input placeholder={t("author")} {...inp("author")} />
       </>}
       {slide.type === "schedule" && (
         <div className="space-y-1.5">
@@ -108,9 +104,9 @@ function SlideEditForm({ slide, onDone, onCancel }: {
             return (
               <div key={idx} className="flex items-center gap-1.5">
                 <input value={item.time} onChange={e => setContent({ ...content, items: items.map((it, i) => i === idx ? { ...it, time: e.target.value } : it) })}
-                  placeholder="10:00" className="w-16 shrink-0 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 text-slate-900 dark:text-white" />
+                  placeholder={t("time")} className="w-16 shrink-0 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 text-slate-900 dark:text-white" />
                 <input value={item.title} onChange={e => setContent({ ...content, items: items.map((it, i) => i === idx ? { ...it, title: e.target.value } : it) })}
-                  placeholder="Блок" className="flex-1 min-w-0 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 text-slate-900 dark:text-white" />
+                  placeholder={t("block")} className="flex-1 min-w-0 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 text-slate-900 dark:text-white" />
                 <button type="button" onClick={() => setContent({ ...content, items: items.map((it, i) => ({ ...it, active: i === idx })) })}
                   className={`text-sm px-1 ${item.active ? "text-purple-500" : "text-slate-300 hover:text-purple-400"}`}>▶</button>
                 <button type="button" onClick={() => setContent({ ...content, items: items.filter((_, i) => i !== idx) })}
@@ -119,27 +115,29 @@ function SlideEditForm({ slide, onDone, onCancel }: {
             );
           })}
           <button type="button" onClick={() => setContent({ ...content, items: [...((content as { items?: ScheduleItem[] }).items ?? []), { time: "", title: "" }] })}
-            className="text-xs text-purple-600 dark:text-purple-400 hover:underline">＋ Добавить пункт</button>
+            className="text-xs text-purple-600 dark:text-purple-400 hover:underline">{t("addItem")}</button>
         </div>
       )}
       {slide.type === "final" && <>
-        <input placeholder="Заголовок *" {...inp("title")} />
-        <input placeholder="Подзаголовок" {...inp("subtitle")} />
-        <input placeholder="Ссылка на материалы" {...inp("url")} />
+        <input placeholder={t("finalTitle")} {...inp("title")} />
+        <input placeholder={t("subtitle")} {...inp("subtitle")} />
+        <input placeholder={t("finalUrl")} {...inp("url")} />
       </>}
       <div className="flex gap-2">
         <button type="button" onClick={save} disabled={saving}
           className="rounded-lg bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white px-3 py-1.5 text-xs font-medium transition-colors"
-        >{saving ? "…" : "Сохранить"}</button>
+        >{saving ? t("saving") : t("save")}</button>
         <button type="button" onClick={onCancel}
           className="rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-1.5 text-xs text-slate-500 hover:text-slate-700 transition-colors"
-        >Отмена</button>
+        >{t("cancel")}</button>
       </div>
     </div>
   );
 }
 
 function SlidePreviewModal({ slide, onClose }: { slide: SlideRow; onClose: () => void }) {
+  const t = useTranslations("Org.session.pollList");
+  const tShared = useTranslations("Org.shared");
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 animate-overlay-in" onClick={onClose}>
       <div className="relative animate-modal-in" onClick={e => e.stopPropagation()}>
@@ -153,7 +151,7 @@ function SlidePreviewModal({ slide, onClose }: { slide: SlideRow; onClose: () =>
           className="absolute -top-3 -right-3 h-7 w-7 rounded-full bg-slate-700 text-white text-xs flex items-center justify-center hover:bg-slate-600 transition-colors"
         >✕</button>
         <p className="mt-2 text-center text-xs text-slate-400">
-          {SLIDE_TYPE_META[slide.type]?.label} — {slidePreview(slide)}
+          {tShared(`slideTypeLabel.${slide.type}`)} — {slidePreview(slide, t)}
         </p>
       </div>
     </div>
@@ -172,11 +170,12 @@ function SlideLineupCard({
   onShowSlide: (slideId: string) => void;
   onHideSlide: () => void;
 }) {
+  const t = useTranslations("Org.session.pollList");
+  const tShared = useTranslations("Org.shared");
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [pending, setPending] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
-  const meta = SLIDE_TYPE_META[slide.type];
 
   async function handleShow() {
     onShowSlide(slide.id);
@@ -195,7 +194,7 @@ function SlideLineupCard({
   }
 
   async function handleDelete() {
-    if (!confirm(`Удалить «${slidePreview(slide)}»?`)) return;
+    if (!confirm(t("deleteSlideConfirm", { title: slidePreview(slide, t) }))) return;
     setPending(true);
     await deleteSlide(slide.id, sessionId, orgSlug);
     router.refresh();
@@ -217,14 +216,14 @@ function SlideLineupCard({
         {/* info row */}
         <div className="flex items-center gap-3 flex-1 min-w-0">
           <span className="text-slate-300 dark:text-slate-600 text-base leading-none shrink-0 select-none">⠿</span>
-          <span className="text-xl shrink-0">{meta.icon}</span>
+          <span className="text-xl shrink-0">{SLIDE_TYPE_ICON[slide.type]}</span>
           <div className="flex-1 min-w-0">
-            <p className="font-medium text-sm truncate text-slate-900 dark:text-white">{slidePreview(slide)}</p>
-            <p className="text-xs text-purple-500 dark:text-purple-400 mt-0.5">{meta.label}</p>
+            <p className="font-medium text-sm truncate text-slate-900 dark:text-white">{slidePreview(slide, t)}</p>
+            <p className="text-xs text-purple-500 dark:text-purple-400 mt-0.5">{tShared(`slideTypeLabel.${slide.type}`)}</p>
           </div>
           {isActive && (
             <span className="flex items-center gap-1.5 text-xs font-semibold text-purple-600 dark:text-purple-400 shrink-0">
-              <span className="h-1.5 w-1.5 rounded-full bg-purple-500 animate-pulse" />На экране
+              <span className="h-1.5 w-1.5 rounded-full bg-purple-500 animate-pulse" />{t("onScreen")}
             </span>
           )}
         </div>
@@ -242,17 +241,17 @@ function SlideLineupCard({
               }}
               className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-1.5 text-xs text-slate-500 dark:text-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500"
             >
-              <option value="">Без секции</option>
+              <option value="">{t("noSection")}</option>
               {sections.map(s => <option key={s.id} value={s.id}>{s.title}</option>)}
             </select>
           )}
-          <Button variant="ghost" size="sm" onClick={() => setPreviewOpen(true)} disabled={pending} title="Предпросмотр">
+          <Button variant="ghost" size="sm" onClick={() => setPreviewOpen(true)} disabled={pending} title={t("previewTitle")}>
             👁
           </Button>
-          <Button variant="ghost" size="sm" onClick={() => setEditing(v => !v)} disabled={pending} title="Редактировать">
+          <Button variant="ghost" size="sm" onClick={() => setEditing(v => !v)} disabled={pending} title={t("editTitle")}>
             <EditIcon size={13} />
           </Button>
-          <Button variant="ghost" size="sm" disabled={pending} title="Дублировать" onClick={async () => {
+          <Button variant="ghost" size="sm" disabled={pending} title={t("duplicateTitle")} onClick={async () => {
             setPending(true);
             await duplicateSlide(slide.id, sessionId, orgSlug);
             router.refresh();
@@ -263,12 +262,12 @@ function SlideLineupCard({
               setPending(true);
               await startSpinWheel(slide.id, sessionId, orgSlug);
               setPending(false);
-            }} disabled={pending}>🎡 Запустить</Button>
+            }} disabled={pending}>{t("launchWheel")}</Button>
           )}
           {isActive ? (
-            <Button variant="secondary" size="sm" onClick={handleHide} disabled={pending}>Убрать</Button>
+            <Button variant="secondary" size="sm" onClick={handleHide} disabled={pending}>{t("hide")}</Button>
           ) : (
-            <Button size="sm" onClick={handleShow} disabled={pending}>Показать</Button>
+            <Button size="sm" onClick={handleShow} disabled={pending}>{t("show")}</Button>
           )}
           <Button variant="ghost" size="sm" onClick={handleDelete} disabled={pending} className="hover:text-red-500 dark:hover:text-red-400">
             ✕
@@ -296,6 +295,8 @@ type PollRow = Pick<Poll, "id" | "title" | "type" | "status" | "sort_order"> & {
 // ─── CopyPollButton ───────────────────────────────────────────────────────────
 
 function CopyPollButton({ pollId, orgSlug, targets }: { pollId: string; orgSlug: string; targets: CopyTarget[] }) {
+  const t = useTranslations("Org.session.pollList");
+  const tShared = useTranslations("Org.shared");
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
@@ -317,24 +318,22 @@ function CopyPollButton({ pollId, orgSlug, targets }: { pollId: string; orgSlug:
     setTimeout(() => { setDone(null); setOpen(false); }, 1200);
   }
 
-  const STATUS_LABEL: Record<string, string> = { draft: "Черновик", active: "Идёт" };
-
   return (
     <div className="relative" ref={ref}>
-      <button type="button" onClick={() => setOpen(v => !v)} title="Скопировать в другое мероприятие"
+      <button type="button" onClick={() => setOpen(v => !v)} title={t("copyToOtherEvent")}
         className="rounded-lg border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 bg-white dark:bg-slate-900 px-2 py-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors text-xs"
       >⎘</button>
       {open && (
         <div className="absolute right-0 top-full mt-1 z-20 w-60 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl overflow-hidden">
-          <p className="px-3 py-2 text-[11px] font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800">Скопировать в:</p>
-          {targets.map(t => (
-            <button key={t.id} type="button" disabled={!!pending} onClick={() => handle(t.id)}
+          <p className="px-3 py-2 text-[11px] font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800">{t("copyTo")}</p>
+          {targets.map(target => (
+            <button key={target.id} type="button" disabled={!!pending} onClick={() => handle(target.id)}
               className="w-full flex items-center justify-between px-3 py-2.5 text-left hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors disabled:opacity-50"
             >
-              <span className="text-sm text-slate-700 dark:text-slate-300 truncate pr-2">{t.title}</span>
-              {done === t.id ? <span className="text-xs font-semibold text-green-500 shrink-0">✓</span>
-                : pending === t.id ? <span className="text-xs text-slate-400 shrink-0">…</span>
-                : <span className="text-[11px] text-slate-400 shrink-0">{STATUS_LABEL[t.status] ?? t.status}</span>}
+              <span className="text-sm text-slate-700 dark:text-slate-300 truncate pr-2">{target.title}</span>
+              {done === target.id ? <span className="text-xs font-semibold text-green-500 shrink-0">✓</span>
+                : pending === target.id ? <span className="text-xs text-slate-400 shrink-0">…</span>
+                : <span className="text-[11px] text-slate-400 shrink-0">{tShared(`sessionStatus.${target.status}`)}</span>}
             </button>
           ))}
         </div>
@@ -344,17 +343,6 @@ function CopyPollButton({ pollId, orgSlug, targets }: { pollId: string; orgSlug:
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-
-const TYPE_LABEL: Record<Poll["type"], string> = {
-  multiple_choice: "Множественный выбор",
-  temperature:     "Шкала температуры",
-  qa:              "Q&A",
-  like_dislike:    "Лайк / Дизлайк",
-  word_cloud:      "Облако слов",
-  emoji_cloud:     "Облако эмодзи",
-  planning_poker:  "Planning Poker",
-  idea_wall:       "Стена идей",
-};
 
 const TYPE_ICON: Record<Poll["type"], string> = {
   multiple_choice: "📊", temperature: "🌡️", qa: "❓",
@@ -367,9 +355,10 @@ const EDIT_WINDOW_MS = 10 * 60 * 1000;
 // ─── PollResults ─────────────────────────────────────────────────────────────
 
 function PollResults({ poll, valueCounts, total }: { poll: PollRow; valueCounts: Record<string, number>; total: number }) {
-  if (total === 0) return <p className="text-xs text-slate-400 dark:text-slate-600 mt-2">Голосов нет</p>;
+  const t = useTranslations("Org.session.pollList");
+  if (total === 0) return <p className="text-xs text-slate-400 dark:text-slate-600 mt-2">{t("noVotes")}</p>;
 
-  if (poll.type === "qa") return <p className="text-xs text-slate-400 dark:text-slate-600 mt-2">Вопросов получено: {total}</p>;
+  if (poll.type === "qa") return <p className="text-xs text-slate-400 dark:text-slate-600 mt-2">{t("questionsReceived", { count: total })}</p>;
 
   if (poll.type === "temperature") {
     const avg = (Object.entries(valueCounts).reduce((s, [v, c]) => s + parseFloat(v) * c, 0) / total).toFixed(1);
@@ -439,13 +428,14 @@ function PollResults({ poll, valueCounts, total }: { poll: PollRow; valueCounts:
 }
 
 function VoteTimeline({ timestamps }: { timestamps: string[] }) {
+  const t = useTranslations("Org.session.pollList");
   if (timestamps.length < 3) return null;
   const N = 14;
   const buckets = bucketTimestamps(timestamps, N);
   const max = Math.max(...buckets);
   if (max === 0) return null;
   return (
-    <div className="mt-2 flex items-end gap-px h-7" title="Активность голосования по времени">
+    <div className="mt-2 flex items-end gap-px h-7" title={t("voteActivityTitle")}>
       {buckets.map((count, i) => (
         <div key={i} className="flex-1 rounded-sm bg-indigo-400/50 dark:bg-indigo-500/40 transition-all"
           style={{ height: count > 0 ? `${Math.max(12, Math.round((count / max) * 100))}%` : "2px", opacity: count > 0 ? 1 : 0.2 }} />
@@ -479,6 +469,8 @@ function PollCard({
   onShow: () => void;
   otherActivePollTitle?: string;
 }) {
+  const t = useTranslations("Org.session.pollList");
+  const tShared = useTranslations("Org.shared");
   const router = useRouter();
   const isActive    = poll.status === "active";
   const isClosed    = poll.status === "closed";
@@ -506,18 +498,18 @@ function PollCard({
         <div className="flex flex-col gap-2">
           <input value={editTitle} onChange={e => onEditTitleChange(e.target.value)} autoFocus
             className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            placeholder="Вопрос"
+            placeholder={t("questionPlaceholder")}
           />
           {poll.type === "multiple_choice" && (
             <textarea value={editOptions} onChange={e => onEditOptionsChange(e.target.value)} rows={3}
               className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
-              placeholder={"Вариант А\nВариант Б"}
+              placeholder={t("optionsPlaceholderShort")}
             />
           )}
           {editError && <p className="text-xs text-red-500">{editError}</p>}
           <div className="flex gap-2">
-            <Button size="sm" loading={editSaving} onClick={() => onSaveEdit(poll)}>Сохранить</Button>
-            <Button variant="ghost" size="sm" onClick={onCancelEdit}>Отмена</Button>
+            <Button size="sm" loading={editSaving} onClick={() => onSaveEdit(poll)}>{t("slideEdit.save")}</Button>
+            <Button variant="ghost" size="sm" onClick={onCancelEdit}>{t("slideEdit.cancel")}</Button>
           </div>
         </div>
       ) : (
@@ -526,7 +518,7 @@ function PollCard({
             {/* info row */}
             <div className="flex items-center gap-3 flex-1 min-w-0">
               {!isEnded && (
-                <span className="text-slate-300 dark:text-slate-600 text-base leading-none shrink-0 cursor-grab select-none" title="Перетащить в секцию">
+                <span className="text-slate-300 dark:text-slate-600 text-base leading-none shrink-0 cursor-grab select-none" title={t("dragToSection")}>
                   ⠿
                 </span>
               )}
@@ -536,20 +528,20 @@ function PollCard({
                   {poll.title}
                 </p>
                 <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
-                  {TYPE_LABEL[poll.type]}
-                  {voteCount > 0 && <span className="text-slate-300 dark:text-slate-600"> · {voteCount} голосов</span>}
+                  {tShared(`pollTypeLabel.${poll.type}`)}
+                  {voteCount > 0 && <span className="text-slate-300 dark:text-slate-600"> · {t("votesCount", { count: voteCount })}</span>}
                 </p>
               </div>
               {isActive && (
                 <span className="flex items-center gap-1.5 text-xs font-semibold text-green-600 dark:text-green-400 shrink-0">
-                  <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />Идёт
+                  <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />{t("active")}
                 </span>
               )}
             </div>
             {/* actions row */}
             <div className="flex items-center gap-1.5 flex-wrap shrink-0">
               {canEdit && (
-                <Button variant="ghost" size="sm" onClick={() => onStartEdit(poll)} title="Редактировать (10 мин после создания)">
+                <Button variant="ghost" size="sm" onClick={() => onStartEdit(poll)} title={t("editWindowTitle")}>
                   <EditIcon size={13} />
                 </Button>
               )}
@@ -559,42 +551,42 @@ function PollCard({
                     <Button
                       size="sm"
                       onClick={async () => {
-                        if (otherActivePollTitle && !confirm(`Запущен опрос «${otherActivePollTitle}» — он будет завершён. Продолжить?`)) return;
+                        if (otherActivePollTitle && !confirm(t("confirmActivateOther", { title: otherActivePollTitle }))) return;
                         await activatePoll(poll.id, sessionId, orgSlug);
                         router.refresh();
                       }}
-                    >Запустить</Button>
+                    >{t("launch")}</Button>
                   )}
                   {isActive && hiddenFromDisplay && (
-                    <Button size="sm" onClick={onShow}>Показать</Button>
+                    <Button size="sm" onClick={onShow}>{t("show")}</Button>
                   )}
                   {isActive && !hiddenFromDisplay && (
                     <button type="button" onClick={onHide}
                       className="flex items-center gap-1.5 rounded-lg border border-green-500/30 bg-green-500/10 px-2.5 py-1.5 text-xs font-medium text-green-600 dark:text-green-400 hover:bg-green-500/20 transition-colors"
                     >
                       <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse shrink-0" />
-                      На экране
+                      {t("onDisplay")}
                     </button>
                   )}
                   {isActive && poll.type === "planning_poker" && (
-                    <Button size="sm" className="bg-purple-600 hover:bg-purple-700" onClick={() => revealPoker(sessionId, orgSlug)}>🃏 Раскрыть</Button>
+                    <Button size="sm" className="bg-purple-600 hover:bg-purple-700" onClick={() => revealPoker(sessionId, orgSlug)}>{t("revealPoker")}</Button>
                   )}
                   {isActive && (
                     <>
-                      <Button size="sm" className="bg-slate-700 hover:bg-slate-600 text-white" onClick={async () => { await closePoll(poll.id, sessionId, orgSlug, true); router.refresh(); }}>Итог</Button>
-                      <Button variant="secondary" size="sm" onClick={async () => { await closePoll(poll.id, sessionId, orgSlug); router.refresh(); }}>Завершить</Button>
+                      <Button size="sm" className="bg-slate-700 hover:bg-slate-600 text-white" onClick={async () => { await closePoll(poll.id, sessionId, orgSlug, true); router.refresh(); }}>{t("finalize")}</Button>
+                      <Button variant="secondary" size="sm" onClick={async () => { await closePoll(poll.id, sessionId, orgSlug); router.refresh(); }}>{t("finish")}</Button>
                     </>
                   )}
                 </>
               )}
               {isClosed && !!poll.settings?.result_on_display && (
                 <Button variant="ghost" size="sm" className="text-slate-400 hover:text-slate-600" onClick={async () => { await clearPollResult(poll.id, sessionId, orgSlug); router.refresh(); }}>
-                  Убрать с экрана
+                  {t("removeFromDisplay")}
                 </Button>
               )}
               {isClosed && voteCount > 0 && (
-                <Button variant="ghost" size="sm" title="Скачать CSV" onClick={() => downloadPollCSV(poll, valueCounts, voteCount)}>
-                  ↓ CSV
+                <Button variant="ghost" size="sm" title={t("downloadCsvTitle")} onClick={() => downloadPollCSV(poll, valueCounts, voteCount)}>
+                  {t("downloadCsv")}
                 </Button>
               )}
               {copyTargets.length > 0 && <CopyPollButton pollId={poll.id} orgSlug={orgSlug} targets={copyTargets} />}
@@ -618,6 +610,7 @@ function SectionHeader({
   section: SectionItem; orgSlug: string; sessionId: string; isPending: boolean;
   onBeforeDelete?: (sectionId: string) => void;
 }) {
+  const t = useTranslations("Org.session.pollList");
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(section.title);
@@ -633,7 +626,7 @@ function SectionHeader({
   }
 
   function handleDelete() {
-    if (!confirm(`Удалить секцию «${section.title}»? Опросы останутся, но потеряют привязку.`)) return;
+    if (!confirm(t("deleteSectionConfirm", { title: section.title }))) return;
     onBeforeDelete?.(section.id);
     startT(async () => {
       await deleteSection(section.id, sessionId, orgSlug);
@@ -661,10 +654,10 @@ function SectionHeader({
             {section.title}
           </span>
           <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
-          <button type="button" onClick={() => setEditing(true)} title="Переименовать"
+          <button type="button" onClick={() => setEditing(true)} title={t("renameSectionTitle")}
             className="text-slate-300 dark:text-slate-600 hover:text-slate-500 dark:hover:text-slate-400 px-0.5 shrink-0 transition-colors"
           ><EditIcon size={12} /></button>
-          <button type="button" onClick={handleDelete} disabled={isPending} title="Удалить секцию"
+          <button type="button" onClick={handleDelete} disabled={isPending} title={t("deleteSectionTitle")}
             className="text-[11px] text-slate-300 dark:text-slate-600 hover:text-red-400 dark:hover:text-red-500 px-0.5 shrink-0 transition-colors disabled:opacity-40"
           >✕</button>
         </>
@@ -680,6 +673,7 @@ function AddSectionBar({
 }: {
   sessionId: string; orgSlug: string; sectionsCount: number;
 }) {
+  const t = useTranslations("Org.session.pollList");
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
@@ -701,7 +695,7 @@ function AddSectionBar({
   function addDays(count: number) {
     startT(async () => {
       for (let i = 1; i <= count; i++) {
-        await createSection(sessionId, `День ${sectionsCount + i}`, orgSlug);
+        await createSection(sessionId, t("daySectionName", { n: sectionsCount + i }), orgSlug);
       }
       setOpen(false);
       router.refresh();
@@ -717,18 +711,18 @@ function AddSectionBar({
           className="flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors group"
         >
           <span className="flex items-center justify-center w-5 h-5 rounded-full border border-slate-300 dark:border-slate-600 group-hover:border-indigo-400 group-hover:text-indigo-500 transition-colors text-[10px] font-bold">＋</span>
-          Добавить секцию
+          {t("addSection")}
         </button>
       ) : (
         <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3 space-y-3">
           {/* quick day presets */}
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-[11px] text-slate-400 shrink-0">Быстро:</span>
+            <span className="text-[11px] text-slate-400 shrink-0">{t("quickLabel")}</span>
             {[1, 2, 3, 5].map(n => (
               <button key={n} type="button" disabled={isPending} onClick={() => addDays(n)}
                 className="rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 hover:text-indigo-600 dark:hover:text-indigo-400 px-2.5 py-0.5 text-xs font-medium text-slate-600 dark:text-slate-400 transition-colors disabled:opacity-40"
               >
-                {n === 1 ? "День" : `${n} дня`}
+                {n === 1 ? t("dayOne") : t("dayN", { n })}
               </button>
             ))}
           </div>
@@ -740,7 +734,7 @@ function AddSectionBar({
               value={title}
               onChange={e => setTitle(e.target.value)}
               onKeyDown={e => { if (e.key === "Enter") addOne(title); if (e.key === "Escape") setOpen(false); }}
-              placeholder="Название секции..."
+              placeholder={t("sectionNamePlaceholder")}
               className="flex-1 min-w-0 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
             <button type="button" onClick={() => addOne(title)} disabled={!title.trim() || isPending}
@@ -783,6 +777,7 @@ export function PollList({
   copyTargets: CopyTarget[];
   sections: SectionItem[];
 }) {
+  const t = useTranslations("Org.session.pollList");
   const [hiddenPollIds, setHiddenPollIds] = useState<Set<string>>(() => {
     if (typeof window === "undefined") return new Set();
     try {
@@ -948,7 +943,7 @@ export function PollList({
     if (zonePolls.length === 0) {
       return (
         <div className="rounded-xl border-2 border-dashed py-6 text-center border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-600">
-          <p className="text-xs font-medium">Нет опросов</p>
+          <p className="text-xs font-medium">{t("noPolls")}</p>
         </div>
       );
     }
@@ -996,8 +991,8 @@ export function PollList({
           <AddSectionBar sessionId={sessionId} orgSlug={orgSlug} sectionsCount={0} />
         )}
         <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50 p-12 text-center">
-          <p className="text-slate-500 dark:text-slate-400">Лайн-ап пуст</p>
-          <p className="text-slate-400 dark:text-slate-600 text-sm mt-1">Добавьте опрос или экран справа</p>
+          <p className="text-slate-500 dark:text-slate-400">{t("lineupEmptyTitle")}</p>
+          <p className="text-slate-400 dark:text-slate-600 text-sm mt-1">{t("lineupEmptyDesc")}</p>
         </div>
       </>
     );
@@ -1064,7 +1059,7 @@ export function PollList({
           {optimisticPolls.length > 0 && sorted.length === 0 && (
             <div className="flex items-center gap-3 mt-1">
               <div className="flex-1 h-px bg-slate-200 dark:bg-slate-800" />
-              <span className="text-[10px] text-slate-400 dark:text-slate-600 uppercase tracking-wider font-medium shrink-0">Опросы</span>
+              <span className="text-[10px] text-slate-400 dark:text-slate-600 uppercase tracking-wider font-medium shrink-0">{t("pollsDivider")}</span>
               <div className="flex-1 h-px bg-slate-200 dark:bg-slate-800" />
             </div>
           )}
@@ -1082,7 +1077,7 @@ export function PollList({
               : "border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-600"
           }`}
         >
-          {overSlideSection === "none" ? "Убрать из секции" : "Экран → Без секции"}
+          {overSlideSection === "none" ? t("removeFromSection") : t("slideToNoSection")}
         </div>
       )}
       {sorted.length > 0 && draggingId && optimisticPolls.find(p => p.id === draggingId)?.section_id !== null && (
@@ -1095,7 +1090,7 @@ export function PollList({
               : "border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-600"
           }`}
         >
-          {overSectionId === "none" ? "Убрать из секции" : "Опрос → Без секции"}
+          {overSectionId === "none" ? t("removeFromSection") : t("pollToNoSection")}
         </div>
       )}
 
@@ -1154,7 +1149,7 @@ export function PollList({
           {(unsectioned.length > 0 || draggingId) && (
             <div>
               <div className="flex items-center gap-3 mb-2 px-1">
-                <span className="text-xs font-semibold text-slate-400 dark:text-slate-600 uppercase tracking-wide whitespace-nowrap">Без секции</span>
+                <span className="text-xs font-semibold text-slate-400 dark:text-slate-600 uppercase tracking-wide whitespace-nowrap">{t("noSectionDivider")}</span>
                 <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
               </div>
               {renderPollZone(null, unsectioned)}

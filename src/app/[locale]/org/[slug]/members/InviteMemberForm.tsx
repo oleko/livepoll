@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { useTranslations } from "next-intl";
 import { inviteMember } from "@/lib/actions/members";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -14,6 +15,7 @@ export function InviteMemberForm({
   orgSlug: string;
   invitedBy: string;
 }) {
+  const t = useTranslations("Org.members");
   const [state, action, isPending] = useActionState(inviteMember, null);
 
   return (
@@ -26,7 +28,7 @@ export function InviteMemberForm({
         <p className="text-xs text-red-400">{state.error}</p>
       )}
       {state && "success" in state && (
-        <p className="text-xs text-green-400">Участник добавлен</p>
+        <p className="text-xs text-green-400">{t("inviteSuccess")}</p>
       )}
 
       <Input
@@ -36,7 +38,7 @@ export function InviteMemberForm({
         required
       />
       <Button type="submit" loading={isPending} className="w-full">
-        Пригласить
+        {t("inviteButton")}
       </Button>
     </form>
   );

@@ -1,17 +1,20 @@
 import Link from "next/link";
+import { getLocale } from "next-intl/server";
 
-export const metadata = { title: "Быстрый старт" };
+export const metadata = { title: "Getting started" };
 
-export default function GettingStartedPage() {
+export default async function GettingStartedPage() {
+  const locale = await getLocale();
+  const isEn = locale === "en";
   return (
     <div className="max-w-prose">
       <Link href="/help" className="py-2 text-sm text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors md:hidden inline-block mb-6">
-        ← Помощь
+        {isEn ? "← Help" : "← Помощь"}
       </Link>
 
-      <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Быстрый старт</h1>
+      <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">{isEn ? "Getting started" : "Быстрый старт"}</h1>
       <p className="text-slate-500 dark:text-slate-400 mb-10">
-        Первое мероприятие с живыми голосованиями — за пять минут.
+        {isEn ? "Your first event with live polls — in five minutes." : "Первое мероприятие с живыми голосованиями — за пять минут."}
       </p>
 
       <div className="space-y-10">

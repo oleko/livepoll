@@ -2,6 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 import { SessionControls } from "./SessionControls";
 import { PollList } from "./PollList";
 import { QAPanel } from "./QAPanel";
@@ -11,12 +12,6 @@ import { AttendeesInput } from "./AttendeesInput";
 import { ExportButton } from "./ExportButton";
 import { SessionSummaryButton } from "./SessionSummaryButton";
 import type { Session } from "@/types/database";
-
-const STATUS_LABEL: Record<Session["status"], string> = {
-  draft:  "Черновик",
-  active: "Идёт",
-  ended:  "Завершено",
-};
 
 const STATUS_COLOR: Record<Session["status"], string> = {
   draft:  "text-slate-500 bg-slate-100 dark:text-slate-400 dark:bg-slate-800",
@@ -30,6 +25,7 @@ export default async function SessionPage({
   params: Promise<{ slug: string; id: string }>;
 }) {
   const { slug, id } = await params;
+  const t = await getTranslations();
   const supabase = await createClient();
   const admin = createAdminClient();
 
@@ -128,14 +124,14 @@ export default async function SessionPage({
             href={`/org/${slug}`}
             className="text-xs text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors w-fit"
           >
-            ← Мероприятия
+            {t("Org.session.page.backLink")}
           </Link>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white truncate">
             {session.title}
           </h1>
           <div className="flex items-center gap-3 flex-wrap mt-0.5">
             <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_COLOR[session.status]}`}>
-              {STATUS_LABEL[session.status]}
+              {t(`Org.shared.sessionStatus.${session.status}`)}
             </span>
             {session.status !== "ended" && (
               <AttendeesInput

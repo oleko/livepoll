@@ -1,11 +1,14 @@
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 import HelpNav, { HelpNavMobile } from "./HelpNav";
 
 export const metadata = {
-  title: { template: "%s — Помощь | LivePoll AI", default: "Помощь | LivePoll AI" },
+  title: { template: "%s — Help | LivePoll AI", default: "Help | LivePoll AI" },
 };
 
-export default function HelpLayout({ children }: { children: React.ReactNode }) {
+export default async function HelpLayout({ children }: { children: React.ReactNode }) {
+  const t = await getTranslations("Help.layout");
+
   return (
     <div className="min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-white flex flex-col">
       <header className="border-b border-slate-200 dark:border-slate-800 px-6 py-4 flex items-center justify-between bg-white dark:bg-slate-950 sticky top-0 z-10">
@@ -14,10 +17,10 @@ export default function HelpLayout({ children }: { children: React.ReactNode }) 
         </Link>
         <div className="flex items-center gap-4">
           <Link href="/help" className="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">
-            Центр помощи
+            {t("helpCenter")}
           </Link>
           <Link href="/auth/login" className="text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 transition-colors">
-            Войти →
+            {t("signIn")}
           </Link>
         </div>
       </header>
@@ -32,7 +35,7 @@ export default function HelpLayout({ children }: { children: React.ReactNode }) 
       </div>
 
       <footer className="border-t border-slate-200 dark:border-slate-800 px-6 py-6 text-center text-xs text-slate-400 dark:text-slate-600">
-        © 2025 ООО «Олег Костин»
+        {t("footer")}
       </footer>
     </div>
   );

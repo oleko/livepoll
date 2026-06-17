@@ -1,17 +1,20 @@
 import Link from "next/link";
+import { getLocale } from "next-intl/server";
 
-export const metadata = { title: "Тарифы и лимиты" };
+export const metadata = { title: "Plans & limits" };
 
-export default function PlansPage() {
+export default async function PlansPage() {
+  const locale = await getLocale();
+  const isEn = locale === "en";
   return (
     <div className="max-w-prose">
       <Link href="/help" className="py-2 text-sm text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors md:hidden inline-block mb-6">
-        ← Помощь
+        {isEn ? "← Help" : "← Помощь"}
       </Link>
 
-      <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Тарифы и лимиты</h1>
+      <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">{isEn ? "Plans & limits" : "Тарифы и лимиты"}</h1>
       <p className="text-slate-500 dark:text-slate-400 mb-10">
-        Что входит в каждый план и как считаются ограничения.
+        {isEn ? "What each plan includes and how limits are counted." : "Что входит в каждый план и как считаются ограничения."}
       </p>
 
       <div className="space-y-8">

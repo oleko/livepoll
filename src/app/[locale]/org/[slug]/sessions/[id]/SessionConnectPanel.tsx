@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { MaxIcon } from "@/components/icons";
 
 function IconCopy() {
@@ -40,6 +41,7 @@ export function SessionConnectPanel({
   displayUrl: string;
   presenterUrl: string;
 }) {
+  const t = useTranslations("Org.session.connect");
   const [copied, setCopied] = useState(false);
 
   async function copyLink() {
@@ -49,8 +51,8 @@ export function SessionConnectPanel({
   }
 
   const eu = encodeURIComponent(joinUrl);
-  const et = encodeURIComponent("Присоединяйтесь к голосованию — без регистрации, прямо со смартфона!");
-  const emailBody = encodeURIComponent(`Привет!\n\nПрисоединяйтесь к голосованию:\n${joinUrl}\n\nКод: ${joinCode}\n\nРегистрация не нужна.`);
+  const et = encodeURIComponent(t("shareText"));
+  const emailBody = encodeURIComponent(t("emailBody", { joinUrl, joinCode }));
 
   const shares = [
     {
@@ -74,14 +76,14 @@ export function SessionConnectPanel({
       ),
     },
     {
-      label: "Макс",
-      href: `https://max.ru/:share?text=${encodeURIComponent(`Присоединяйтесь к голосованию!\n${joinUrl}`)}`,
+      label: t("maxBrand"),
+      href: `https://max.ru/:share?text=${encodeURIComponent(t("maxShareText", { joinUrl }))}`,
       bg: "bg-gradient-to-br from-[#44ccff] to-[#9933dd]",
       icon: <MaxIcon size={14} />,
     },
     {
       label: "Email",
-      href: `mailto:?subject=${encodeURIComponent("Голосование — присоединяйтесь!")}&body=${emailBody}`,
+      href: `mailto:?subject=${encodeURIComponent(t("emailSubject"))}&body=${emailBody}`,
       bg: "bg-slate-500 dark:bg-slate-600",
       icon: (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
@@ -96,24 +98,24 @@ export function SessionConnectPanel({
     {
       href: displayUrl,
       icon: "🖥",
-      label: "Проектор",
-      desc: "Для аудитории",
+      label: t("projector"),
+      desc: t("projectorDesc"),
       accent: "group-hover:border-purple-300 dark:group-hover:border-purple-700 group-hover:bg-purple-50/60 dark:group-hover:bg-purple-900/20",
       labelColor: "group-hover:text-purple-700 dark:group-hover:text-purple-300",
     },
     {
       href: presenterUrl,
       icon: "🎤",
-      label: "Ведущий",
-      desc: "Для ноутбука",
+      label: t("presenter"),
+      desc: t("presenterDesc"),
       accent: "group-hover:border-indigo-300 dark:group-hover:border-indigo-700 group-hover:bg-indigo-50/60 dark:group-hover:bg-indigo-900/20",
       labelColor: "group-hover:text-indigo-700 dark:group-hover:text-indigo-300",
     },
     {
       href: joinUrl,
       icon: "📱",
-      label: "Участник",
-      desc: "Предпросмотр",
+      label: t("participant"),
+      desc: t("participantDesc"),
       accent: "group-hover:border-emerald-300 dark:group-hover:border-emerald-700 group-hover:bg-emerald-50/60 dark:group-hover:bg-emerald-900/20",
       labelColor: "group-hover:text-emerald-700 dark:group-hover:text-emerald-300",
     },
@@ -126,11 +128,11 @@ export function SessionConnectPanel({
         {/* ── Participants ── */}
         <div className="p-5 flex flex-col gap-4">
           <p className="text-[10px] font-semibold tracking-widest uppercase text-slate-400 dark:text-slate-600">
-            Участники
+            {t("participants")}
           </p>
 
           <div className="flex items-center gap-3">
-            <span className="text-[11px] text-slate-400">Код</span>
+            <span className="text-[11px] text-slate-400">{t("code")}</span>
             <span className="font-mono text-[2rem] leading-none font-black text-slate-900 dark:text-white tracking-[0.15em]">
               {joinCode}
             </span>
@@ -149,12 +151,12 @@ export function SessionConnectPanel({
               }`}
             >
               {copied ? <IconCheck /> : <IconCopy />}
-              {copied ? "Скопировано" : "Копировать"}
+              {copied ? t("copied") : t("copy")}
             </button>
           </div>
 
           <div className="flex items-center gap-2.5">
-            <span className="text-[11px] text-slate-400 dark:text-slate-600">Поделиться</span>
+            <span className="text-[11px] text-slate-400 dark:text-slate-600">{t("share")}</span>
             <div className="flex items-center gap-1.5">
               {shares.map((s) => (
                 <a
@@ -175,7 +177,7 @@ export function SessionConnectPanel({
         {/* ── Screens ── */}
         <div className="p-5 flex flex-col gap-4">
           <p className="text-[10px] font-semibold tracking-widest uppercase text-slate-400 dark:text-slate-600">
-            Экраны
+            {t("screens")}
           </p>
 
           <div className="grid grid-cols-3 gap-2">

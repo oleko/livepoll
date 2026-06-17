@@ -2,50 +2,13 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 import { PLAN_DISPLAY_NAME } from "@/lib/limits";
 import { PLAN_PRICES } from "@/lib/billing-config";
 // import { UpgradeButton } from "./UpgradeButton"; // включить после запуска ЮKassa
 import type { OrgPlan } from "@/types/database";
 
 const PLAN_ORDER: OrgPlan[] = ["free", "starter", "pro", "team", "unlimited"];
-
-const PLANS: {
-  key: OrgPlan;
-  features: string[];
-  highlight?: boolean;
-}[] = [
-  {
-    key: "starter",
-    features: [
-      "До 100 участников",
-      "Безлимит мероприятий",
-      "10 опросов на сессию",
-      "Экспорт CSV / PDF",
-      "Шаблоны мероприятий",
-    ],
-  },
-  {
-    key: "pro",
-    highlight: true,
-    features: [
-      "До 500 участников",
-      "Безлимит опросов",
-      "✨ AI-анализ и AI-резюме",
-      "Все типы слайдов и экранов",
-      "Таймер, лимит голосов, Quiz",
-    ],
-  },
-  {
-    key: "team",
-    features: [
-      "Безлимит участников",
-      "До 5 ведущих в команде",
-      "White Label брендинг",
-      "Все функции Про",
-      "Приоритетная поддержка",
-    ],
-  },
-];
 
 export default async function UpgradePage({
   params,
@@ -55,6 +18,7 @@ export default async function UpgradePage({
   const { slug } = await params;
   const supabase = await createClient();
   const admin = createAdminClient();
+  const t = await getTranslations("Org.upgrade");
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/auth/login");
@@ -78,6 +42,44 @@ export default async function UpgradePage({
 
   const currentPlanIdx = PLAN_ORDER.indexOf(org.plan as OrgPlan);
 
+  const PLANS: {
+    key: OrgPlan;
+    features: string[];
+    highlight?: boolean;
+  }[] = [
+    {
+      key: "starter",
+      features: [
+        t("plans.starter.f1"),
+        t("plans.starter.f2"),
+        t("plans.starter.f3"),
+        t("plans.starter.f4"),
+        t("plans.starter.f5"),
+      ],
+    },
+    {
+      key: "pro",
+      highlight: true,
+      features: [
+        t("plans.pro.f1"),
+        t("plans.pro.f2"),
+        t("plans.pro.f3"),
+        t("plans.pro.f4"),
+        t("plans.pro.f5"),
+      ],
+    },
+    {
+      key: "team",
+      features: [
+        t("plans.team.f1"),
+        t("plans.team.f2"),
+        t("plans.team.f3"),
+        t("plans.team.f4"),
+        t("plans.team.f5"),
+      ],
+    },
+  ];
+
   return (
     <div className="max-w-3xl">
       <div className="mb-8">
@@ -85,11 +87,11 @@ export default async function UpgradePage({
           href={`/org/${slug}/settings`}
           className="text-sm text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
         >
-          ← Настройки
+          {t("back")}
         </Link>
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white mt-3 mb-1">Сменить тариф</h1>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white mt-3 mb-1">{t("title")}</h1>
         <p className="text-slate-500 dark:text-slate-400 text-sm">
-          Текущий тариф:{" "}
+          {t("currentPlan")}{" "}
           <span className="font-semibold text-slate-700 dark:text-slate-300">
             {PLAN_DISPLAY_NAME[org.plan as OrgPlan]}
           </span>
@@ -114,7 +116,7 @@ export default async function UpgradePage({
             >
               {p.highlight && (
                 <span className="self-start text-[11px] font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 bg-indigo-100 dark:bg-indigo-500/20 px-2 py-0.5 rounded-full">
-                  Популярный
+                  {t("popular")}
                 </span>
               )}
 
@@ -127,10 +129,10 @@ export default async function UpgradePage({
                     <span className="text-2xl font-bold text-slate-900 dark:text-white">
                       {price.rubles.toLocaleString("ru-RU")} ₽
                     </span>
-                    <span className="text-sm text-slate-500">/ мес</span>
+                    <span className="text-sm text-slate-500">{t("perMonth")}</span>
                   </div>
                 ) : (
-                  <p className="text-sm text-slate-500 mt-1">по запросу</p>
+                  <p className="text-sm text-slate-500 mt-1">{t("onRequest")}</p>
                 )}
               </div>
 
@@ -145,25 +147,25 @@ export default async function UpgradePage({
 
               {isCurrent ? (
                 <div className="rounded-lg border border-slate-200 dark:border-slate-700 px-4 py-2 text-sm text-center text-slate-500 dark:text-slate-400">
-                  Текущий тариф
+                  {t("currentBadge")}
                 </div>
               ) : isDowngrade ? (
                 <div className="rounded-lg border border-slate-100 dark:border-slate-800 px-4 py-2 text-xs text-center text-slate-400 dark:text-slate-600">
-                  Понижение тарифа — напишите нам
+                  {t("downgradeNote")}
                 </div>
               ) : price ? (
                 <a
                   href="mailto:oleko85@gmail.com?subject=LivePoll%20AI%20%E2%80%94%20Тариф%20тестирование"
                   className="w-full rounded-xl border border-indigo-300 dark:border-indigo-700 px-4 py-2.5 text-sm font-medium text-center text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition-colors block"
                 >
-                  Участвовать в тестировании →
+                  {t("testingButton")}
                 </a>
               ) : (
                 <a
                   href="mailto:oleko85@gmail.com?subject=LivePoll%20AI%20%E2%80%94%20Безлимитный%20тариф"
                   className="w-full rounded-xl border border-slate-200 dark:border-slate-700 px-4 py-2.5 text-sm font-medium text-center text-slate-600 dark:text-slate-400 hover:border-indigo-400 transition-colors"
                 >
-                  Связаться с нами
+                  {t("contactButton")}
                 </a>
               )}
             </div>
@@ -172,9 +174,9 @@ export default async function UpgradePage({
       </div>
 
       <p className="mt-8 text-xs text-slate-400 dark:text-slate-600 text-center">
-        Сервис в режиме тестирования. Напишите на{" "}
+        {t("footerNote", { email: "oleko85@gmail.com" }).split("oleko85@gmail.com")[0]}
         <a href="mailto:oleko85@gmail.com" className="hover:underline">oleko85@gmail.com</a>
-        {" "}— администратор подключит нужный тариф вручную.
+        {t("footerNote", { email: "oleko85@gmail.com" }).split("oleko85@gmail.com")[1]}
       </p>
     </div>
   );

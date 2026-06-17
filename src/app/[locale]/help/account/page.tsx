@@ -1,17 +1,20 @@
 import Link from "next/link";
+import { getLocale } from "next-intl/server";
 
-export const metadata = { title: "Аккаунт | LivePoll AI" };
+export const metadata = { title: "Account | LivePoll AI" };
 
-export default function AccountHelpPage() {
+export default async function AccountHelpPage() {
+  const locale = await getLocale();
+  const isEn = locale === "en";
   return (
     <div className="max-w-prose">
       <Link href="/help" className="py-2 text-sm text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors md:hidden inline-block mb-6">
-        ← Помощь
+        {isEn ? "← Help" : "← Помощь"}
       </Link>
 
-      <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Аккаунт</h1>
+      <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">{isEn ? "Account" : "Аккаунт"}</h1>
       <p className="text-slate-500 dark:text-slate-400 mb-10">
-        Управление профилем, смена пароля и удаление аккаунта.
+        {isEn ? "Manage your profile, change password, and delete your account." : "Управление профилем, смена пароля и удаление аккаунта."}
       </p>
 
       <div className="space-y-8">

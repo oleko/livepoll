@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getTranslations, getLocale } from "next-intl/server";
 import { RoleToggle } from "./RoleToggle";
 import { DeleteUserButton } from "./DeleteUserButton";
 import { CreateUserForm } from "./CreateUserForm";
@@ -10,6 +11,10 @@ export default async function AdminUsersPage() {
   const { data: { user: me } } = await supabase.auth.getUser();
 
   const admin = createAdminClient();
+  const t = await getTranslations("Admin.users");
+  const locale = await getLocale();
+  const dateLocale = locale === "ru" ? "ru-RU" : "en-US";
+
   const { data: profiles } = await admin
     .from("profiles")
     .select("id, full_name, platform_role, created_at")
@@ -33,7 +38,7 @@ export default async function AdminUsersPage() {
         {/* ── Mobile cards ── */}
         <div className="sm:hidden divide-y divide-slate-100 dark:divide-slate-800">
           {list.length === 0 ? (
-            <p className="px-4 py-10 text-center text-slate-400 dark:text-slate-600">Нет пользователей</p>
+            <p className="px-4 py-10 text-center text-slate-400 dark:text-slate-600">{t("noUsers")}</p>
           ) : list.map((p) => (
             <div key={p.id} className="px-4 py-4 space-y-2.5">
               <div>
@@ -42,7 +47,7 @@ export default async function AdminUsersPage() {
               </div>
               <div className="flex items-center gap-2 flex-wrap">
                 {confirmedById[p.id] ? (
-                  <span className="text-xs text-emerald-600 dark:text-emerald-400">✓ Email подтверждён</span>
+                  <span className="text-xs text-emerald-600 dark:text-emerald-400">{t("emailConfirmed")}</span>
                 ) : (
                   <ConfirmEmailButton userId={p.id} />
                 )}
@@ -61,10 +66,10 @@ export default async function AdminUsersPage() {
         <table className="hidden sm:table w-full text-sm">
           <thead>
             <tr className="border-b border-slate-100 dark:border-slate-800 text-xs text-slate-400 dark:text-slate-500 uppercase tracking-wide">
-              <th className="text-left px-5 py-3 font-medium">Имя</th>
-              <th className="text-left px-5 py-3 font-medium">Email</th>
-              <th className="text-left px-5 py-3 font-medium">Зарегистрирован</th>
-              <th className="text-left px-5 py-3 font-medium">Подтверждение</th>
+              <th className="text-left px-5 py-3 font-medium">{t("thName")}</th>
+              <th className="text-left px-5 py-3 font-medium">{t("thEmail")}</th>
+              <th className="text-left px-5 py-3 font-medium">{t("thRegistered")}</th>
+              <th className="text-left px-5 py-3 font-medium">{t("thConfirmation")}</th>
               <th className="px-5 py-3" />
             </tr>
           </thead>
@@ -78,11 +83,11 @@ export default async function AdminUsersPage() {
                   {emailById[p.id] ?? "—"}
                 </td>
                 <td className="px-5 py-4 text-slate-400 dark:text-slate-500">
-                  {new Date(p.created_at).toLocaleDateString("ru-RU")}
+                  {new Date(p.created_at).toLocaleDateString(dateLocale)}
                 </td>
                 <td className="px-5 py-4">
                   {confirmedById[p.id] ? (
-                    <span className="text-xs text-emerald-600 dark:text-emerald-400">✓ Подтверждён</span>
+                    <span className="text-xs text-emerald-600 dark:text-emerald-400">{t("emailConfirmedShort")}</span>
                   ) : (
                     <ConfirmEmailButton userId={p.id} />
                   )}
@@ -100,7 +105,7 @@ export default async function AdminUsersPage() {
             {list.length === 0 && (
               <tr>
                 <td colSpan={5} className="px-5 py-10 text-center text-slate-400 dark:text-slate-600">
-                  Нет пользователей
+                  {t("noUsers")}
                 </td>
               </tr>
             )}
@@ -116,7 +121,7 @@ export default async function AdminUsersPage() {
 
       <div>
         <h2 className="text-base font-semibold text-slate-900 dark:text-white mb-4">
-          Платформ-администраторы
+          {t("adminsTitle")}
           <span className="ml-2 text-sm font-normal text-slate-400 dark:text-slate-500">{admins.length}</span>
         </h2>
         <UserTable list={admins} isSelfCheck={true} />
@@ -124,7 +129,7 @@ export default async function AdminUsersPage() {
 
       <div>
         <h2 className="text-base font-semibold text-slate-900 dark:text-white mb-4">
-          Пользователи
+          {t("usersTitle")}
           <span className="ml-2 text-sm font-normal text-slate-400 dark:text-slate-500">{users.length}</span>
         </h2>
         <UserTable list={users} isSelfCheck={false} />

@@ -1,16 +1,17 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { useTranslations } from "next-intl";
 import { saveBranding, type BrandingSettings } from "@/lib/actions/branding";
 
 const PRESET_COLORS = [
-  { label: "Индиго",      value: "#6366f1" },
-  { label: "Фиолетовый",  value: "#8b5cf6" },
-  { label: "Синий",       value: "#3b82f6" },
-  { label: "Голубой",     value: "#06b6d4" },
-  { label: "Изумрудный",  value: "#10b981" },
-  { label: "Розовый",     value: "#ec4899" },
-  { label: "Янтарный",    value: "#f59e0b" },
+  { key: "presetIndigo",   value: "#6366f1" },
+  { key: "presetViolet",   value: "#8b5cf6" },
+  { key: "presetBlue",     value: "#3b82f6" },
+  { key: "presetCyan",     value: "#06b6d4" },
+  { key: "presetEmerald",  value: "#10b981" },
+  { key: "presetPink",     value: "#ec4899" },
+  { key: "presetAmber",    value: "#f59e0b" },
 ];
 
 function isHexColor(s: string) {
@@ -26,6 +27,7 @@ export function BrandingForm({
   initial: BrandingSettings;
   orgPlan: string;
 }) {
+  const t = useTranslations("Org.branding");
   const whiteLabelAvailable = orgPlan === "team" || orgPlan === "unlimited";
   const [logoPreview, setLogoPreview] = useState<string | null>(initial.logo_url ?? null);
   const [logoFile,    setLogoFile]    = useState<File | null>(null);
@@ -99,15 +101,15 @@ export function BrandingForm({
 
   return (
     <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 flex flex-col gap-8">
-      <h2 className="text-sm font-semibold text-slate-900 dark:text-white">Брендинг</h2>
+      <h2 className="text-sm font-semibold text-slate-900 dark:text-white">{t("title")}</h2>
 
       {/* ── Logo ───────────────────────────────────────────── */}
       <section className="flex flex-col gap-3">
-        <Label>Логотип</Label>
+        <Label>{t("logoLabel")}</Label>
         <div className="flex items-center gap-4">
           <div className="w-20 h-20 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 flex items-center justify-center overflow-hidden shrink-0">
             {logoPreview ? (
-              <img src={logoPreview} alt="Логотип" className="w-full h-full object-contain p-1" />
+              <img src={logoPreview} alt={t("logoAlt")} className="w-full h-full object-contain p-1" />
             ) : (
               <span className="text-2xl opacity-30">🖼️</span>
             )}
@@ -119,7 +121,7 @@ export function BrandingForm({
                 onClick={() => fileRef.current?.click()}
                 className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
               >
-                Загрузить
+                {t("uploadButton")}
               </button>
               {logoPreview && (
                 <button
@@ -127,11 +129,11 @@ export function BrandingForm({
                   onClick={onRemoveLogo}
                   className="rounded-lg px-3 py-1.5 text-sm text-red-500 hover:bg-red-500/10 transition-colors"
                 >
-                  Удалить
+                  {t("removeLogoButton")}
                 </button>
               )}
             </div>
-            <p className="text-xs text-slate-400 dark:text-slate-500">PNG, JPG, SVG, WebP — до 2 МБ</p>
+            <p className="text-xs text-slate-400 dark:text-slate-500">{t("logoHint")}</p>
           </div>
         </div>
         <input
@@ -145,13 +147,13 @@ export function BrandingForm({
 
       {/* ── Accent color ───────────────────────────────────── */}
       <section className="flex flex-col gap-3">
-        <Label>Цвет акцента</Label>
+        <Label>{t("accentLabel")}</Label>
         <div className="flex items-center gap-2 flex-wrap">
           {PRESET_COLORS.map((c) => (
             <button
               key={c.value}
               type="button"
-              title={c.label}
+              title={t(c.key as Parameters<typeof t>[0])}
               onClick={() => applyAccent(c.value)}
               className="w-7 h-7 rounded-full transition-transform hover:scale-110 focus:outline-none"
               style={{
@@ -168,7 +170,7 @@ export function BrandingForm({
               value={isHexColor(accentColor) ? accentColor : "#6366f1"}
               onChange={(e) => applyAccent(e.target.value)}
               className="w-7 h-7 rounded-full cursor-pointer border-0 bg-transparent p-0"
-              title="Произвольный цвет"
+              title={t("accentCustomTitle")}
             />
             <input
               type="text"
@@ -187,7 +189,7 @@ export function BrandingForm({
             className="rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors"
             style={{ backgroundColor: accentColor }}
           >
-            Пример кнопки
+            {t("accentPreview")}
           </button>
           <div
             className="h-2.5 flex-1 rounded-full"
@@ -198,20 +200,20 @@ export function BrandingForm({
 
       {/* ── Display background ─────────────────────────────── */}
       <section className="flex flex-col gap-3">
-        <Label>Фон дисплейного экрана</Label>
+        <Label>{t("displayBgLabel")}</Label>
         <div className="flex flex-col gap-2">
           <RadioRow
             checked={!useCustomBg}
             onChange={() => setUseCustomBg(false)}
-            label="По умолчанию"
-            hint="Тёмная или светлая — как в браузере ведущего"
+            label={t("bgDefault")}
+            hint={t("bgDefaultHint")}
           />
           <div className="flex items-start gap-3">
             <RadioRow
               checked={useCustomBg}
               onChange={() => setUseCustomBg(true)}
-              label="Свой цвет"
-              hint="Конкретный цвет фона, независимо от темы"
+              label={t("bgCustom")}
+              hint={t("bgCustomHint")}
             />
             {useCustomBg && (
               <div className="flex items-center gap-2 mt-0.5">
@@ -240,7 +242,7 @@ export function BrandingForm({
 
       {/* ── Background image ───────────────────────────────── */}
       <section className="flex flex-col gap-2">
-        <Label>Фоновое изображение дисплея</Label>
+        <Label>{t("displayBgImageLabel")}</Label>
         <input
           type="url"
           value={displayBgImage}
@@ -249,18 +251,18 @@ export function BrandingForm({
           className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
         />
         <p className="text-xs text-slate-400 dark:text-slate-500">
-          Прямая ссылка на изображение (16:9). Перекрывает фоновый цвет.
+          {t("bgImageHint")}
         </p>
       </section>
 
       {/* ── Display font ───────────────────────────────────── */}
       <section className="flex flex-col gap-2">
-        <Label>Шрифт экрана</Label>
+        <Label>{t("displayFontLabel")}</Label>
         <div className="flex gap-2 flex-wrap">
           {([
-            { value: "sans",  label: "Современный",  hint: "sans-serif" },
-            { value: "serif", label: "Классический",  hint: "serif" },
-            { value: "mono",  label: "Технический",   hint: "monospace" },
+            { value: "sans",  labelKey: "fontSans",  hint: "sans-serif" },
+            { value: "serif", labelKey: "fontSerif", hint: "serif" },
+            { value: "mono",  labelKey: "fontMono",  hint: "monospace" },
           ] as const).map(opt => (
             <label key={opt.value} className={`flex items-center gap-2 rounded-lg border px-3 py-2 cursor-pointer transition-colors ${displayFont === opt.value ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-950/40" : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-slate-300"}`}>
               <input
@@ -272,7 +274,7 @@ export function BrandingForm({
                 className="accent-indigo-600 shrink-0"
               />
               <div>
-                <p className="text-sm text-slate-900 dark:text-white">{opt.label}</p>
+                <p className="text-sm text-slate-900 dark:text-white">{t(opt.labelKey)}</p>
                 <p className="text-xs text-slate-400">{opt.hint}</p>
               </div>
             </label>
@@ -282,23 +284,23 @@ export function BrandingForm({
 
       {/* ── Display header ─────────────────────────────────── */}
       <section className="flex flex-col gap-2">
-        <Label>Текст в шапке дисплея</Label>
+        <Label>{t("displayHeaderLabel")}</Label>
         <input
           type="text"
           value={displayHeader}
           onChange={(e) => setDisplayHeader(e.target.value)}
           maxLength={80}
-          placeholder="По умолчанию — название мероприятия"
+          placeholder={t("displayHeaderPlaceholder")}
           className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
         />
         <p className="text-xs text-slate-400 dark:text-slate-500">
-          Например: «DevConf 2026» или «Утренний блок». Если пусто — показывается название конкретного мероприятия.
+          {t("displayHeaderHint")}
         </p>
       </section>
 
       {/* ── White label ────────────────────────────────────── */}
       <section className="flex flex-col gap-3">
-        <Label>Белая метка</Label>
+        <Label>{t("whiteLabelLabel")}</Label>
         {whiteLabelAvailable ? (
           <label className="flex items-start gap-3 cursor-pointer">
             <input
@@ -308,19 +310,19 @@ export function BrandingForm({
               className="mt-0.5 h-4 w-4 rounded border-slate-300 dark:border-slate-600 accent-indigo-600 shrink-0"
             />
             <div>
-              <p className="text-sm text-slate-900 dark:text-white">Скрыть «Powered by LivePoll AI»</p>
+              <p className="text-sm text-slate-900 dark:text-white">{t("whiteLabelText")}</p>
               <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
-                Убирает упоминание платформы со страниц участников и дисплейного экрана
+                {t("whiteLabelDesc")}
               </p>
             </div>
           </label>
         ) : (
           <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-4 py-3 flex items-center justify-between gap-4">
             <p className="text-sm text-slate-500 dark:text-slate-400">
-              Доступно на тарифах <span className="font-medium text-slate-700 dark:text-slate-300">Команда</span> и <span className="font-medium text-slate-700 dark:text-slate-300">Безлимитный</span>
+              {t("whiteLabelUnavailable")}
             </p>
             <span className="text-xs rounded-full bg-slate-200 dark:bg-slate-700 px-2.5 py-0.5 text-slate-500 dark:text-slate-400 shrink-0">
-              🔒 Недоступно
+              {t("whiteLabelLocked")}
             </span>
           </div>
         )}
@@ -335,7 +337,7 @@ export function BrandingForm({
           className="rounded-lg bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 px-4 py-2 text-sm font-medium text-white transition-colors"
           style={!saving ? { backgroundColor: accentColor } : undefined}
         >
-          {saving ? "Сохраняю..." : saved ? "✓ Сохранено" : "Сохранить брендинг"}
+          {saving ? t("savingButton") : saved ? t("savedButton") : t("saveButton")}
         </button>
         {error && <p className="text-sm text-red-500">{error}</p>}
       </div>

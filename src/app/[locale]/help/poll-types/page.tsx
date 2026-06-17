@@ -1,6 +1,7 @@
 import Link from "next/link";
+import { getLocale } from "next-intl/server";
 
-export const metadata = { title: "Типы опросов" };
+export const metadata = { title: "Poll types" };
 
 const TYPES = [
   {
@@ -69,16 +70,18 @@ const TYPES = [
   },
 ];
 
-export default function PollTypesPage() {
+export default async function PollTypesPage() {
+  const locale = await getLocale();
+  const isEn = locale === "en";
   return (
     <div className="max-w-prose">
       <Link href="/help" className="py-2 text-sm text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors md:hidden inline-block mb-6">
-        ← Помощь
+        {isEn ? "← Help" : "← Помощь"}
       </Link>
 
-      <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Типы опросов</h1>
+      <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">{isEn ? "Poll types" : "Типы опросов"}</h1>
       <p className="text-slate-500 dark:text-slate-400 mb-10">
-        Восемь форматов — под любой сценарий выступления.
+        {isEn ? "Eight formats — for any presentation scenario." : "Восемь форматов — под любой сценарий выступления."}
       </p>
 
       <div className="space-y-6">

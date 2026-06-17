@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/Button";
 
 const TYPE_LABEL: Record<string, string> = {
@@ -52,6 +53,7 @@ function buildOptions(poll: PollExport, counts: Record<string, number>) {
 }
 
 export function ExportButton({ session, polls, sections, votesByPoll, votesDataByPoll, questions }: Props) {
+  const t = useTranslations("Org.session.exportButton");
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -272,7 +274,7 @@ ${questionsHtml}
   return (
     <div className="relative" ref={ref}>
       <Button variant="secondary" className="text-sm" onClick={() => setOpen((v) => !v)}>
-        Экспорт ↓
+        {t("trigger")}
       </Button>
       {open && (
         <div className="absolute right-0 top-full mt-1 z-20 w-52 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl overflow-hidden">
@@ -283,8 +285,8 @@ ${questionsHtml}
           >
             <span>📄</span>
             <div>
-              <p className="font-medium leading-tight">CSV</p>
-              <p className="text-xs text-slate-400">Excel, Google Sheets</p>
+              <p className="font-medium leading-tight">{t("csvLabel")}</p>
+              <p className="text-xs text-slate-400">{t("csvDesc")}</p>
             </div>
           </button>
           <button
@@ -294,8 +296,8 @@ ${questionsHtml}
           >
             <span>🖨️</span>
             <div>
-              <p className="font-medium leading-tight">PDF</p>
-              <p className="text-xs text-slate-400">Печать / сохранить PDF</p>
+              <p className="font-medium leading-tight">{t("pdfLabel")}</p>
+              <p className="text-xs text-slate-400">{t("pdfDesc")}</p>
             </div>
           </button>
         </div>

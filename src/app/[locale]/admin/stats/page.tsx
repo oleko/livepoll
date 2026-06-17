@@ -1,8 +1,9 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getTranslations, getLocale } from "next-intl/server";
 import { PLAN_DISPLAY_NAME } from "@/lib/limits";
 import type { OrgPlan } from "@/types/database";
 
-export const metadata = { title: "Статистика — Admin" };
+export const metadata = { title: "Stats — Admin" };
 
 const PLAN_COLOR: Record<OrgPlan, string> = {
   free:      "bg-slate-400 dark:bg-slate-600",
@@ -27,9 +28,9 @@ function weekStart(weeksAgo: number): Date {
   return d;
 }
 
-function weekLabel(weeksAgo: number): string {
+function weekLabel(weeksAgo: number, dateLocale: string): string {
   const d = weekStart(weeksAgo);
-  return d.toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
+  return d.toLocaleDateString(dateLocale, { day: "numeric", month: "short" });
 }
 
 function bucketByWeek(rows: { created_at: string }[], weeks: number): number[] {
@@ -50,6 +51,9 @@ function bucketByWeek(rows: { created_at: string }[], weeks: number): number[] {
 
 export default async function AdminStatsPage() {
   const admin = createAdminClient();
+  const t = await getTranslations("Admin.stats");
+  const locale = await getLocale();
+  const dateLocale = locale === "ru" ? "ru-RU" : "en-US";
 
   const monthStart = new Date();
   monthStart.setDate(1);
@@ -68,7 +72,6 @@ export default async function AdminStatsPage() {
     { data: recentOrgs },
     { data: recentSessions },
     { data: allSessions },
-    { data: allVotes },
   ] = await Promise.all([
     admin.from("organizations").select("*", { count: "exact", head: true }),
     admin.from("organizations").select("*", { count: "exact", head: true }).gte("created_at", monthStart.toISOString()),
@@ -80,7 +83,6 @@ export default async function AdminStatsPage() {
     admin.from("organizations").select("id, created_at").gte("created_at", eightWeeksAgo.toISOString()),
     admin.from("sessions").select("id, organization_id, created_at").gte("created_at", eightWeeksAgo.toISOString()),
     admin.from("sessions").select("id, organization_id"),
-    admin.from("votes").select("poll_id"),
   ]);
 
   // Plan distribution
@@ -98,9 +100,6 @@ export default async function AdminStatsPage() {
   const sessionMax = Math.max(...sessionWeekly, 1);
 
   // Top orgs by sessions + votes
-  // Need poll_ids per org → org_id from sessions → poll_id from polls
-  // Simplify: count sessions per org from allSessions, votes we can't link without polls query
-  // Let's fetch polls to get votes per org
   const { data: allPolls } = await admin.from("polls").select("id, session_id");
 
   const sessionToOrg = (allSessions ?? []).reduce<Record<string, string>>((acc, s) => {
@@ -120,11 +119,8 @@ export default async function AdminStatsPage() {
   for (const s of allSessions ?? []) {
     if (orgStats[s.organization_id]) orgStats[s.organization_id].sessions++;
   }
-  // votes count: we already have totalVotes but need per-org; allVotes has poll_id
-  // fetch vote counts per poll_id group — but votes table can be large, let's count via poll→session→org
-  const { data: voteCounts } = await admin
-    .from("votes")
-    .select("poll_id");
+
+  const { data: voteCounts } = await admin.from("votes").select("poll_id");
 
   for (const v of voteCounts ?? []) {
     const sessionId = pollToSession[v.poll_id];
@@ -140,35 +136,35 @@ export default async function AdminStatsPage() {
     .slice(0, 10);
 
   const metrics = [
-    { label: "Организаций", value: totalOrgs ?? 0, sub: `+${newOrgsMonth ?? 0} за месяц`, color: "text-indigo-600 dark:text-indigo-400" },
-    { label: "Пользователей", value: totalUsers ?? 0, sub: null, color: "text-slate-900 dark:text-white" },
-    { label: "Сессий всего", value: totalSessions ?? 0, sub: null, color: "text-slate-900 dark:text-white" },
-    { label: "Активных сейчас", value: activeSessions ?? 0, sub: "сессий", color: activeSessions ? "text-green-600 dark:text-green-400" : "text-slate-400 dark:text-slate-600" },
-    { label: "Голосований", value: totalVotes ?? 0, sub: null, color: "text-slate-900 dark:text-white" },
-    { label: "Тариф Free", value: planCounts["free"] ?? 0, sub: `из ${totalOrgs ?? 0} орг`, color: "text-slate-500 dark:text-slate-400" },
+    { label: t("metricOrgs"),    value: totalOrgs ?? 0,     sub: t("metricOrgsSub", { count: newOrgsMonth ?? 0 }), color: "text-indigo-600 dark:text-indigo-400" },
+    { label: t("metricUsers"),   value: totalUsers ?? 0,    sub: null, color: "text-slate-900 dark:text-white" },
+    { label: t("metricSessions"),value: totalSessions ?? 0, sub: null, color: "text-slate-900 dark:text-white" },
+    { label: t("metricActive"),  value: activeSessions ?? 0,sub: t("metricActiveSub"), color: activeSessions ? "text-green-600 dark:text-green-400" : "text-slate-400 dark:text-slate-600" },
+    { label: t("metricVotes"),   value: totalVotes ?? 0,    sub: null, color: "text-slate-900 dark:text-white" },
+    { label: t("metricFree"),    value: planCounts["free"] ?? 0, sub: t("metricFreeSub", { total: totalOrgs ?? 0 }), color: "text-slate-500 dark:text-slate-400" },
   ];
 
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-xl font-semibold text-slate-900 dark:text-white">Статистика платформы</h1>
-        <p className="text-sm text-slate-400 dark:text-slate-500 mt-0.5">Данные в реальном времени</p>
+        <h1 className="text-xl font-semibold text-slate-900 dark:text-white">{t("title")}</h1>
+        <p className="text-sm text-slate-400 dark:text-slate-500 mt-0.5">{t("subtitle")}</p>
       </div>
 
-      {/* ── Ключевые показатели ── */}
+      {/* ── Key metrics ── */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         {metrics.map((m) => (
           <div key={m.label} className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-5 py-4">
             <p className="text-xs text-slate-400 dark:text-slate-500 mb-1">{m.label}</p>
-            <p className={`text-3xl font-bold tabular-nums leading-none ${m.color}`}>{m.value.toLocaleString("ru-RU")}</p>
+            <p className={`text-3xl font-bold tabular-nums leading-none ${m.color}`}>{m.value.toLocaleString(dateLocale)}</p>
             {m.sub && <p className="text-xs text-slate-400 dark:text-slate-500 mt-1.5">{m.sub}</p>}
           </div>
         ))}
       </div>
 
-      {/* ── Распределение по тарифам ── */}
+      {/* ── Plan distribution ── */}
       <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-5 py-5">
-        <h2 className="text-sm font-semibold text-slate-900 dark:text-white mb-4">Распределение по тарифам</h2>
+        <h2 className="text-sm font-semibold text-slate-900 dark:text-white mb-4">{t("planDistribution")}</h2>
         <div className="flex gap-0.5 h-2.5 rounded-full overflow-hidden mb-4">
           {plans.map((p) => {
             const pct = totalOrgs ? ((planCounts[p] ?? 0) / totalOrgs) * 100 : 0;
@@ -187,11 +183,11 @@ export default async function AdminStatsPage() {
         </div>
       </div>
 
-      {/* ── Рост по неделям ── */}
+      {/* ── Weekly growth ── */}
       <div className="grid sm:grid-cols-2 gap-3">
-        {/* Организации */}
+        {/* Orgs */}
         <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-5 py-5">
-          <h2 className="text-sm font-semibold text-slate-900 dark:text-white mb-4">Новые организации по неделям</h2>
+          <h2 className="text-sm font-semibold text-slate-900 dark:text-white mb-4">{t("newOrgsWeekly")}</h2>
           <div className="flex items-end gap-1.5 h-20">
             {orgWeekly.map((v, i) => (
               <div key={i} className="flex-1 flex flex-col items-center gap-1">
@@ -206,15 +202,15 @@ export default async function AdminStatsPage() {
           <div className="flex gap-1.5 mt-1">
             {Array.from({ length: WEEKS }).map((_, i) => (
               <div key={i} className="flex-1 text-center text-[8px] text-slate-300 dark:text-slate-700 leading-tight">
-                {i === WEEKS - 1 ? "эта" : i === WEEKS - 2 ? "пред" : weekLabel(WEEKS - 1 - i).split(" ")[0]}
+                {i === WEEKS - 1 ? t("weekCurrent") : i === WEEKS - 2 ? t("weekPrev") : weekLabel(WEEKS - 1 - i, dateLocale).split(" ")[0]}
               </div>
             ))}
           </div>
         </div>
 
-        {/* Сессии */}
+        {/* Sessions */}
         <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-5 py-5">
-          <h2 className="text-sm font-semibold text-slate-900 dark:text-white mb-4">Новые сессии по неделям</h2>
+          <h2 className="text-sm font-semibold text-slate-900 dark:text-white mb-4">{t("newSessionsWeekly")}</h2>
           <div className="flex items-end gap-1.5 h-20">
             {sessionWeekly.map((v, i) => (
               <div key={i} className="flex-1 flex flex-col items-center gap-1">
@@ -229,21 +225,21 @@ export default async function AdminStatsPage() {
           <div className="flex gap-1.5 mt-1">
             {Array.from({ length: WEEKS }).map((_, i) => (
               <div key={i} className="flex-1 text-center text-[8px] text-slate-300 dark:text-slate-700 leading-tight">
-                {i === WEEKS - 1 ? "эта" : i === WEEKS - 2 ? "пред" : weekLabel(WEEKS - 1 - i).split(" ")[0]}
+                {i === WEEKS - 1 ? t("weekCurrent") : i === WEEKS - 2 ? t("weekPrev") : weekLabel(WEEKS - 1 - i, dateLocale).split(" ")[0]}
               </div>
             ))}
           </div>
         </div>
       </div>
 
-      {/* ── Топ-10 организаций ── */}
+      {/* ── Top 10 orgs ── */}
       <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden">
         <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800">
-          <h2 className="text-sm font-semibold text-slate-900 dark:text-white">Топ организаций по голосованиям</h2>
+          <h2 className="text-sm font-semibold text-slate-900 dark:text-white">{t("topOrgs")}</h2>
         </div>
         <div className="divide-y divide-slate-100 dark:divide-slate-800">
           {topOrgs.length === 0 && (
-            <p className="px-5 py-8 text-center text-sm text-slate-400 dark:text-slate-600">Нет данных</p>
+            <p className="px-5 py-8 text-center text-sm text-slate-400 dark:text-slate-600">{t("noData")}</p>
           )}
           {topOrgs.map((org, idx) => (
             <div key={org.id} className="flex items-center gap-4 px-5 py-3">
@@ -257,12 +253,12 @@ export default async function AdminStatsPage() {
               </span>
               <div className="flex gap-4 shrink-0 text-right">
                 <div>
-                  <p className="text-sm font-semibold text-slate-900 dark:text-white tabular-nums">{(org.votes ?? 0).toLocaleString("ru-RU")}</p>
-                  <p className="text-[10px] text-slate-400 dark:text-slate-500">голосов</p>
+                  <p className="text-sm font-semibold text-slate-900 dark:text-white tabular-nums">{(org.votes ?? 0).toLocaleString(dateLocale)}</p>
+                  <p className="text-[10px] text-slate-400 dark:text-slate-500">{t("votes")}</p>
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-slate-700 dark:text-slate-300 tabular-nums">{org.sessions ?? 0}</p>
-                  <p className="text-[10px] text-slate-400 dark:text-slate-500">сессий</p>
+                  <p className="text-[10px] text-slate-400 dark:text-slate-500">{t("sessions")}</p>
                 </div>
               </div>
             </div>

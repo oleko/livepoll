@@ -1,6 +1,7 @@
 "use client";
 
 import { useTransition, useState } from "react";
+import { useTranslations } from "next-intl";
 import { setPlatformRole } from "@/lib/actions/admin";
 
 export function RoleToggle({
@@ -12,6 +13,7 @@ export function RoleToggle({
   currentRole: "user" | "platform_admin";
   isSelf: boolean;
 }) {
+  const t = useTranslations("Admin.roleToggle");
   const [pending, startTransition] = useTransition();
   const [role, setRole] = useState(currentRole);
 
@@ -30,7 +32,7 @@ export function RoleToggle({
     <button
       onClick={toggle}
       disabled={pending || isSelf}
-      title={isSelf ? "Нельзя изменить свою роль" : undefined}
+      title={isSelf ? t("cannotChangeSelf") : undefined}
       className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
         isSelf
           ? "cursor-default opacity-60"
@@ -41,7 +43,7 @@ export function RoleToggle({
           : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
       }`}
     >
-      {pending ? "…" : isAdmin ? "Платформ-админ" : "Пользователь"}
+      {pending ? "…" : isAdmin ? t("adminRole") : t("userRole")}
     </button>
   );
 }

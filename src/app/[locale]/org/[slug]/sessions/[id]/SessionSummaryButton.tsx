@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { generateSessionSummary } from "@/lib/actions/ai";
 
 export function SessionSummaryButton({ sessionId }: { sessionId: string }) {
+  const t = useTranslations("Org.session.summary");
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [summary, setSummary] = useState<string | null>(null);
@@ -16,7 +18,7 @@ export function SessionSummaryButton({ sessionId }: { sessionId: string }) {
     setError(null);
     const result = await generateSessionSummary(sessionId);
     setLoading(false);
-    if ("error" in result) setError(result.error ?? "Ошибка");
+    if ("error" in result) setError(result.error ?? t("error"));
     else setSummary(result.summary ?? null);
   }
 
@@ -26,14 +28,14 @@ export function SessionSummaryButton({ sessionId }: { sessionId: string }) {
         onClick={run}
         className="flex items-center gap-1.5 rounded-lg border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 px-3 py-1.5 text-sm font-medium text-indigo-600 dark:text-indigo-400 transition-colors"
       >
-        ✨ AI-итог
+        {t("trigger")}
       </button>
 
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
           <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-lg border border-slate-200 dark:border-slate-700 shadow-2xl overflow-hidden animate-modal-in">
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800">
-              <h2 className="font-semibold text-slate-900 dark:text-white">✨ AI-резюме мероприятия</h2>
+              <h2 className="font-semibold text-slate-900 dark:text-white">{t("title")}</h2>
               <button
                 onClick={() => setOpen(false)}
                 className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 w-7 h-7 flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
@@ -46,7 +48,7 @@ export function SessionSummaryButton({ sessionId }: { sessionId: string }) {
               {loading && (
                 <div className="flex flex-col items-center gap-3 py-8">
                   <div className="h-8 w-8 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin" />
-                  <p className="text-sm text-slate-500 dark:text-slate-400">YandexGPT анализирует результаты…</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">{t("loading")}</p>
                 </div>
               )}
 
@@ -67,7 +69,7 @@ export function SessionSummaryButton({ sessionId }: { sessionId: string }) {
                     }}
                     className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
                   >
-                    📋 Скопировать
+                    {t("copy")}
                   </button>
                 </div>
               )}

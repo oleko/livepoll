@@ -6,6 +6,7 @@
   },
   "Landing": {
     "nav": {
+      "ariaLabel": "Main navigation",
       "signIn": "Sign in",
       "getStarted": "Get started free"
     },
@@ -67,10 +68,20 @@
         { "title": "Schedule", "desc": "Current block highlighted, past blocks crossed out" },
         { "title": "Spin Wheel", "desc": "Prize draw or random participant selection in 3 seconds" }
       ],
-      "lineupTitle": "Event lineup"
+      "lineupTitle": "Event lineup",
+      "lineupItems": [
+        { "label": "Splash screen", "badge": "screen" },
+        { "label": "How would you rate the talk?", "badge": "poll" },
+        { "label": "Next speaker", "badge": "screen" },
+        { "label": "Questions for the speaker", "badge": "Q&A" },
+        { "label": "Prize draw", "badge": "wheel" },
+        { "label": "Final screen", "badge": "screen" }
+      ]
     },
     "quiz": {
       "badge": "Quiz mode",
+      "leaderboardLabel": "Leaderboard",
+      "correctAnswerLabel": "Correct answer",
       "heading1": "Correct answers are hidden.",
       "heading2": "Leaderboard on the main screen.",
       "desc": "Enable quiz mode and a poll becomes a game. Answers are hidden, results locked — you reveal them when you want. The room waits to see their place on the leaderboard.",
@@ -90,79 +101,83 @@
       ]
     },
     "pollTypes": {
-      "badge": "Poll formats",
-      "heading": "8 formats for any task",
-      "desc": "One click changes the question type. Mix formats within a single event.",
+      "heading": "8 poll formats",
+      "desc": "For any scenario: from room mood to team planning",
       "types": [
-        { "label": "Multiple choice" },
-        { "label": "Temperature" },
-        { "label": "Word cloud" },
-        { "label": "Emoji cloud" },
-        { "label": "Like / Dislike" },
-        { "label": "Q&A" },
-        { "label": "Planning Poker" },
-        { "label": "Idea wall" }
+        { "label": "Multiple choice", "desc": "Live bar chart, quiz mode, up to 5 answer options" },
+        { "label": "Word cloud", "desc": "Free-text answers: popular words appear larger" },
+        { "label": "Temperature scale", "desc": "Audience mood from cold to hot" },
+        { "label": "Emoji cloud", "desc": "One-tap emotional reaction from the room" },
+        { "label": "Like / Dislike", "desc": "Quick binary reaction: yes or no" },
+        { "label": "Planning Poker", "desc": "Estimate tasks without authority bias" },
+        { "label": "Q&A", "desc": "Moderated questions with upvotes and AI analysis" },
+        { "label": "Idea wall", "desc": "Colorful idea cards in real time" }
       ]
     },
     "howItWorks": {
-      "badge": "How it works",
-      "heading": "Three steps to your first poll",
+      "heading": "How it works",
       "steps": [
         {
-          "step": "1",
-          "title": "Create an event",
-          "desc": "Add polls and slides in a unified lineup. Templates speed up the start."
+          "step": "01",
+          "title": "Create your event",
+          "desc": "Add the poll types you need, set a timer or vote limit. Get a QR code and link for participants."
         },
         {
-          "step": "2",
-          "title": "Show the QR code",
-          "desc": "One screen with the code and the audience connects. No app, no sign-up."
+          "step": "02",
+          "title": "Participants scan the QR code",
+          "desc": "No apps, no sign-up. The browser opens straight into the voting screen. A phone is enough."
         },
         {
-          "step": "3",
-          "title": "Launch and analyse",
-          "desc": "Activate questions in real time. AI processes Q&A and prepares a summary."
+          "step": "03",
+          "title": "Run the room in real time",
+          "desc": "Launch polls, display questions on screen, watch results live. Everything syncs instantly."
         }
-      ],
-      "features": [
-        { "label": "QR code", "desc": "No app installation required" },
-        { "label": "Wi-Fi", "desc": "Works without participant internet" },
-        { "label": "Shield", "desc": "Data stored in Russia" }
       ]
     },
     "pricing": {
-      "badge": "Pricing",
-      "heading": "Start for free",
-      "desc": "Upgrade to a paid plan when you grow.",
+      "heading": "Pricing",
+      "desc": "Start for free, add capabilities as you grow",
       "plans": [
         {
           "name": "Free",
           "price": "₽0",
-          "period": "/mo",
-          "features": ["3 events per month", "Up to 5 polls", "Up to 30 participants", "All 8 formats", "Slides"],
+          "period": "forever",
+          "desc": "For getting started",
+          "features": ["Up to 30 participants", "3 events per month", "5 polls per session", "All 8 poll formats", "QR code + display screen"],
           "cta": "Get started free"
         },
         {
           "name": "Starter",
-          "price": "₽990",
-          "period": "/mo",
-          "badge": "Popular",
-          "features": ["Unlimited events", "Up to 10 polls", "Up to 100 participants", "AI session summary", "CSV/PDF export"],
+          "price": "₽490",
+          "period": "/month",
+          "desc": "For one-off talks",
+          "features": ["Up to 100 participants", "Unlimited events", "10 polls per session", "CSV / PNG export", "Event templates"],
           "cta": "Choose Starter"
         },
         {
           "name": "Pro",
-          "price": "₽2 490",
-          "period": "/mo",
-          "features": ["Unlimited events", "Unlimited polls", "Up to 500 participants", "White label", "Branding"],
-          "cta": "Choose Pro"
+          "price": "₽990",
+          "period": "/month",
+          "desc": "For regular events",
+          "features": ["Up to 500 participants", "Unlimited polls", "✨ AI analysis & AI summary", "Slides & presentations", "Timer & vote limits"],
+          "cta": "Try Pro"
+        },
+        {
+          "name": "Team",
+          "price": "₽2,490",
+          "period": "/month",
+          "desc": "For agencies & enterprises",
+          "features": ["Unlimited participants", "Up to 5 hosts", "White label", "Everything in Pro", "Priority support"],
+          "cta": "Contact us"
         }
       ]
     },
     "cta": {
-      "heading": "Ready to engage the room?",
-      "subtext": "Create your first event in 2 minutes. No credit card required.",
-      "button": "Get started free"
+      "heading1": "Your next talk.",
+      "heading2": "Fully under control.",
+      "subtext": "Polls, slides, quiz, and AI — all ready to go. Create your event in 2 minutes.",
+      "button": "Get started free",
+      "tagline": "Free plan forever"
     },
     "footer": {
       "product": "Product",
@@ -247,5 +262,575 @@
     "rank": "Rank",
     "score": "Score",
     "hiddenResults": "Results hidden"
+  },
+  "Org": {
+    "shared": {
+      "pollTypeLabel": {
+        "multiple_choice": "Multiple choice",
+        "temperature": "Temperature scale",
+        "qa": "Q&A",
+        "like_dislike": "Like / Dislike",
+        "word_cloud": "Word cloud",
+        "emoji_cloud": "Emoji cloud",
+        "planning_poker": "Planning Poker",
+        "idea_wall": "Idea wall"
+      },
+      "slideTypeLabel": {
+        "splash": "Splash",
+        "speaker": "Speaker",
+        "schedule": "Schedule",
+        "quote": "Quote",
+        "final": "Final",
+        "spin_wheel": "Spin Wheel",
+        "announcement": "Announcement",
+        "reveal": "Q&A reveal"
+      },
+      "sessionStatus": {
+        "draft": "Draft",
+        "active": "Live",
+        "ended": "Ended"
+      },
+      "questionStatus": {
+        "pending": "Pending",
+        "answered": "Answered",
+        "hidden": "Hidden"
+      }
+    },
+    "session": {
+      "page": {
+        "backLink": "← Events"
+      },
+      "controls": {
+        "start": "▶ Start",
+        "end": "End",
+        "confirmEnd": "End the event? Voting will be stopped."
+      },
+      "creationTabs": {
+        "pollTab": "📊 Poll",
+        "slideTab": "📽 Screen"
+      },
+      "connect": {
+        "participants": "Participants",
+        "code": "Code",
+        "copy": "Copy",
+        "copied": "Copied",
+        "share": "Share",
+        "screens": "Screens",
+        "projector": "Projector",
+        "projectorDesc": "For the audience",
+        "presenter": "Presenter",
+        "presenterDesc": "For your laptop",
+        "participant": "Participant",
+        "participantDesc": "Preview",
+        "maxBrand": "Max",
+        "shareText": "Join the poll — no sign-up, right from your phone!",
+        "emailSubject": "Poll — join us!",
+        "emailBody": "Hi!\n\nJoin the poll:\n{joinUrl}\n\nCode: {joinCode}\n\nNo sign-up needed.",
+        "maxShareText": "Join the poll!\n{joinUrl}"
+      },
+      "summary": {
+        "trigger": "✨ AI summary",
+        "title": "✨ AI event summary",
+        "loading": "YandexGPT is analysing the results…",
+        "error": "Error",
+        "copy": "📋 Copy"
+      },
+      "exportButton": {
+        "trigger": "Export ↓",
+        "csvLabel": "CSV",
+        "csvDesc": "Excel, Google Sheets",
+        "pdfLabel": "PDF",
+        "pdfDesc": "Print / save as PDF"
+      },
+      "addSlidePanel": {
+        "header": "📽 Add screen",
+        "create": "Create screen",
+        "creating": "Creating…",
+        "errorGeneric": "Error",
+        "splash": {
+          "title": "Event name *",
+          "subtitle": "Subtitle / topic",
+          "date": "Date",
+          "location": "Location"
+        },
+        "speaker": {
+          "name": "Name *",
+          "role": "Role",
+          "company": "Company",
+          "topic": "Talk topic",
+          "photoUrl": "Photo URL (optional)"
+        },
+        "schedule": {
+          "time": "10:00",
+          "block": "Block",
+          "addItem": "＋ Add item"
+        },
+        "quote": {
+          "text": "Quote text *",
+          "author": "Author (optional)"
+        },
+        "announcement": {
+          "text": "Announcement text *",
+          "timer": "Timer",
+          "noTimer": "No timer",
+          "sec15": "15 seconds",
+          "sec30": "30 seconds",
+          "min1": "1 minute",
+          "min2": "2 minutes",
+          "min5": "5 minutes"
+        },
+        "spinWheel": {
+          "title": "Title (optional)",
+          "optionsLabel": "Options (one per line) *",
+          "optionsPlaceholder": "Anna\nJohn\nMary\nPeter",
+          "tooLong": "Some options are longer than {max} characters — they will be trimmed"
+        },
+        "reveal": {
+          "question": "Question for the audience *",
+          "answer": "Correct answer",
+          "buzz": "\"I know!\" button for participants"
+        },
+        "final": {
+          "title": "Title *",
+          "subtitle": "Subtitle",
+          "url": "Link to materials"
+        }
+      },
+      "newPollForm": {
+        "success": "Poll added",
+        "templateTrigger": "From template",
+        "templateModalTitle": "📚 Poll templates",
+        "quizBadge": "🎯 Quiz mode",
+        "typeLabel": "Poll type",
+        "questionLabel": "Question",
+        "questionPlaceholder": "Enter your question...",
+        "optionsLabel": "Answer options",
+        "optionsHint": "(one per line)",
+        "optionsPlaceholder": "Option A\nOption B\nOption C",
+        "timerLabel": "Timer",
+        "noTimer": "No timer",
+        "sec30": "30 seconds",
+        "min1": "1 minute",
+        "min2": "2 minutes",
+        "min3": "3 minutes",
+        "min5": "5 minutes",
+        "min10": "10 minutes",
+        "maxAnswersLabel": "Answer choices",
+        "singleOption": "1 (single choice)",
+        "upToN": "up to {n}",
+        "maxLabel": "max.",
+        "voteLimitLabel": "Vote limit",
+        "voteLimitHint": "0 = no limit",
+        "allowRevote": "Allow revoting",
+        "quizModeLabel": "🎯 Quiz mode (correct answer)",
+        "correctAnswerLabel": "Correct answer",
+        "correctAnswerPlaceholder": "— choose from the options above —",
+        "explanationLabel": "Explanation",
+        "explanationOptional": "(optional)",
+        "explanationPlaceholder": "Short explanation for the audience...",
+        "questionsPerParticipant": "Questions per participant",
+        "submit": "Add poll"
+      },
+      "pollList": {
+        "slidePreview": {
+          "untitled": "Untitled",
+          "unnamed": "No name",
+          "schedule": "Schedule",
+          "quote": "Quote",
+          "finalScreen": "Final screen",
+          "slide": "Slide"
+        },
+        "slideEdit": {
+          "name": "Name *",
+          "subtitle": "Subtitle",
+          "date": "Date",
+          "location": "Location",
+          "fullName": "Name *",
+          "role": "Role",
+          "company": "Company",
+          "topic": "Talk topic",
+          "photoUrl": "Photo URL",
+          "quoteText": "Quote text *",
+          "author": "Author",
+          "time": "10:00",
+          "block": "Block",
+          "addItem": "＋ Add item",
+          "finalTitle": "Title *",
+          "finalUrl": "Link to materials",
+          "save": "Save",
+          "saving": "…",
+          "cancel": "Cancel"
+        },
+        "onScreen": "On screen",
+        "noSection": "No section",
+        "previewTitle": "Preview",
+        "editTitle": "Edit",
+        "duplicateTitle": "Duplicate",
+        "launchWheel": "🎡 Spin",
+        "hide": "Hide",
+        "show": "Show",
+        "deleteSlideConfirm": "Delete \"{title}\"?",
+        "copyToOtherEvent": "Copy to another event",
+        "copyTo": "Copy to:",
+        "questionPlaceholder": "Question",
+        "optionsPlaceholderShort": "Option A\nOption B",
+        "votesCount": "{count} votes",
+        "active": "Live",
+        "editWindowTitle": "Edit (10 min after creation)",
+        "confirmActivateOther": "Poll \"{title}\" is live — it will be closed. Continue?",
+        "launch": "Launch",
+        "onDisplay": "On screen",
+        "revealPoker": "🃏 Reveal",
+        "finalize": "Result",
+        "finish": "Close",
+        "removeFromDisplay": "Remove from screen",
+        "downloadCsvTitle": "Download CSV",
+        "downloadCsv": "↓ CSV",
+        "dragToSection": "Drag to a section",
+        "renameSectionTitle": "Rename",
+        "deleteSectionTitle": "Delete section",
+        "deleteSectionConfirm": "Delete section \"{title}\"? Polls will remain but lose their section.",
+        "addSection": "Add section",
+        "quickLabel": "Quick:",
+        "dayOne": "Day",
+        "dayN": "{n} days",
+        "sectionNamePlaceholder": "Section name...",
+        "daySectionName": "Day {n}",
+        "noPolls": "No polls",
+        "lineupEmptyTitle": "Lineup is empty",
+        "lineupEmptyDesc": "Add a poll or screen on the right",
+        "pollsDivider": "Polls",
+        "removeFromSection": "Remove from section",
+        "slideToNoSection": "Screen → No section",
+        "pollToNoSection": "Poll → No section",
+        "noSectionDivider": "No section",
+        "noVotes": "No votes",
+        "questionsReceived": "Questions received: {count}",
+        "voteActivityTitle": "Vote activity over time"
+      },
+      "qaPanel": {
+        "error": "Error",
+        "onScreen": "On screen",
+        "pinAdd": "📺 To screen",
+        "pinRemove": "📺 Remove",
+        "markAnswered": "✓ Answered",
+        "returnToPending": "↩ Reopen",
+        "hide": "Hide",
+        "show": "Show",
+        "aiButton": "✨ AI",
+        "aiAnalyzing": "Analysing...",
+        "openButton": "Open →",
+        "removeFromDisplay": "Remove from screen",
+        "waitingCount": "{count} pending",
+        "answeredCount": "{count} answered",
+        "hiddenCount": "{count} hidden",
+        "noQuestions": "No questions yet",
+        "modalTitle": "Questions",
+        "closeTitle": "Close (Esc)",
+        "searchPlaceholder": "Search question text...",
+        "tabPending": "Pending",
+        "tabAll": "All",
+        "tabAnswered": "Answered",
+        "tabHidden": "Hidden",
+        "aiAnalysisButton": "✨ AI analysis",
+        "noResultsSearch": "No questions found",
+        "noResultsEmpty": "Nothing here yet",
+        "footerPending": "{count} awaiting answer",
+        "footerAllDone": "All questions handled",
+        "escToClose": "Esc — close"
+      }
+    },
+    "layout": {
+      "events": "Events",
+      "team": "Team",
+      "settings": "Settings",
+      "platform": "⚙ Platform",
+      "help": "Help",
+      "account": "Account",
+      "signOut": "Sign out"
+    },
+    "dashboard": {
+      "title": "Events",
+      "activeNow": "{count} live now",
+      "newSession": "+ New event",
+      "emptyTitle": "No events yet",
+      "emptyDesc": "Create your first event to start collecting votes",
+      "createSession": "Create event"
+    },
+    "newSession": {
+      "title": "New event",
+      "subtitle": "After creating, add polls and activate the event",
+      "templateLabel": "Template",
+      "templateOptional": "(optional)",
+      "noTemplate": "No template",
+      "noTemplateDesc": "Blank event",
+      "pollCount": "{count} polls",
+      "previewTitle": "Polls to be created:",
+      "eventNameLabel": "Event name",
+      "eventNamePlaceholder": "e.g. DevConf 2025",
+      "createButton": "Create event",
+      "typeShort": {
+        "multiple_choice": "Choice",
+        "temperature": "Scale",
+        "qa": "Q&A",
+        "like_dislike": "Like",
+        "word_cloud": "Words",
+        "emoji_cloud": "Emoji",
+        "planning_poker": "Poker",
+        "idea_wall": "Ideas"
+      }
+    },
+    "members": {
+      "title": "Team",
+      "subtitle": "Manage event hosts",
+      "you": "(you)",
+      "invitePending": "Invitation sent",
+      "inviteSection": "Invite member",
+      "inviteSuccess": "Member added",
+      "inviteButton": "Invite",
+      "removeButton": "Remove"
+    },
+    "settings": {
+      "title": "Settings",
+      "orgSection": "Organization",
+      "orgName": "Name",
+      "orgUrl": "URL",
+      "orgCreated": "Created",
+      "planSection": "Plan",
+      "planChange": "Change plan →",
+      "sessionsPerMonth": "Events per month",
+      "pollsPerSession": "Polls per event",
+      "membersLimit": "Team members",
+      "planUpgradeFree": "Remove limits — upgrade to a paid plan",
+      "planUpgradePaid": "Change or renew plan"
+    },
+    "branding": {
+      "title": "Branding",
+      "logoLabel": "Logo",
+      "accentLabel": "Accent color",
+      "displayBgLabel": "Display screen background",
+      "displayBgImageLabel": "Display background image",
+      "displayFontLabel": "Screen font",
+      "displayHeaderLabel": "Display header text",
+      "whiteLabelLabel": "White label",
+      "uploadButton": "Upload",
+      "removeLogoButton": "Remove",
+      "logoAlt": "Logo",
+      "logoHint": "PNG, JPG, SVG, WebP — up to 2 MB",
+      "accentCustomTitle": "Custom color",
+      "accentPreview": "Button preview",
+      "bgDefault": "Default",
+      "bgDefaultHint": "Dark or light — follows the host's browser theme",
+      "bgCustom": "Custom color",
+      "bgCustomHint": "Specific background color, regardless of theme",
+      "bgImageHint": "Direct link to an image (16:9). Overrides background color.",
+      "fontSans": "Modern",
+      "fontSerif": "Classic",
+      "fontMono": "Technical",
+      "displayHeaderPlaceholder": "Defaults to the event name",
+      "displayHeaderHint": "e.g. «DevConf 2026» or «Morning block». If empty, the current event name is shown.",
+      "whiteLabelText": "Hide «Powered by LivePoll AI»",
+      "whiteLabelDesc": "Removes platform branding from participant and display screens",
+      "whiteLabelUnavailable": "Available on Team and Unlimited plans",
+      "whiteLabelLocked": "🔒 Unavailable",
+      "savingButton": "Saving...",
+      "savedButton": "✓ Saved",
+      "saveButton": "Save branding",
+      "presetIndigo": "Indigo",
+      "presetViolet": "Violet",
+      "presetBlue": "Blue",
+      "presetCyan": "Cyan",
+      "presetEmerald": "Emerald",
+      "presetPink": "Pink",
+      "presetAmber": "Amber"
+    },
+    "upgrade": {
+      "back": "← Settings",
+      "title": "Change plan",
+      "currentPlan": "Current plan:",
+      "popular": "Popular",
+      "perMonth": "/ mo",
+      "onRequest": "on request",
+      "currentBadge": "Current plan",
+      "downgradeNote": "Downgrading — contact us",
+      "testingButton": "Join beta testing →",
+      "contactButton": "Contact us",
+      "footerNote": "The service is in beta. Email {email} — an admin will set up the right plan manually.",
+      "requestDone": "✓ Request received — we'll get back to you within one business day",
+      "requesting": "Processing…",
+      "plans": {
+        "starter": {
+          "f1": "Up to 100 participants",
+          "f2": "Unlimited events",
+          "f3": "10 polls per session",
+          "f4": "CSV / PDF export",
+          "f5": "Event templates"
+        },
+        "pro": {
+          "f1": "Up to 500 participants",
+          "f2": "Unlimited polls",
+          "f3": "✨ AI analysis & AI summary",
+          "f4": "All slide and screen types",
+          "f5": "Timer, vote limit, Quiz"
+        },
+        "team": {
+          "f1": "Unlimited participants",
+          "f2": "Up to 5 team hosts",
+          "f3": "White label branding",
+          "f4": "All Pro features",
+          "f5": "Priority support"
+        }
+      }
+    }
+  },
+  "Admin": {
+    "layout": {
+      "navOrgs": "Organizations",
+      "navUsers": "Users",
+      "navFeedback": "Feedback",
+      "navStats": "Stats",
+      "signOut": "Sign out",
+      "myOrgMobile": "← My org",
+      "myOrg": "← My organization"
+    },
+    "orgs": {
+      "title": "Organizations",
+      "count": "{count} total",
+      "empty": "No organizations",
+      "planExpires": "Plan until {date}",
+      "sessionsMonth": "Events/mo: {used}/{limit}",
+      "membersCount": "Members: {used}/{limit}",
+      "totalSessions": "Total: {count}",
+      "thOrg": "Organization",
+      "thPlan": "Plan / until",
+      "thSessionsMonth": "Events / month",
+      "thMembers": "Members",
+      "thTotal": "Total events"
+    },
+    "deleteOrg": {
+      "confirmText": "Delete \"{name}\" and all its data?",
+      "deleteConfirm": "Yes, delete",
+      "cancel": "Cancel",
+      "delete": "Delete"
+    },
+    "orgPlan": {
+      "saved": "Saved",
+      "save": "Save",
+      "expires": "Expires: {date}",
+      "period1event": "1 event",
+      "period1mo": "1 mo",
+      "period6mo": "6 mo",
+      "period1yr": "1 yr",
+      "expiresTitle": "Plan expiry date (empty = unlimited)"
+    },
+    "feedback": {
+      "title": "Feedback",
+      "total": "Total entries: {count}",
+      "empty": "No submissions yet",
+      "typeBug": "Bug",
+      "typeIdea": "Idea",
+      "typeQuestion": "Question"
+    },
+    "stats": {
+      "title": "Platform statistics",
+      "subtitle": "Real-time data",
+      "metricOrgs": "Organizations",
+      "metricUsers": "Users",
+      "metricSessions": "Total sessions",
+      "metricActive": "Active now",
+      "metricVotes": "Votes",
+      "metricFree": "Free plan",
+      "metricOrgsSub": "+{count} this month",
+      "metricActiveSub": "sessions",
+      "metricFreeSub": "of {total} orgs",
+      "planDistribution": "Plan distribution",
+      "newOrgsWeekly": "New organizations by week",
+      "newSessionsWeekly": "New sessions by week",
+      "weekCurrent": "this",
+      "weekPrev": "prev",
+      "topOrgs": "Top organizations by votes",
+      "noData": "No data",
+      "votes": "votes",
+      "sessions": "sessions"
+    },
+    "users": {
+      "adminsTitle": "Platform administrators",
+      "usersTitle": "Users",
+      "noUsers": "No users",
+      "thName": "Name",
+      "thEmail": "Email",
+      "thRegistered": "Registered",
+      "thConfirmation": "Confirmation",
+      "emailConfirmed": "✓ Email confirmed",
+      "emailConfirmedShort": "✓ Confirmed"
+    },
+    "createUser": {
+      "trigger": "+ New user",
+      "title": "New user",
+      "fieldName": "Name",
+      "fieldEmail": "Email *",
+      "fieldPassword": "Password *",
+      "fieldRole": "Role",
+      "namePlaceholder": "John Smith",
+      "passwordPlaceholder": "Minimum 8 characters",
+      "roleUser": "User",
+      "roleAdmin": "Platform administrator",
+      "cancel": "Cancel",
+      "submit": "Create",
+      "submitting": "Creating…"
+    },
+    "confirmEmail": {
+      "confirm": "Confirm"
+    },
+    "deleteUser": {
+      "confirmText": "Delete \"{name}\"?",
+      "deleteConfirm": "Yes, delete",
+      "cancel": "Cancel",
+      "delete": "Delete"
+    },
+    "roleToggle": {
+      "adminRole": "Platform admin",
+      "userRole": "User",
+      "cannotChangeSelf": "Cannot change your own role"
+    }
+  },
+  "Help": {
+    "layout": {
+      "helpCenter": "Help Center",
+      "signIn": "Sign in →",
+      "footer": "© 2025 Oleg Kostin",
+      "articles": "Articles"
+    },
+    "nav": {
+      "gettingStarted": "Getting started",
+      "participants": "For participants",
+      "pollTypes": "Poll types",
+      "displayScreen": "Display screen",
+      "slides": "Slides & screens",
+      "qaAndAi": "Q&A & AI analysis",
+      "plans": "Plans & limits",
+      "team": "Team",
+      "account": "Account",
+      "changelog": "Changelog"
+    },
+    "index": {
+      "title": "Help Center",
+      "subtitle": "Everything you need to run LivePoll AI — from first launch to team setup.",
+      "contactTitle": "Still have questions?",
+      "contactText": "Email us at {email} — we'll respond within one business day.",
+      "back": "← Help",
+      "desc": {
+        "gettingStarted": "Create your first event and run a poll in five minutes",
+        "participants": "How to join and vote without registration or apps",
+        "pollTypes": "All eight poll formats explained, with guidance on when to use each",
+        "displayScreen": "Projector screen: what it shows and how to open it",
+        "slides": "Title cards, speaker cards, schedules, and finale screens for the projector",
+        "qaAndAi": "Audience questions, upvoting, and AI topic analysis",
+        "plans": "What each plan includes and how limits are counted",
+        "team": "Adding organization members and managing access",
+        "account": "Changing name, email, password, and deleting your account",
+        "changelog": "Platform change history — new features and improvements by version"
+      }
+    }
   }
 }

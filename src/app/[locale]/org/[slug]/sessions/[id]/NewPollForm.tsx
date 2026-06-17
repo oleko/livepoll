@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import { useTranslations } from "next-intl";
 import { createPoll } from "@/lib/actions/polls";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -9,15 +10,15 @@ import { POLL_TEMPLATE_CATEGORIES } from "@/lib/poll-templates";
 
 type SectionItem = { id: string; title: string };
 
-const POLL_TYPES: { value: PollType; label: string; hasOptions: boolean }[] = [
-  { value: "multiple_choice", label: "Множественный выбор", hasOptions: true },
-  { value: "temperature",     label: "Шкала температуры",  hasOptions: false },
-  { value: "like_dislike",    label: "Лайк / Дизлайк",     hasOptions: false },
-  { value: "word_cloud",      label: "Облако слов",         hasOptions: false },
-  { value: "emoji_cloud",     label: "Облако эмодзи",       hasOptions: false },
-  { value: "planning_poker",  label: "Planning Poker",      hasOptions: false },
-  { value: "qa",              label: "Q&A",                 hasOptions: false },
-  { value: "idea_wall",       label: "Стена идей",           hasOptions: false },
+const POLL_TYPES: { value: PollType; hasOptions: boolean }[] = [
+  { value: "multiple_choice", hasOptions: true },
+  { value: "temperature",     hasOptions: false },
+  { value: "like_dislike",    hasOptions: false },
+  { value: "word_cloud",      hasOptions: false },
+  { value: "emoji_cloud",     hasOptions: false },
+  { value: "planning_poker",  hasOptions: false },
+  { value: "qa",              hasOptions: false },
+  { value: "idea_wall",       hasOptions: false },
 ];
 
 export function NewPollForm({
@@ -29,6 +30,8 @@ export function NewPollForm({
   orgSlug: string;
   sections?: SectionItem[];
 }) {
+  const t = useTranslations("Org.session.newPollForm");
+  const tShared = useTranslations("Org.shared");
   const [type, setType] = useState<PollType>("multiple_choice");
   const [optionsText, setOptionsText] = useState("");
   const [titleValue, setTitleValue] = useState("");
@@ -39,7 +42,7 @@ export function NewPollForm({
   const [state, action, isPending] = useActionState(createPoll, null);
 
   const parsedOptions = optionsText.split("\n").map((o) => o.trim()).filter(Boolean);
-  const selectedType = POLL_TYPES.find((t) => t.value === type)!;
+  const selectedType = POLL_TYPES.find((pt) => pt.value === type)!;
 
   function applyTemplate(tpl: typeof POLL_TEMPLATE_CATEGORIES[number]["templates"][number]) {
     setType(tpl.type);
@@ -59,7 +62,7 @@ export function NewPollForm({
         <p className="text-xs text-red-500 dark:text-red-400">{state.error}</p>
       )}
       {state && "success" in state && (
-        <p className="text-xs text-green-600 dark:text-green-400">Опрос добавлен</p>
+        <p className="text-xs text-green-600 dark:text-green-400">{t("success")}</p>
       )}
 
       {/* Template trigger */}
@@ -69,7 +72,7 @@ export function NewPollForm({
         className="flex items-center gap-1.5 text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-300 transition-colors"
       >
         <span>📚</span>
-        Из шаблона
+        {t("templateTrigger")}
       </button>
 
       {/* Template modal */}
@@ -79,7 +82,7 @@ export function NewPollForm({
                style={{ maxHeight: "80vh" }}>
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-slate-800">
-              <h2 className="text-sm font-semibold text-slate-900 dark:text-white">📚 Шаблоны опросов</h2>
+              <h2 className="text-sm font-semibold text-slate-900 dark:text-white">{t("templateModalTitle")}</h2>
               <button
                 type="button"
                 onClick={() => setShowTemplates(false)}
@@ -128,7 +131,7 @@ export function NewPollForm({
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-slate-800 dark:text-slate-200 leading-snug">{tpl.title}</p>
                       {tpl.quiz_mode && (
-                        <span className="text-[11px] text-amber-600 dark:text-amber-400 font-medium">🎯 Квиз-режим</span>
+                        <span className="text-[11px] text-amber-600 dark:text-amber-400 font-medium">{t("quizBadge")}</span>
                       )}
                     </div>
                   </button>
@@ -140,23 +143,23 @@ export function NewPollForm({
       )}
 
       <div className="flex flex-col gap-1.5">
-        <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Тип опроса</label>
+        <label className="text-sm font-medium text-slate-700 dark:text-slate-300">{t("typeLabel")}</label>
         <select
           name="type"
           value={type}
           onChange={(e) => setType(e.target.value as PollType)}
           className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
         >
-          {POLL_TYPES.map((t) => (
-            <option key={t.value} value={t.value}>{t.label}</option>
+          {POLL_TYPES.map((pt) => (
+            <option key={pt.value} value={pt.value}>{tShared(`pollTypeLabel.${pt.value}`)}</option>
           ))}
         </select>
       </div>
 
       <Input
-        label="Вопрос"
+        label={t("questionLabel")}
         name="title"
-        placeholder="Введите вопрос..."
+        placeholder={t("questionPlaceholder")}
         value={titleValue}
         onChange={(e) => setTitleValue(e.target.value)}
         required
@@ -165,41 +168,41 @@ export function NewPollForm({
       {selectedType.hasOptions && (
         <div className="flex flex-col gap-1.5">
           <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
-            Варианты ответов
-            <span className="text-slate-400 dark:text-slate-500 font-normal ml-1">(каждый с новой строки)</span>
+            {t("optionsLabel")}
+            <span className="text-slate-400 dark:text-slate-500 font-normal ml-1">{t("optionsHint")}</span>
           </label>
           <textarea
             name="options"
             rows={4}
             value={optionsText}
             onChange={(e) => setOptionsText(e.target.value)}
-            placeholder={"Вариант А\nВариант Б\nВариант В"}
+            placeholder={t("optionsPlaceholder")}
             className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
           />
         </div>
       )}
 
       <div className="flex flex-col gap-1.5">
-        <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Таймер</label>
+        <label className="text-sm font-medium text-slate-700 dark:text-slate-300">{t("timerLabel")}</label>
         <select
           name="duration"
           defaultValue="0"
           className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
         >
-          <option value="0">Без таймера</option>
-          <option value="30">30 секунд</option>
-          <option value="60">1 минута</option>
-          <option value="120">2 минуты</option>
-          <option value="180">3 минуты</option>
-          <option value="300">5 минут</option>
-          <option value="600">10 минут</option>
+          <option value="0">{t("noTimer")}</option>
+          <option value="30">{t("sec30")}</option>
+          <option value="60">{t("min1")}</option>
+          <option value="120">{t("min2")}</option>
+          <option value="180">{t("min3")}</option>
+          <option value="300">{t("min5")}</option>
+          <option value="600">{t("min10")}</option>
         </select>
       </div>
 
       {type === "multiple_choice" && (
         <div className="flex items-center justify-between gap-3">
           <label className="text-sm font-medium text-slate-700 dark:text-slate-300 shrink-0">
-            Вариантов выбора
+            {t("maxAnswersLabel")}
           </label>
           <div className="flex items-center gap-2">
             <select
@@ -208,17 +211,17 @@ export function NewPollForm({
               className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
             >
               {[1,2,3,4,5].map(n => (
-                <option key={n} value={n}>{n === 1 ? "1 (одиночный)" : `до ${n}`}</option>
+                <option key={n} value={n}>{n === 1 ? t("singleOption") : t("upToN", { n })}</option>
               ))}
             </select>
-            <span className="text-xs text-slate-400 dark:text-slate-500 shrink-0">макс.</span>
+            <span className="text-xs text-slate-400 dark:text-slate-500 shrink-0">{t("maxLabel")}</span>
           </div>
         </div>
       )}
 
       <div className="flex items-center justify-between gap-3">
         <label className="text-sm font-medium text-slate-700 dark:text-slate-300 shrink-0">
-          Лимит голосов
+          {t("voteLimitLabel")}
         </label>
         <div className="flex items-center gap-2">
           <input
@@ -229,7 +232,7 @@ export function NewPollForm({
             defaultValue="0"
             className="w-20 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-white text-center focus:outline-none focus:ring-2 focus:ring-indigo-500"
           />
-          <span className="text-xs text-slate-400 dark:text-slate-500 shrink-0">0 = без лимита</span>
+          <span className="text-xs text-slate-400 dark:text-slate-500 shrink-0">{t("voteLimitHint")}</span>
         </div>
       </div>
 
@@ -240,7 +243,7 @@ export function NewPollForm({
             type="checkbox"
             className="h-4 w-4 rounded border-slate-300 dark:border-slate-600 accent-indigo-500"
           />
-          <span className="text-sm text-slate-700 dark:text-slate-300">Разрешить переголосовать</span>
+          <span className="text-sm text-slate-700 dark:text-slate-300">{t("allowRevote")}</span>
         </label>
       )}
 
@@ -253,33 +256,33 @@ export function NewPollForm({
             onChange={(e) => setQuizMode(e.target.checked)}
             className="h-4 w-4 rounded border-slate-300 dark:border-slate-600 accent-indigo-500"
           />
-          <span className="text-sm text-slate-700 dark:text-slate-300">🎯 Квиз-режим (правильный ответ)</span>
+          <span className="text-sm text-slate-700 dark:text-slate-300">{t("quizModeLabel")}</span>
         </label>
       )}
 
       {quizMode && type === "multiple_choice" && (
         <div className="flex flex-col gap-2 rounded-lg border border-indigo-200 dark:border-indigo-900 bg-indigo-50/50 dark:bg-indigo-950/30 p-3">
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-slate-600 dark:text-slate-400">Правильный ответ</label>
+            <label className="text-xs font-medium text-slate-600 dark:text-slate-400">{t("correctAnswerLabel")}</label>
             <select
               name="correct_option"
               value={correctOption}
               onChange={(e) => setCorrectOption(e.target.value)}
               className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
             >
-              <option value="">— выберите из вариантов выше —</option>
+              <option value="">{t("correctAnswerPlaceholder")}</option>
               {parsedOptions.map((opt) => (
                 <option key={opt} value={opt}>{opt}</option>
               ))}
             </select>
           </div>
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-slate-600 dark:text-slate-400">Пояснение <span className="font-normal text-slate-400">(необязательно)</span></label>
+            <label className="text-xs font-medium text-slate-600 dark:text-slate-400">{t("explanationLabel")} <span className="font-normal text-slate-400">{t("explanationOptional")}</span></label>
             <textarea
               name="explanation"
               rows={2}
               maxLength={200}
-              placeholder="Краткое пояснение для аудитории..."
+              placeholder={t("explanationPlaceholder")}
               className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
             />
           </div>
@@ -289,7 +292,7 @@ export function NewPollForm({
       {type === "qa" && (
         <div className="flex items-center justify-between gap-3">
           <label className="text-sm font-medium text-slate-700 dark:text-slate-300 shrink-0">
-            Вопросов от участника
+            {t("questionsPerParticipant")}
           </label>
           <div className="flex items-center gap-2">
             <select
@@ -301,13 +304,13 @@ export function NewPollForm({
                 <option key={n} value={n}>{n}</option>
               ))}
             </select>
-            <span className="text-xs text-slate-400 dark:text-slate-500 shrink-0">макс.</span>
+            <span className="text-xs text-slate-400 dark:text-slate-500 shrink-0">{t("maxLabel")}</span>
           </div>
         </div>
       )}
 
       <Button type="submit" loading={isPending} className="w-full mt-1">
-        Добавить опрос
+        {t("submit")}
       </Button>
     </form>
   );

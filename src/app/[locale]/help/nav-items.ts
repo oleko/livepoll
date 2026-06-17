@@ -1,12 +1,16 @@
 export const NAV_ITEMS = [
-  { slug: "getting-started", title: "Быстрый старт",       icon: "🚀" },
-  { slug: "participants",    title: "Для участников",       icon: "📱" },
-  { slug: "poll-types",     title: "Типы опросов",          icon: "📊" },
-  { slug: "display-screen", title: "Дисплейный экран",      icon: "📺" },
-  { slug: "slides",         title: "Экраны и презентация",   icon: "📽" },
-  { slug: "qa-and-ai",      title: "Q&A и AI-анализ",       icon: "✨" },
-  { slug: "plans",          title: "Тарифы и лимиты",       icon: "💳" },
-  { slug: "team",           title: "Команда",               icon: "👥" },
-  { slug: "account",        title: "Аккаунт",               icon: "👤" },
-  { slug: "changelog",      title: "История обновлений",    icon: "📋" },
+  { slug: "getting-started", icon: "🚀" },
+  { slug: "participants",    icon: "📱" },
+  { slug: "poll-types",     icon: "📊" },
+  { slug: "display-screen", icon: "📺" },
+  { slug: "slides",         icon: "📽" },
+  { slug: "qa-and-ai",      icon: "✨" },
+  { slug: "plans",          icon: "💳" },
+  { slug: "team",           icon: "👥" },
+  { slug: "account",        icon: "👤" },
+  { slug: "changelog",      icon: "📋" },
 ];
+
+export function slugToNavKey(slug: string): string {
+  return slug.replace(/-([a-z])/g, (_, c: string) => c.toUpperCase());
+}

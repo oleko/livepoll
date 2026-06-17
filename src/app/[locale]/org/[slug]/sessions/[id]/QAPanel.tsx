@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { createClient } from "@/lib/supabase/client";
 import { updateQuestionStatus, pinQuestion, deleteQuestion } from "@/lib/actions/polls";
 import { summarizeQuestions } from "@/lib/actions/ai";
@@ -15,12 +16,6 @@ type Question = {
 
 type Filter = "pending" | "all" | "answered" | "hidden";
 
-const STATUS_LABEL: Record<Question["status"], string> = {
-  pending:  "Ожидает",
-  answered: "Отвечен",
-  hidden:   "Скрыт",
-};
-
 function QuestionCard({
   q,
   pinnedId,
@@ -34,6 +29,8 @@ function QuestionCard({
   onStatus: (q: Question, s: Question["status"]) => void;
   onDelete: (q: Question) => void;
 }) {
+  const t = useTranslations("Org.session.qaPanel");
+  const tShared = useTranslations("Org.shared");
   const isPinned = pinnedId === q.id;
   return (
     <div
@@ -49,7 +46,7 @@ function QuestionCard({
     >
       {isPinned && (
         <p className="text-[11px] font-semibold text-indigo-500 dark:text-indigo-400 mb-2 flex items-center gap-1">
-          <span>📺</span> На экране
+          <span>📺</span> {t("onScreen")}
         </p>
       )}
       <p className="text-sm text-slate-900 dark:text-white leading-relaxed mb-3">{q.text}</p>
@@ -59,7 +56,7 @@ function QuestionCard({
           q.status === "hidden"   ? "text-slate-400 dark:text-slate-500" :
           "text-slate-400 dark:text-slate-500"
         }`}>
-          {STATUS_LABEL[q.status]}
+          {tShared(`questionStatus.${q.status}`)}
           {q.upvotes > 0 && <span className="ml-1.5 text-slate-300 dark:text-slate-600">+{q.upvotes}</span>}
         </span>
         <div className="flex gap-1 flex-wrap">
@@ -69,26 +66,26 @@ function QuestionCard({
               active={isPinned}
               activeClass="bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border-indigo-400/30"
             >
-              {isPinned ? "📺 Убрать" : "📺 На экран"}
+              {isPinned ? t("pinRemove") : t("pinAdd")}
             </ActionBtn>
           )}
           {q.status === "pending" && (
             <ActionBtn onClick={() => onStatus(q, "answered")} className="text-green-600 dark:text-green-400 hover:bg-green-500/10">
-              ✓ Отвечен
+              {t("markAnswered")}
             </ActionBtn>
           )}
           {q.status === "answered" && (
             <ActionBtn onClick={() => onStatus(q, "pending")} className="text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800">
-              ↩ Вернуть
+              {t("returnToPending")}
             </ActionBtn>
           )}
           {q.status !== "hidden" ? (
             <ActionBtn onClick={() => onStatus(q, "hidden")} className="text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">
-              Скрыть
+              {t("hide")}
             </ActionBtn>
           ) : (
             <ActionBtn onClick={() => onStatus(q, "pending")} className="text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">
-              Показать
+              {t("show")}
             </ActionBtn>
           )}
           <ActionBtn onClick={() => onDelete(q)} className="text-red-400 hover:bg-red-500/10">
@@ -137,6 +134,7 @@ export function QAPanel({
   orgSlug: string;
   initialQuestions: Question[];
 }) {
+  const t = useTranslations("Org.session.qaPanel");
   const [questions, setQuestions]   = useState<Question[]>(initialQuestions);
   const [pinnedId, setPinnedId]     = useState<string | null>(null);
   const [aiSummary, setAiSummary]   = useState<string | null>(null);
@@ -220,7 +218,7 @@ export function QAPanel({
     setAiSummary(null);
     const result = await summarizeQuestions(texts);
     setAiLoading(false);
-    setAiSummary(result.summary ?? result.error ?? "Ошибка");
+    setAiSummary(result.summary ?? result.error ?? t("error"));
   }
 
   const pending  = questions.filter((q) => q.status === "pending");
@@ -239,10 +237,10 @@ export function QAPanel({
   })();
 
   const TABS: { key: Filter; label: string; count: number }[] = [
-    { key: "pending",  label: "Ожидают",  count: pending.length  },
-    { key: "all",      label: "Все",      count: questions.length },
-    { key: "answered", label: "Отвечены", count: answered.length  },
-    { key: "hidden",   label: "Скрытые",  count: hidden.length    },
+    { key: "pending",  label: t("tabPending"),  count: pending.length  },
+    { key: "all",      label: t("tabAll"),      count: questions.length },
+    { key: "answered", label: t("tabAnswered"), count: answered.length  },
+    { key: "hidden",   label: t("tabHidden"),   count: hidden.length    },
   ];
 
   return (
@@ -270,14 +268,14 @@ export function QAPanel({
               disabled={aiLoading || questions.filter((q) => q.status !== "hidden").length === 0}
               className="rounded-lg bg-indigo-600/10 border border-indigo-600/20 px-2.5 py-1 text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:bg-indigo-600/20 disabled:opacity-40 transition-colors"
             >
-              {aiLoading ? "…" : "✨ AI"}
+              {aiLoading ? "…" : t("aiButton")}
             </button>
             <button
               type="button"
               onClick={handleOpen}
               className="rounded-lg border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 bg-white dark:bg-slate-800 px-2.5 py-1 text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors"
             >
-              Открыть →
+              {t("openButton")}
             </button>
           </div>
         </div>
@@ -285,7 +283,7 @@ export function QAPanel({
         {aiSummary && (
           <div className="mb-3 rounded-lg bg-indigo-600/10 border border-indigo-600/20 p-3 text-xs text-slate-700 dark:text-slate-300 whitespace-pre-line">
             <div className="flex justify-between items-start gap-2 mb-1">
-              <span className="font-semibold text-indigo-600 dark:text-indigo-400">✨ AI</span>
+              <span className="font-semibold text-indigo-600 dark:text-indigo-400">{t("aiButton")}</span>
               <button onClick={() => setAiSummary(null)} className="text-slate-400 hover:text-slate-600 text-base leading-none">×</button>
             </div>
             {aiSummary}
@@ -294,23 +292,23 @@ export function QAPanel({
 
         {pinnedQ && (
           <div className="mb-3 rounded-lg border border-indigo-400/30 bg-indigo-500/5 dark:bg-indigo-500/10 px-3 py-2.5">
-            <p className="text-[11px] font-semibold text-indigo-500 dark:text-indigo-400 mb-1">📺 На экране</p>
+            <p className="text-[11px] font-semibold text-indigo-500 dark:text-indigo-400 mb-1">📺 {t("onScreen")}</p>
             <p className="text-xs text-slate-700 dark:text-slate-300 line-clamp-2">{pinnedQ.text}</p>
             <button
               type="button"
               onClick={() => handlePin(pinnedQ)}
               className="mt-1.5 text-[11px] text-indigo-500 dark:text-indigo-400 hover:underline"
             >
-              Убрать с экрана
+              {t("removeFromDisplay")}
             </button>
           </div>
         )}
 
         <div className="flex gap-3 text-xs text-slate-400 dark:text-slate-500">
-          {pending.length > 0  && <span className="text-amber-500 dark:text-amber-400 font-medium">{pending.length} ожидают</span>}
-          {answered.length > 0 && <span>{answered.length} отвечены</span>}
-          {hidden.length > 0   && <span>{hidden.length} скрыты</span>}
-          {questions.length === 0 && <span>Вопросов пока нет</span>}
+          {pending.length > 0  && <span className="text-amber-500 dark:text-amber-400 font-medium">{t("waitingCount", { count: pending.length })}</span>}
+          {answered.length > 0 && <span>{t("answeredCount", { count: answered.length })}</span>}
+          {hidden.length > 0   && <span>{t("hiddenCount", { count: hidden.length })}</span>}
+          {questions.length === 0 && <span>{t("noQuestions")}</span>}
         </div>
       </div>
 
@@ -327,7 +325,7 @@ export function QAPanel({
             {/* Modal header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-slate-800 shrink-0">
               <h2 className="font-semibold text-slate-900 dark:text-white">
-                Вопросы
+                {t("modalTitle")}
                 <span className="ml-2 text-slate-400 dark:text-slate-500 font-normal text-sm">
                   ({questions.length})
                 </span>
@@ -336,7 +334,7 @@ export function QAPanel({
                 type="button"
                 onClick={() => setOpen(false)}
                 className="rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 w-8 h-8 flex items-center justify-center transition-colors text-lg"
-                title="Закрыть (Esc)"
+                title={t("closeTitle")}
               >
                 ×
               </button>
@@ -348,7 +346,7 @@ export function QAPanel({
                 type="search"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Поиск по тексту вопроса..."
+                placeholder={t("searchPlaceholder")}
                 className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
               <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -379,7 +377,7 @@ export function QAPanel({
                   disabled={aiLoading || questions.filter((q) => q.status !== "hidden").length === 0}
                   className="rounded-lg bg-indigo-600/10 border border-indigo-600/20 px-3 py-1 text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:bg-indigo-600/20 disabled:opacity-40 transition-colors shrink-0"
                 >
-                  {aiLoading ? "Анализирую..." : "✨ AI-анализ"}
+                  {aiLoading ? t("aiAnalyzing") : t("aiAnalysisButton")}
                 </button>
               </div>
             </div>
@@ -388,7 +386,7 @@ export function QAPanel({
             {aiSummary && (
               <div className="mx-5 mt-4 rounded-xl bg-indigo-600/10 border border-indigo-600/20 p-4 shrink-0">
                 <div className="flex justify-between items-start gap-2 mb-2">
-                  <span className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">✨ AI-анализ</span>
+                  <span className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">{t("aiAnalysisButton")}</span>
                   <button onClick={() => setAiSummary(null)} className="text-slate-400 hover:text-slate-600 text-lg leading-none">×</button>
                 </div>
                 <p className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-line leading-relaxed">{aiSummary}</p>
@@ -400,7 +398,7 @@ export function QAPanel({
               {filtered.length === 0 ? (
                 <div className="py-16 text-center">
                   <p className="text-slate-400 dark:text-slate-500 text-sm">
-                    {search ? "Вопросов не найдено" : "В этом разделе пусто"}
+                    {search ? t("noResultsSearch") : t("noResultsEmpty")}
                   </p>
                 </div>
               ) : (
@@ -421,10 +419,10 @@ export function QAPanel({
             <div className="px-5 py-3 border-t border-slate-100 dark:border-slate-800 shrink-0 flex items-center justify-between text-xs text-slate-400 dark:text-slate-500">
               <span>
                 {pending.length > 0
-                  ? <span className="text-amber-500 dark:text-amber-400 font-medium">{pending.length} ожидают ответа</span>
-                  : "Все вопросы обработаны"}
+                  ? <span className="text-amber-500 dark:text-amber-400 font-medium">{t("footerPending", { count: pending.length })}</span>
+                  : t("footerAllDone")}
               </span>
-              <span>Esc — закрыть</span>
+              <span>{t("escToClose")}</span>
             </div>
           </div>
         </div>

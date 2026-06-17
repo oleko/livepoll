@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { NewPollForm } from "./NewPollForm";
 import { AddSlidePanel } from "./AddSlidePanel";
 
@@ -15,6 +16,7 @@ export function CreationTabs({
   orgSlug: string;
   sections: SectionItem[];
 }) {
+  const t = useTranslations("Org.session.creationTabs");
   const [tab, setTab] = useState<"poll" | "slide">("poll");
 
   return (
@@ -30,7 +32,7 @@ export function CreationTabs({
               : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
           }`}
         >
-          📊 Опрос
+          {t("pollTab")}
         </button>
         <button
           type="button"
@@ -41,7 +43,7 @@ export function CreationTabs({
               : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
           }`}
         >
-          📽 Экран
+          {t("slideTab")}
         </button>
       </div>
 

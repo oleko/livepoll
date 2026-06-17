@@ -2,14 +2,9 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { getTranslations, getLocale } from "next-intl/server";
 import { Button } from "@/components/ui/Button";
 import type { Session } from "@/types/database";
-
-const STATUS_LABEL: Record<Session["status"], string> = {
-  draft:  "Черновик",
-  active: "Идёт",
-  ended:  "Завершено",
-};
 
 const STATUS_COLOR: Record<Session["status"], string> = {
   draft:  "text-slate-500 bg-slate-100 dark:text-slate-400 dark:bg-slate-800",
@@ -23,6 +18,9 @@ export default async function OrgDashboardPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
+  const t = await getTranslations("Org.dashboard");
+  const tShared = await getTranslations("Org.shared");
+  const locale = await getLocale();
   const supabase = await createClient();
   const admin = createAdminClient();
 
@@ -77,26 +75,26 @@ export default async function OrgDashboardPage({
     <div>
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-slate-900 dark:text-white">Мероприятия</h1>
+          <h1 className="text-xl font-semibold text-slate-900 dark:text-white">{t("title")}</h1>
           {activeSessions > 0 && (
             <p className="mt-1 text-sm text-green-600 dark:text-green-400">
-              {activeSessions} активных сейчас
+              {t("activeNow", { count: activeSessions })}
             </p>
           )}
         </div>
         <Link href={`/org/${slug}/sessions/new`}>
-          <Button>+ Новое мероприятие</Button>
+          <Button>{t("newSession")}</Button>
         </Link>
       </div>
 
       {!sessions || sessions.length === 0 ? (
         <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50 p-16 text-center">
-          <p className="text-slate-500 dark:text-slate-400 text-lg mb-2">Нет мероприятий</p>
+          <p className="text-slate-500 dark:text-slate-400 text-lg mb-2">{t("emptyTitle")}</p>
           <p className="text-slate-400 dark:text-slate-600 text-sm mb-6">
-            Создайте первое мероприятие чтобы начать принимать голоса
+            {t("emptyDesc")}
           </p>
           <Link href={`/org/${slug}/sessions/new`}>
-            <Button>Создать мероприятие</Button>
+            <Button>{t("createSession")}</Button>
           </Link>
         </div>
       ) : (
@@ -112,7 +110,7 @@ export default async function OrgDashboardPage({
                   <p className="font-medium text-slate-900 dark:text-white truncate">{session.title}</p>
                   <div className="flex items-center gap-3 mt-0.5 flex-wrap">
                     <p className="text-sm text-slate-400 dark:text-slate-500">
-                      {new Date(session.created_at).toLocaleDateString("ru-RU")}
+                      {new Date(session.created_at).toLocaleDateString(locale === "ru" ? "ru-RU" : "en-US")}
                     </p>
                     {(pollCountBySession[session.id] ?? 0) > 0 && (
                       <span className="text-xs text-slate-400 dark:text-slate-500">
@@ -128,7 +126,7 @@ export default async function OrgDashboardPage({
                 </div>
               </div>
               <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium ${STATUS_COLOR[session.status]}`}>
-                {STATUS_LABEL[session.status]}
+                {tShared(`sessionStatus.${session.status}`)}
               </span>
             </Link>
           ))}

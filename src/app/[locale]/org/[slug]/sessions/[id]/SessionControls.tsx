@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { updateSessionStatus } from "@/lib/actions/sessions";
 import { Button } from "@/components/ui/Button";
 import type { SessionStatus } from "@/types/database";
@@ -13,22 +14,24 @@ export function SessionControls({
   status: SessionStatus;
   orgSlug: string;
 }) {
+  const t = useTranslations("Org.session.controls");
+
   if (status === "ended") return null;
 
   return status === "draft" ? (
     <Button onClick={() => updateSessionStatus(sessionId, "active", orgSlug)}>
-      ▶ Начать
+      {t("start")}
     </Button>
   ) : (
     <Button
       variant="danger"
       onClick={() => {
-        if (confirm("Завершить мероприятие? Голосование будет остановлено.")) {
+        if (confirm(t("confirmEnd"))) {
           updateSessionStatus(sessionId, "ended", orgSlug);
         }
       }}
     >
-      Завершить
+      {t("end")}
     </Button>
   );
 }

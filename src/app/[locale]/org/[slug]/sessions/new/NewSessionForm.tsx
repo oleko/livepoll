@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { createSession } from "@/lib/actions/sessions";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -9,6 +10,7 @@ import { SESSION_TEMPLATES } from "@/lib/templates";
 
 export function NewSessionForm({ orgId, orgSlug }: { orgId: string; orgSlug: string }) {
   const router = useRouter();
+  const t = useTranslations("Org.newSession");
   const [state, action, isPending] = useActionState(createSession, null);
   const [selectedTemplate, setSelectedTemplate] = useState<string>("");
 
@@ -18,6 +20,17 @@ export function NewSessionForm({ orgId, orgSlug }: { orgId: string; orgSlug: str
       router.push(state.redirectTo);
     }
   }, [state, router]);
+
+  const typeLabel: Record<string, string> = {
+    multiple_choice: t("typeShort.multiple_choice"),
+    temperature:     t("typeShort.temperature"),
+    qa:              t("typeShort.qa"),
+    like_dislike:    t("typeShort.like_dislike"),
+    word_cloud:      t("typeShort.word_cloud"),
+    emoji_cloud:     t("typeShort.emoji_cloud"),
+    planning_poker:  t("typeShort.planning_poker"),
+    idea_wall:       t("typeShort.idea_wall"),
+  };
 
   return (
     <form action={action} className="flex flex-col gap-6">
@@ -34,10 +47,10 @@ export function NewSessionForm({ orgId, orgSlug }: { orgId: string; orgSlug: str
       {/* Template picker */}
       <div>
         <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">
-          Шаблон <span className="text-slate-400 font-normal">(необязательно)</span>
+          {t("templateLabel")} <span className="text-slate-400 font-normal">{t("templateOptional")}</span>
         </p>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-          {/* Без шаблона */}
+          {/* No template */}
           <button
             type="button"
             onClick={() => setSelectedTemplate("")}
@@ -49,9 +62,9 @@ export function NewSessionForm({ orgId, orgSlug }: { orgId: string; orgSlug: str
           >
             <span className="text-xl block mb-1.5">✦</span>
             <p className={`text-xs font-semibold ${selectedTemplate === "" ? "text-indigo-700 dark:text-indigo-300" : "text-slate-700 dark:text-slate-300"}`}>
-              Без шаблона
+              {t("noTemplate")}
             </p>
-            <p className="text-[11px] text-slate-400 mt-0.5">Пустое мероприятие</p>
+            <p className="text-[11px] text-slate-400 mt-0.5">{t("noTemplateDesc")}</p>
           </button>
 
           {SESSION_TEMPLATES.map((tpl) => (
@@ -69,7 +82,7 @@ export function NewSessionForm({ orgId, orgSlug }: { orgId: string; orgSlug: str
               <p className={`text-xs font-semibold leading-snug ${selectedTemplate === tpl.id ? "text-indigo-700 dark:text-indigo-300" : "text-slate-700 dark:text-slate-300"}`}>
                 {tpl.name}
               </p>
-              <p className="text-[11px] text-slate-400 mt-0.5">{tpl.polls.length} опроса</p>
+              <p className="text-[11px] text-slate-400 mt-0.5">{t("pollCount", { count: tpl.polls.length })}</p>
             </button>
           ))}
         </div>
@@ -80,13 +93,13 @@ export function NewSessionForm({ orgId, orgSlug }: { orgId: string; orgSlug: str
           if (!tpl) return null;
           return (
             <div className="mt-3 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-4 py-3">
-              <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">Будут созданы опросы:</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">{t("previewTitle")}</p>
               <ul className="space-y-1">
                 {tpl.polls.map((p, i) => (
                   <li key={i} className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
                     <span className="text-slate-300 dark:text-slate-600 shrink-0">{i + 1}.</span>
                     {p.title}
-                    <span className="ml-auto shrink-0 text-slate-400">{TYPE_LABEL[p.type]}</span>
+                    <span className="ml-auto shrink-0 text-slate-400">{typeLabel[p.type] ?? p.type}</span>
                   </li>
                 ))}
               </ul>
@@ -96,26 +109,16 @@ export function NewSessionForm({ orgId, orgSlug }: { orgId: string; orgSlug: str
       </div>
 
       <Input
-        label="Название мероприятия"
+        label={t("eventNameLabel")}
         name="title"
-        placeholder="Например: DevConf 2025"
+        placeholder={t("eventNamePlaceholder")}
         required
         autoFocus
       />
 
       <Button type="submit" loading={isPending} className="w-full">
-        Создать мероприятие
+        {t("createButton")}
       </Button>
     </form>
   );
 }
-
-const TYPE_LABEL: Record<string, string> = {
-  multiple_choice: "Выбор",
-  temperature:     "Шкала",
-  qa:              "Q&A",
-  like_dislike:    "Лайк",
-  word_cloud:      "Слова",
-  emoji_cloud:     "Эмодзи",
-  planning_poker:  "Покер",
-};
