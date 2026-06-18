@@ -209,20 +209,24 @@ export function LandingPage() {
             <InViewAnimate enterClass="animate-from-right" delay={80} className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden shadow-xl shadow-zinc-100 dark:shadow-zinc-950/50 hover:-translate-y-1 hover:shadow-2xl transition-[transform,box-shadow] duration-300">
               <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-100 dark:border-zinc-800">
                 <span className="text-sm font-semibold text-zinc-900 dark:text-white">Q&A <span className="text-zinc-400 font-normal">(12)</span></span>
-                <span className="rounded-lg bg-indigo-600/10 border border-indigo-600/20 px-3 py-1 text-xs font-medium text-indigo-600 dark:text-indigo-400">✨ AI-анализ</span>
+                <span className="rounded-lg bg-indigo-600/10 border border-indigo-600/20 px-3 py-1 text-xs font-medium text-indigo-600 dark:text-indigo-400">{t("ai.mockupButton")}</span>
               </div>
               <div className="mx-4 mt-4 rounded-lg bg-indigo-600/10 border border-indigo-600/20 p-3 text-xs text-zinc-700 dark:text-zinc-300">
                 <p className="font-semibold text-indigo-600 dark:text-indigo-400 mb-2">✨ AI</p>
-                <p className="leading-relaxed">1. <b>Масштабирование</b> — про горизонтальное масштабирование и базы данных.<br />2. <b>Безопасность</b> — аутентификация и защита API.<br />3. <b>Тестирование</b> — как тестировать микросервисы в изоляции.</p>
+                <p className="leading-relaxed">
+                  1. <b>{t("ai.mockupTheme1")}</b> — {t("ai.mockupTheme1Desc")}.<br />
+                  2. <b>{t("ai.mockupTheme2")}</b> — {t("ai.mockupTheme2Desc")}.<br />
+                  3. <b>{t("ai.mockupTheme3")}</b> — {t("ai.mockupTheme3Desc")}.
+                </p>
               </div>
               <div className="p-4 flex flex-col gap-2">
                 {[
-                  { text: "Как вы решаете проблему согласованности данных между сервисами?", upvotes: 14, pinned: true },
-                  { text: "Какой подход к логированию используете в продакшне?", upvotes: 9, pinned: false },
-                  { text: "Есть ли смысл переходить на микросервисы если команда меньше 10 человек?", upvotes: 7, pinned: false },
+                  { textKey: "ai.mockupQ1" as const, upvotes: 14, pinned: true },
+                  { textKey: "ai.mockupQ2" as const, upvotes: 9, pinned: false },
+                  { textKey: "ai.mockupQ3" as const, upvotes: 7, pinned: false },
                 ].map((q) => (
-                  <div key={q.text} className={`rounded-lg border p-3 flex items-start gap-2 ${q.pinned ? "border-indigo-500/30 bg-indigo-500/5" : "border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50"}`}>
-                    <p className="flex-1 text-xs text-zinc-700 dark:text-zinc-300 leading-snug">{q.text}</p>
+                  <div key={q.textKey} className={`rounded-lg border p-3 flex items-start gap-2 ${q.pinned ? "border-indigo-500/30 bg-indigo-500/5" : "border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50"}`}>
+                    <p className="flex-1 text-xs text-zinc-700 dark:text-zinc-300 leading-snug">{t(q.textKey)}</p>
                     <div className="flex items-center gap-1 shrink-0">
                       <ArrowUp size={10} weight="bold" className="text-indigo-500" />
                       <span className="text-xs text-indigo-500 font-semibold">{q.upvotes}</span>

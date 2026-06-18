@@ -61,7 +61,17 @@
           "title": "AI summary after the event",
           "desc": "Click '✨ AI Summary' after finishing. YandexGPT analyses all polls and questions, producing 3–5 sentences of insights for your report."
         }
-      ]
+      ],
+      "mockupButton": "✨ AI analysis",
+      "mockupTheme1": "Scaling",
+      "mockupTheme1Desc": "horizontal scaling and database consistency",
+      "mockupTheme2": "Security",
+      "mockupTheme2Desc": "authentication and API protection",
+      "mockupTheme3": "Testing",
+      "mockupTheme3Desc": "how to test microservices in isolation",
+      "mockupQ1": "How do you handle data consistency between services?",
+      "mockupQ2": "What logging approach do you use in production?",
+      "mockupQ3": "Does microservices architecture make sense for a team under 10?"
     },
     "slides": {
       "badge": "Presentation screens",
