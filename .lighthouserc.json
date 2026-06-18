@@ -2,11 +2,9 @@
   "ci": {
     "collect": {
       "numberOfRuns": 1,
-      "url": [
-        "__LHCI_URL__/",
-        "__LHCI_URL__/auth/login",
-        "__LHCI_URL__/join/INVALID"
-      ]
+      "settings": {
+        "chromeFlags": "--ignore-certificate-errors --no-sandbox"
+      }
     },
     "assert": {
       "preset": "lighthouse:no-pwa",

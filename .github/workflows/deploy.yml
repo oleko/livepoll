@@ -76,7 +76,7 @@ jobs:
             ${{ secrets.NEXT_PUBLIC_SITE_URL }}/
             ${{ secrets.NEXT_PUBLIC_SITE_URL }}/auth/login
             ${{ secrets.NEXT_PUBLIC_SITE_URL }}/join/INVALID
+          configPath: .lighthouserc.json
           uploadArtifacts: true
           temporaryPublicStorage: true
           runs: 1
-          browserArgs: --ignore-certificate-errors --no-sandbox
