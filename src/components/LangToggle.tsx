@@ -1,8 +1,8 @@
 "use client";
 
 import { useLocale } from "next-intl";
-import { useRouter, usePathname } from "next/navigation";
 import { useTransition } from "react";
+import { useRouter, usePathname } from "@/i18n/navigation";
 
 export function LangToggle() {
   const locale = useLocale();
@@ -10,18 +10,10 @@ export function LangToggle() {
   const pathname = usePathname();
   const [isPending, startTransition] = useTransition();
 
-  function switchLocale(next: string) {
+  function switchLocale(next: "ru" | "en") {
     if (next === locale) return;
     startTransition(() => {
-      if (next === "ru") {
-        // Remove /en prefix from pathname
-        const newPath = pathname.replace(/^\/en/, "") || "/";
-        router.push(newPath);
-      } else {
-        // Add /en prefix
-        const newPath = `/en${pathname}`;
-        router.push(newPath);
-      }
+      router.replace(pathname, { locale: next });
     });
   }
 

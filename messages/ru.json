@@ -18,7 +18,13 @@
       "ctaPrimary": "Создать первый опрос",
       "ctaSecondary": "Войти в аккаунт",
       "liveLabel": "247 голосов · в эфире",
-      "joinLabel": "Присоединиться"
+      "joinLabel": "Присоединиться",
+      "mockupEvent": "DevConf 2025",
+      "mockupQuestion": "Как оцениваете доклад?",
+      "mockupOpt1": "Отлично",
+      "mockupOpt2": "Хорошо",
+      "mockupOpt3": "Нейтрально",
+      "mockupJoinUrl": "livepoll.ru/join"
     },
     "pillars": {
       "heading": "Всё что нужно ведущему в одном месте",

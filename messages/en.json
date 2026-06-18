@@ -18,7 +18,13 @@
       "ctaPrimary": "Create your first poll",
       "ctaSecondary": "Sign in",
       "liveLabel": "247 votes · live",
-      "joinLabel": "Join"
+      "joinLabel": "Join",
+      "mockupEvent": "DevConf 2025",
+      "mockupQuestion": "How do you rate the talk?",
+      "mockupOpt1": "Excellent",
+      "mockupOpt2": "Good",
+      "mockupOpt3": "Neutral",
+      "mockupJoinUrl": "livepoll.ru/join"
     },
     "pillars": {
       "heading": "Everything a presenter needs in one place",

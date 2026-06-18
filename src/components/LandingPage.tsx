@@ -81,18 +81,18 @@ export function LandingPage() {
                     <span className="text-zinc-600">●●●</span>
                   </div>
                   <div className="px-5 pt-3 pb-3 border-b border-zinc-800">
-                    <p className="text-[10px] text-indigo-400 font-semibold mb-0.5 uppercase tracking-wider">DevConf 2025</p>
-                    <p className="text-white text-[13px] font-semibold leading-snug">Как оцениваете доклад?</p>
+                    <p className="text-[10px] text-indigo-400 font-semibold mb-0.5 uppercase tracking-wider">{t("hero.mockupEvent")}</p>
+                    <p className="text-white text-[13px] font-semibold leading-snug">{t("hero.mockupQuestion")}</p>
                   </div>
                   <div className="px-5 py-4 space-y-3.5">
                     {[
-                      { label: "Отлично", pct: 54 },
-                      { label: "Хорошо", pct: 31 },
-                      { label: "Нейтрально", pct: 15 },
+                      { labelKey: "hero.mockupOpt1" as const, pct: 54 },
+                      { labelKey: "hero.mockupOpt2" as const, pct: 31 },
+                      { labelKey: "hero.mockupOpt3" as const, pct: 15 },
                     ].map((opt, i) => (
-                      <div key={opt.label}>
+                      <div key={opt.labelKey}>
                         <div className="flex justify-between text-[11px] mb-1.5">
-                          <span className="text-zinc-300">{opt.label}</span>
+                          <span className="text-zinc-300">{t(opt.labelKey)}</span>
                           <span className="text-indigo-400 font-bold">{opt.pct}%</span>
                         </div>
                         <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden">
@@ -105,7 +105,7 @@ export function LandingPage() {
                     ))}
                     <div className="flex items-center gap-1.5 pt-1">
                       <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                      <span className="text-[10px] text-zinc-500">247 голосов · в эфире</span>
+                      <span className="text-[10px] text-zinc-500">{t("hero.liveLabel")}</span>
                     </div>
                   </div>
                   <div className="mx-4 mb-5 rounded-xl bg-zinc-800/60 border border-zinc-700/50 p-3 flex items-center gap-3">
@@ -115,8 +115,8 @@ export function LandingPage() {
                       ))}
                     </div>
                     <div>
-                      <p className="text-[10px] text-zinc-400">Присоединиться</p>
-                      <p className="text-[11px] text-white font-bold">livepoll.ru/join</p>
+                      <p className="text-[10px] text-zinc-400">{t("hero.joinLabel")}</p>
+                      <p className="text-[11px] text-white font-bold">{t("hero.mockupJoinUrl")}</p>
                     </div>
                   </div>
                 </div>
