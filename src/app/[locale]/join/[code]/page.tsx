@@ -68,6 +68,15 @@ export default async function JoinPage({
     .eq("status", "active")
     .maybeSingle();
 
+  const { data: allPolls } = await admin
+    .from("polls")
+    .select("settings")
+    .eq("session_id", session.id);
+  type PollSettings = { quiz_mode?: boolean };
+  const hasQuizPolls = (allPolls ?? []).some(
+    (p) => (p.settings as PollSettings | null)?.quiz_mode === true
+  );
+
   const initialQuestions = activePoll?.type === "qa"
     ? (await admin
         .from("questions")
@@ -106,6 +115,7 @@ export default async function JoinPage({
           sessionStatus={session.status}
           initialQuestions={initialQuestions}
           initialActiveSlide={initialActiveSlide}
+          hasQuizPolls={hasQuizPolls}
         />
       </div>
 

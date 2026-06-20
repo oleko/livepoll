@@ -11,6 +11,7 @@ import { SlideView } from "./SlideView";
 import type { PollType } from "@/types/database";
 import type { BrandingSettings } from "@/lib/actions/branding";
 import type { SlideType } from "@/lib/actions/slides";
+import type { LeaderboardEntry } from "@/lib/actions/participants";
 
 function QrImage({ src, joinUrl, style, className }: {
   src: string; joinUrl: string;
@@ -151,9 +152,8 @@ export function DisplayScreen({
   });
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  // Quiz leaderboard
-  const [quizScores, setQuizScores] = useState<Map<string, number>>(new Map());
-  const [quizTotal, setQuizTotal] = useState(0);
+  // Quiz leaderboard (server-computed, named participants)
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [pokerRevealed, setPokerRevealed] = useState(false);
   const [pollEnded, setPollEnded] = useState(false);
@@ -193,6 +193,7 @@ export function DisplayScreen({
           setPokerRevealed(false);
           setPollEnded(false);
           setSortByPopularity(false);
+          setShowLeaderboard(false);
           seenWordsRef.current = new Set();
           setPoll(data.poll);
           setVotes([]);
@@ -206,24 +207,7 @@ export function DisplayScreen({
           const reveal = d.quiz_reveal;
           if (reveal) {
             setQuizReveal(reveal);
-            const buf = currentVotesRef.current;
-            if (buf.length > 0) {
-              setQuizScores((prev) => {
-                const next = new Map(prev);
-                buf.forEach(({ ts, value }) => {
-                  if (value === reveal.correct_option) {
-                    next.set(ts, (next.get(ts) ?? 0) + 1);
-                  } else if (!next.has(ts)) {
-                    next.set(ts, 0);
-                  }
-                });
-                return next;
-              });
-              setQuizTotal((n) => n + 1);
-            }
             currentVotesRef.current = [];
-            setShowLeaderboard(true);
-            setTimeout(() => setShowLeaderboard(false), 7000);
           } else if (d.show_result) {
             setPollEnded(true);
           } else {
@@ -233,6 +217,11 @@ export function DisplayScreen({
         } else if (data.type === "poll_updated" && data.poll) {
           setPoll((prev) => prev?.id === data.poll!.id ? { ...prev, ...data.poll! } : prev);
         }
+      })
+      .on("broadcast", { event: "leaderboard" }, ({ payload }) => {
+        const data = payload as { leaderboard: LeaderboardEntry[] };
+        setLeaderboard(data.leaderboard);
+        setShowLeaderboard(true);
       })
       .on("broadcast", { event: "voter_count" }, ({ payload }) => {
         setJoinedCount((payload as { count: number }).count);
@@ -732,24 +721,20 @@ export function DisplayScreen({
                     )}
                   </div>
 
-                  {showLeaderboard && quizScores.size > 0 && (
-                    <div className="rounded-2xl border border-slate-700 bg-slate-900/90 px-6 py-4 min-w-[220px]">
-                      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">🏆 Лидерборд</p>
-                      <div className="flex flex-col gap-1.5">
-                        {[...quizScores.entries()]
-                          .sort((a, b) => b[1] - a[1])
-                          .slice(0, 5)
-                          .map(([ts, correct], i) => (
-                            <div key={ts} className="flex items-center gap-3">
-                              <span className={`text-sm font-bold w-5 tabular-nums ${i === 0 ? "text-yellow-400" : i === 1 ? "text-slate-300" : i === 2 ? "text-amber-600" : "text-slate-500"}`}>
-                                #{i + 1}
-                              </span>
-                              <span className="text-xs font-mono text-slate-400 w-16">{ts.toUpperCase()}</span>
-                              <span className={`text-sm font-semibold ml-auto ${correct > 0 ? "text-green-400" : "text-slate-500"}`}>
-                                {correct}/{quizTotal}
-                              </span>
+                  {showLeaderboard && leaderboard.length > 0 && (
+                    <div className="rounded-2xl border border-slate-700 bg-slate-900/90 px-6 py-5 min-w-[260px]">
+                      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">🏆 Таблица лидеров</p>
+                      <div className="flex flex-col gap-2">
+                        {leaderboard.slice(0, 5).map((entry, i) => {
+                          const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}.`;
+                          return (
+                            <div key={entry.name} className="flex items-center gap-3">
+                              <span className="text-lg w-8 shrink-0">{medal}</span>
+                              <span className="text-sm font-medium text-white flex-1 truncate">{entry.name}</span>
+                              <span className="text-sm font-bold text-indigo-400 tabular-nums shrink-0">{entry.score}</span>
                             </div>
-                          ))}
+                          );
+                        })}
                       </div>
                     </div>
                   )}

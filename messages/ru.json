@@ -264,7 +264,17 @@
     "questionsCount": "{count} вопрос(ов)",
     "noQuestions": "Вопросов пока нет. Будьте первым!",
     "planningPokerHidden": "Ответы скрыты до решения ведущего",
-    "planningPokerVoted": "Ваш голос: {value}"
+    "planningPokerVoted": "Ваш голос: {value}",
+    "quiz": {
+      "enterName": "Введите имя для участия в чемпионате",
+      "namePlaceholder": "Ваш никнейм (2–20 символов)",
+      "joinChampionship": "Участвовать",
+      "nameHint": "Имя будет видно всем в таблице лидеров",
+      "leaderboard": "Таблица лидеров",
+      "yourScore": "Ваши очки",
+      "pts": "очков",
+      "correct": "верных"
+    }
   },
   "Display": {
     "joinLink": "Перейдите по ссылке:",
@@ -319,7 +329,8 @@
       "controls": {
         "start": "▶ Начать",
         "end": "Завершить",
-        "confirmEnd": "Завершить мероприятие? Голосование будет остановлено."
+        "confirmEnd": "Завершить мероприятие? Голосование будет остановлено.",
+        "leaderboard": "Лидерборд"
       },
       "creationTabs": {
         "pollTab": "📊 Опрос",

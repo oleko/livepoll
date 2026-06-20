@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { submitVote, submitQuestion, upvoteQuestion } from "@/lib/actions/polls";
+import { registerParticipant } from "@/lib/actions/participants";
+import type { LeaderboardEntry } from "@/lib/actions/participants";
 import { Button } from "@/components/ui/Button";
 import type { PollType } from "@/types/database";
 import { useTranslations } from "next-intl";
@@ -56,6 +58,7 @@ export function VoteInterface({
   sessionStatus,
   initialQuestions = [],
   initialActiveSlide = null,
+  hasQuizPolls = false,
 }: {
   sessionId: string;
   joinCode: string;
@@ -63,6 +66,7 @@ export function VoteInterface({
   sessionStatus: string;
   initialQuestions?: QuestionItem[];
   initialActiveSlide?: { type: string; content: Record<string, unknown> } | null;
+  hasQuizPolls?: boolean;
 }) {
   const [poll, setPoll] = useState<PollData>(initialPoll);
   const [voted, setVoted] = useState(() => {
@@ -101,10 +105,29 @@ export function VoteInterface({
   const [buzzed, setBuzzed] = useState(false);
   const [connected, setConnected] = useState(true);
   const [voterCount, setVoterCount] = useState(0);
+  const [registered, setRegistered] = useState(false);
+  const [participantName, setParticipantName] = useState("");
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[] | null>(null);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
+
   const hasEverConnected = useRef(false);
   const supabase = useRef(createClient());
   const channelRef = useRef<ReturnType<typeof supabase.current.channel> | null>(null);
   const buzzChannelRef = useRef<ReturnType<typeof supabase.current.channel> | null>(null);
+
+  useEffect(() => {
+    try {
+      if (localStorage.getItem(`quiz_participant_${sessionId}`)) setRegistered(true);
+    } catch {}
+  }, [sessionId]);
+
+  useEffect(() => {
+    if (!showLeaderboard) return;
+    const timer = setTimeout(() => setShowLeaderboard(false), 8000);
+    return () => clearTimeout(timer);
+  }, [showLeaderboard]);
 
   function sendPulse() {
     channelRef.current?.send({ type: "broadcast", event: "pulse", payload: {} });
@@ -128,6 +151,7 @@ export function VoteInterface({
           setError(null);
           setActiveSlide(null);
           setQuestions([]);
+          setShowLeaderboard(false);
         } else if (data.type === "closed") {
           const reveal = (data as { quiz_reveal?: QuizReveal }).quiz_reveal;
           if (reveal) setQuizReveal(reveal);
@@ -135,6 +159,11 @@ export function VoteInterface({
         } else if (data.type === "poll_updated" && data.poll) {
           setPoll((prev) => prev?.id === data.poll!.id ? { ...prev, title: data.poll!.title, options: data.poll!.options } : prev);
         }
+      })
+      .on("broadcast", { event: "leaderboard" }, ({ payload }) => {
+        const data = payload as { leaderboard: LeaderboardEntry[] };
+        setLeaderboard(data.leaderboard);
+        setShowLeaderboard(true);
       })
       .on("broadcast", { event: "voter_count" }, ({ payload }) => {
         setVoterCount((payload as { count: number }).count);
@@ -315,6 +344,21 @@ export function VoteInterface({
     await upvoteQuestion(questionId, voterToken, sessionId);
   }
 
+  async function handleRegister() {
+    const voterToken = getVoterToken();
+    if (!voterToken) return;
+    setIsRegistering(true);
+    setNameError(null);
+    const result = await registerParticipant(sessionId, voterToken, participantName);
+    setIsRegistering(false);
+    if ("error" in result) {
+      setNameError(result.error);
+    } else {
+      try { localStorage.setItem(`quiz_participant_${sessionId}`, participantName.trim()); } catch {}
+      setRegistered(true);
+    }
+  }
+
   const showPulseButton = !sessionEnded && sessionStatus === "active";
   const t = useTranslations("VoteInterface");
 
@@ -347,6 +391,38 @@ export function VoteInterface({
         {quizReveal.explanation && (
           <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed italic mt-1">{quizReveal.explanation}</p>
         )}
+        {showLeaderboard && leaderboard && leaderboard.length > 0 && registered && (() => {
+          const myName = typeof window !== "undefined"
+            ? localStorage.getItem(`quiz_participant_${sessionId}`) ?? ""
+            : "";
+          const myEntry = leaderboard.find((e) => e.name === myName);
+          return (
+            <div className="mt-6 w-full rounded-2xl border border-indigo-500/30 bg-indigo-500/10 px-4 py-4">
+              <p className="text-xs font-semibold uppercase tracking-widest text-indigo-500 dark:text-indigo-400 mb-3 text-center">
+                {t("quiz.leaderboard")}
+              </p>
+              {myEntry && (
+                <div className="mb-3 rounded-xl bg-indigo-600/20 border border-indigo-500/40 px-3 py-2 text-center">
+                  <p className="text-sm text-indigo-300 font-medium">
+                    #{myEntry.rank} · {myEntry.score} {t("quiz.pts")} · {myEntry.correct}/{myEntry.total} {t("quiz.correct")}
+                  </p>
+                </div>
+              )}
+              <div className="flex flex-col gap-1">
+                {leaderboard.slice(0, 5).map((entry, i) => {
+                  const isMe = entry.name === myName;
+                  const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}.`;
+                  return (
+                    <div key={entry.name} className={`flex items-center justify-between rounded-lg px-3 py-1.5 text-sm ${isMe ? "bg-indigo-600/25 font-semibold" : ""}`}>
+                      <span className="text-slate-900 dark:text-white">{medal} {entry.name}</span>
+                      <span className="tabular-nums text-slate-500 dark:text-slate-400">{entry.score}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
         <p className="text-slate-400 dark:text-slate-500 text-xs mt-6">{t("waitNext")}</p>
       </div>
     );
@@ -744,6 +820,62 @@ export function VoteInterface({
                   : `${announcementTimeLeft}`}
               </p>
             )}
+          </div>
+        </div>
+      )}
+      {hasQuizPolls && !registered && !sessionEnded && sessionStatus === "active" && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-slate-950/95 px-6">
+          <div className="w-full max-w-sm">
+            <div className="text-5xl mb-4 text-center">🏆</div>
+            <h2 className="text-2xl font-bold text-white text-center mb-2">{t("quiz.enterName")}</h2>
+            <p className="text-sm text-slate-400 text-center mb-6">{t("quiz.nameHint")}</p>
+            {nameError && (
+              <div className="mb-4 rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-red-400 text-center">
+                {nameError}
+              </div>
+            )}
+            <input
+              type="text"
+              maxLength={20}
+              placeholder={t("quiz.namePlaceholder")}
+              value={participantName}
+              onChange={(e) => setParticipantName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && participantName.trim().length >= 2) handleRegister(); }}
+              className="w-full rounded-xl border border-slate-700 bg-slate-800 px-5 py-4 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-center text-lg mb-3"
+              autoFocus
+            />
+            <Button
+              className="w-full py-4 text-base"
+              disabled={participantName.trim().length < 2}
+              loading={isRegistering}
+              onClick={handleRegister}
+            >
+              {t("quiz.joinChampionship")}
+            </Button>
+          </div>
+        </div>
+      )}
+      {showLeaderboard && leaderboard && leaderboard.length > 0 && !quizReveal && (
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-40 w-full max-w-xs px-4 pointer-events-none">
+          <div className="rounded-2xl border border-indigo-500/30 bg-slate-950/95 px-4 py-4 shadow-xl">
+            <p className="text-xs font-semibold uppercase tracking-widest text-indigo-400 mb-3 text-center">
+              {t("quiz.leaderboard")}
+            </p>
+            <div className="flex flex-col gap-1">
+              {leaderboard.slice(0, 5).map((entry, i) => {
+                const myName = typeof window !== "undefined"
+                  ? localStorage.getItem(`quiz_participant_${sessionId}`) ?? ""
+                  : "";
+                const isMe = entry.name === myName;
+                const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}.`;
+                return (
+                  <div key={entry.name} className={`flex items-center justify-between rounded-lg px-3 py-1.5 text-sm ${isMe ? "bg-indigo-600/25 font-semibold" : ""}`}>
+                    <span className="text-white">{medal} {entry.name}</span>
+                    <span className="tabular-nums text-slate-400">{entry.score}</span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
       )}

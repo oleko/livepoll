@@ -264,7 +264,17 @@
     "questionsCount": "{count} question(s)",
     "noQuestions": "No questions yet. Be the first!",
     "planningPokerHidden": "Answers hidden until the host reveals",
-    "planningPokerVoted": "Your vote: {value}"
+    "planningPokerVoted": "Your vote: {value}",
+    "quiz": {
+      "enterName": "Enter your name to join the championship",
+      "namePlaceholder": "Your nickname (2–20 characters)",
+      "joinChampionship": "Join",
+      "nameHint": "Your name will be visible to everyone on the leaderboard",
+      "leaderboard": "Leaderboard",
+      "yourScore": "Your score",
+      "pts": "pts",
+      "correct": "correct"
+    }
   },
   "Display": {
     "joinLink": "Go to:",
@@ -319,7 +329,8 @@
       "controls": {
         "start": "▶ Start",
         "end": "End",
-        "confirmEnd": "End the event? Voting will be stopped."
+        "confirmEnd": "End the event? Voting will be stopped.",
+        "leaderboard": "Leaderboard"
       },
       "creationTabs": {
         "pollTab": "📊 Poll",

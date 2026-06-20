@@ -47,6 +47,11 @@ export default async function SessionPage({
     .eq("session_id", id)
     .order("sort_order");
 
+  type PollSettings = { quiz_mode?: boolean };
+  const hasQuizPolls = (polls ?? []).some(
+    (p) => (p.settings as PollSettings | null)?.quiz_mode === true
+  );
+
   const { data: sections } = await admin
     .from("session_sections")
     .select("id, title, sort_order")
@@ -164,7 +169,7 @@ export default async function SessionPage({
               questions={(questions ?? []).map((q) => ({ text: q.text, status: q.status }))}
             />
           )}
-          <SessionControls sessionId={session.id} status={session.status} orgSlug={slug} />
+          <SessionControls sessionId={session.id} status={session.status} orgSlug={slug} hasQuizPolls={hasQuizPolls} />
         </div>
       </div>
 

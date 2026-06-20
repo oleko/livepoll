@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import type { PollType, OrgPlan } from "@/types/database";
 import { getLimits } from "@/lib/limits";
 import { getAuthUser, assertSessionMember } from "@/lib/actions/guards";
+import { computeAndBroadcastLeaderboard } from "@/lib/actions/participants";
 import { headers } from "next/headers";
 import { checkRateLimit } from "@/lib/rateLimit";
 
@@ -312,6 +313,10 @@ export async function closePoll(
     event: "poll_change",
     payload: closePayload,
   }]);
+
+  if (pollSettings?.quiz_mode) {
+    await computeAndBroadcastLeaderboard(sessionId, admin);
+  }
 
   revalidatePath(`/org/${orgSlug}/sessions/${sessionId}`);
 }
