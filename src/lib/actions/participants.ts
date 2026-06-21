@@ -35,6 +35,31 @@ export async function registerParticipant(
   );
 
   if (error) return { error: "Не удалось зарегистрироваться" };
+
+  // Broadcast participant_join so lobby screens update in realtime
+  const { data: countRow } = await admin
+    .from("participants" as never)
+    .select("name")
+    .eq("session_id", sessionId);
+  const allNames = ((countRow ?? []) as { name: string }[]).map((r) => r.name);
+
+  const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/realtime/v1/api/broadcast`;
+  await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+      "apikey": process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    },
+    body: JSON.stringify({
+      messages: [{
+        topic: `session-polls:${sessionId}`,
+        event: "participant_join",
+        payload: { name: trimmedName, participants: allNames },
+      }],
+    }),
+  }).catch(() => {});
+
   return { success: true };
 }
 

@@ -11,6 +11,7 @@ import { SessionConnectPanel } from "./SessionConnectPanel";
 import { AttendeesInput } from "./AttendeesInput";
 import { ExportButton } from "./ExportButton";
 import { SessionSummaryButton } from "./SessionSummaryButton";
+import { ChampionshipPanel } from "./ChampionshipPanel";
 import type { Session } from "@/types/database";
 
 const STATUS_COLOR: Record<Session["status"], string> = {
@@ -47,9 +48,20 @@ export default async function SessionPage({
     .eq("session_id", id)
     .order("sort_order");
 
+  // Championship mode settings
+  type SessionSettings = { championship?: { enabled?: boolean; auto?: boolean; reveal_duration?: number } };
+  const { data: sessionFull } = await admin
+    .from("sessions")
+    .select("settings")
+    .eq("id", id)
+    .single();
+  const sessionSettings = (sessionFull?.settings as SessionSettings | null) ?? {};
+  const championship = sessionSettings.championship ?? { enabled: false, auto: true, reveal_duration: 10 };
+
+  // Count quiz polls (multiple_choice with quiz_mode) for championship
   type PollSettings = { quiz_mode?: boolean };
-  const hasQuizPolls = (polls ?? []).some(
-    (p) => (p.settings as PollSettings | null)?.quiz_mode === true
+  const quizPolls = (polls ?? []).filter(
+    (p) => p.type === "multiple_choice" && (p.settings as PollSettings | null)?.quiz_mode === true
   );
 
   const { data: sections } = await admin
@@ -169,7 +181,7 @@ export default async function SessionPage({
               questions={(questions ?? []).map((q) => ({ text: q.text, status: q.status }))}
             />
           )}
-          <SessionControls sessionId={session.id} status={session.status} orgSlug={slug} hasQuizPolls={hasQuizPolls} />
+          <SessionControls sessionId={session.id} status={session.status} orgSlug={slug} />
         </div>
       </div>
 
@@ -208,7 +220,19 @@ export default async function SessionPage({
         {/* 4. Creation & moderation */}
         <div className="flex flex-col gap-6">
           {session.status !== "ended" && (
-            <CreationTabs sessionId={id} orgSlug={slug} sections={sections ?? []} />
+            <>
+              <ChampionshipPanel
+                sessionId={id}
+                orgSlug={slug}
+                quizPollCount={quizPolls.length}
+                initial={{
+                  enabled: championship.enabled ?? false,
+                  auto: championship.auto ?? true,
+                  reveal_duration: championship.reveal_duration ?? 10,
+                }}
+              />
+              <CreationTabs sessionId={id} orgSlug={slug} sections={sections ?? []} />
+            </>
           )}
           {hasQA && (
             <QAPanel sessionId={id} orgSlug={slug} initialQuestions={questions ?? []} />

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { NewPollForm } from "./NewPollForm";
 import { AddSlidePanel } from "./AddSlidePanel";
+import { QuizQuestionForm } from "./QuizQuestionForm";
 
 type SectionItem = { id: string; title: string };
 
@@ -17,7 +18,7 @@ export function CreationTabs({
   sections: SectionItem[];
 }) {
   const t = useTranslations("Org.session.creationTabs");
-  const [tab, setTab] = useState<"poll" | "slide">("poll");
+  const [tab, setTab] = useState<"poll" | "slide" | "quiz">("poll");
 
   return (
     <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
@@ -45,6 +46,17 @@ export function CreationTabs({
         >
           {t("slideTab")}
         </button>
+        <button
+          type="button"
+          onClick={() => setTab("quiz")}
+          className={`flex-1 text-xs font-semibold py-2 rounded-md transition-colors ${
+            tab === "quiz"
+              ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm"
+              : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
+          }`}
+        >
+          {t("quizTab")}
+        </button>
       </div>
 
       {tab === "poll" && (
@@ -52,6 +64,9 @@ export function CreationTabs({
       )}
       {tab === "slide" && (
         <AddSlidePanel sessionId={sessionId} orgSlug={orgSlug} bare />
+      )}
+      {tab === "quiz" && (
+        <QuizQuestionForm sessionId={sessionId} orgSlug={orgSlug} />
       )}
     </div>
   );

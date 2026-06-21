@@ -68,14 +68,25 @@ export default async function JoinPage({
     .eq("status", "active")
     .maybeSingle();
 
-  const { data: allPolls } = await admin
-    .from("polls")
+  // Championship mode: check session settings
+  type SessionSettings = { championship?: { enabled?: boolean; auto?: boolean; reveal_duration?: number } };
+  const { data: sessionFull } = await admin
+    .from("sessions")
     .select("settings")
-    .eq("session_id", session.id);
-  type PollSettings = { quiz_mode?: boolean };
-  const hasQuizPolls = (allPolls ?? []).some(
-    (p) => (p.settings as PollSettings | null)?.quiz_mode === true
-  );
+    .eq("id", session.id)
+    .single();
+  const sessionSettings = (sessionFull?.settings as SessionSettings | null) ?? {};
+  const championshipMode = sessionSettings.championship?.enabled === true;
+
+  // Championship: load registered participant name (pass initial count for lobby)
+  let initialParticipants: { name: string }[] = [];
+  if (championshipMode) {
+    const { data: pRows } = await admin
+      .from("participants" as never)
+      .select("name")
+      .eq("session_id", session.id);
+    initialParticipants = (pRows ?? []) as { name: string }[];
+  }
 
   const initialQuestions = activePoll?.type === "qa"
     ? (await admin
@@ -115,7 +126,8 @@ export default async function JoinPage({
           sessionStatus={session.status}
           initialQuestions={initialQuestions}
           initialActiveSlide={initialActiveSlide}
-          hasQuizPolls={hasQuizPolls}
+          championshipMode={championshipMode}
+          initialParticipants={initialParticipants}
         />
       </div>
 

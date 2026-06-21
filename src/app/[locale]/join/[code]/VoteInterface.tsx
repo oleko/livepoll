@@ -58,7 +58,8 @@ export function VoteInterface({
   sessionStatus,
   initialQuestions = [],
   initialActiveSlide = null,
-  hasQuizPolls = false,
+  championshipMode = false,
+  initialParticipants = [],
 }: {
   sessionId: string;
   joinCode: string;
@@ -66,7 +67,8 @@ export function VoteInterface({
   sessionStatus: string;
   initialQuestions?: QuestionItem[];
   initialActiveSlide?: { type: string; content: Record<string, unknown> } | null;
-  hasQuizPolls?: boolean;
+  championshipMode?: boolean;
+  initialParticipants?: { name: string }[];
 }) {
   const [poll, setPoll] = useState<PollData>(initialPoll);
   const [voted, setVoted] = useState(() => {
@@ -111,6 +113,12 @@ export function VoteInterface({
   const [isRegistering, setIsRegistering] = useState(false);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[] | null>(null);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
+  // Championship specific
+  const [champPhase, setChampPhase] = useState<"lobby" | "playing" | "finished">("lobby");
+  const [champLobbyParticipants, setChampLobbyParticipants] = useState<string[]>(
+    initialParticipants.map((p) => p.name)
+  );
+  const [champFinalLeaderboard, setChampFinalLeaderboard] = useState<LeaderboardEntry[] | null>(null);
 
   const hasEverConnected = useRef(false);
   const supabase = useRef(createClient());
@@ -163,7 +171,20 @@ export function VoteInterface({
       .on("broadcast", { event: "leaderboard" }, ({ payload }) => {
         const data = payload as { leaderboard: LeaderboardEntry[] };
         setLeaderboard(data.leaderboard);
+        setChampFinalLeaderboard(data.leaderboard);
         setShowLeaderboard(true);
+      })
+      .on("broadcast", { event: "participant_join" }, ({ payload }) => {
+        const data = payload as { participants: string[] };
+        setChampLobbyParticipants(data.participants ?? []);
+      })
+      .on("broadcast", { event: "quiz_start" }, () => {
+        setChampPhase("playing");
+      })
+      .on("broadcast", { event: "quiz_finish" }, ({ payload }) => {
+        const data = payload as { leaderboard?: LeaderboardEntry[] };
+        if (data.leaderboard) setChampFinalLeaderboard(data.leaderboard);
+        setChampPhase("finished");
       })
       .on("broadcast", { event: "voter_count" }, ({ payload }) => {
         setVoterCount((payload as { count: number }).count);
@@ -364,7 +385,119 @@ export function VoteInterface({
 
   let content: React.ReactNode;
 
-  if (quizReveal) {
+  // Championship: name registration (must register before entering lobby)
+  if (championshipMode && !registered) {
+    content = (
+      <div className="w-full max-w-xs text-center">
+        <div className="text-5xl mb-4">🏆</div>
+        <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Чемпионат</h2>
+        <p className="text-slate-500 dark:text-slate-400 text-sm mb-6">
+          Введите имя — оно появится в таблице лидеров
+        </p>
+        {nameError && (
+          <div className="mb-3 rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-2 text-sm text-red-500">
+            {nameError}
+          </div>
+        )}
+        <div className="flex flex-col gap-3">
+          <input
+            type="text"
+            maxLength={20}
+            placeholder="Ваш никнейм (2–20 символов)"
+            value={participantName}
+            onChange={(e) => setParticipantName(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter" && participantName.trim().length >= 2) handleRegister(); }}
+            className="rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-5 py-4 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-center text-lg"
+            autoFocus
+          />
+          <Button
+            className="w-full py-4 text-base"
+            disabled={participantName.trim().length < 2}
+            loading={isRegistering}
+            onClick={handleRegister}
+          >
+            Участвовать
+          </Button>
+        </div>
+        {champLobbyParticipants.length > 0 && (
+          <p className="mt-5 text-xs text-slate-400 dark:text-slate-500">
+            Уже в лобби: {champLobbyParticipants.length}
+          </p>
+        )}
+      </div>
+    );
+  // Championship: final leaderboard
+  } else if (championshipMode && champPhase === "finished") {
+    const myName = typeof window !== "undefined"
+      ? localStorage.getItem(`quiz_participant_${sessionId}`) ?? ""
+      : "";
+    const lb = champFinalLeaderboard ?? [];
+    const myEntry = lb.find((e) => e.name === myName);
+    content = (
+      <div className="w-full max-w-sm text-center">
+        <div className="text-6xl mb-4">🏆</div>
+        <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">Чемпионат завершён!</h2>
+        {myEntry && (
+          <div className="mt-4 mb-4 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 px-5 py-4">
+            <p className="text-indigo-400 font-semibold text-sm mb-1">Ваш результат</p>
+            <p className="text-3xl font-bold text-slate-900 dark:text-white">#{myEntry.rank}</p>
+            <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
+              {myEntry.score} очков · {myEntry.correct}/{myEntry.total} верных
+            </p>
+          </div>
+        )}
+        {lb.length > 0 && (
+          <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-4">
+            <p className="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-3">Таблица лидеров</p>
+            <div className="flex flex-col gap-1.5">
+              {lb.slice(0, 10).map((entry, i) => {
+                const isMe = entry.name === myName;
+                const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}.`;
+                return (
+                  <div key={entry.name} className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm ${isMe ? "bg-indigo-500/10 border border-indigo-500/20 font-semibold" : ""}`}>
+                    <span className="w-6 text-center shrink-0">{medal}</span>
+                    <span className={`flex-1 text-left ${isMe ? "text-indigo-600 dark:text-indigo-400" : "text-slate-700 dark:text-slate-300"}`}>{entry.name}</span>
+                    <span className="tabular-nums text-slate-500 dark:text-slate-400 font-medium">{entry.score}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  // Championship: lobby waiting (registered, waiting for quiz_start)
+  } else if (championshipMode && champPhase === "lobby" && registered) {
+    content = (
+      <div className="text-center px-6 max-w-sm">
+        <div className="text-5xl mb-5">⏳</div>
+        <h2 className="text-2xl font-semibold text-slate-900 dark:text-white mb-2">Вы в лобби</h2>
+        <p className="text-slate-500 dark:text-slate-400 text-sm mb-5">
+          Ожидайте начала чемпионата...
+        </p>
+        {champLobbyParticipants.length > 0 && (
+          <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-4">
+            <p className="text-xs text-slate-400 uppercase tracking-wider font-medium mb-3">
+              Участников в лобби: {champLobbyParticipants.length}
+            </p>
+            <div className="flex flex-wrap gap-1.5 justify-center">
+              {champLobbyParticipants.slice(0, 30).map((name) => {
+                const isMe = name === (typeof window !== "undefined" ? localStorage.getItem(`quiz_participant_${sessionId}`) ?? "" : "");
+                return (
+                  <span key={name} className={`text-xs rounded-full px-2.5 py-1 border ${isMe ? "bg-indigo-500/10 border-indigo-500/30 text-indigo-600 dark:text-indigo-400 font-semibold" : "bg-slate-50 dark:bg-slate-700 border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-400"}`}>
+                    {name}
+                  </span>
+                );
+              })}
+              {champLobbyParticipants.length > 30 && (
+                <span className="text-xs text-slate-400">+{champLobbyParticipants.length - 30}</span>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  } else if (quizReveal) {
     const didVote = myVote !== null;
     const isCorrect = didVote && myVote === quizReveal.correct_option;
     content = (
@@ -820,38 +953,6 @@ export function VoteInterface({
                   : `${announcementTimeLeft}`}
               </p>
             )}
-          </div>
-        </div>
-      )}
-      {hasQuizPolls && !registered && !sessionEnded && sessionStatus === "active" && (
-        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-slate-950/95 px-6">
-          <div className="w-full max-w-sm">
-            <div className="text-5xl mb-4 text-center">🏆</div>
-            <h2 className="text-2xl font-bold text-white text-center mb-2">{t("quiz.enterName")}</h2>
-            <p className="text-sm text-slate-400 text-center mb-6">{t("quiz.nameHint")}</p>
-            {nameError && (
-              <div className="mb-4 rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-red-400 text-center">
-                {nameError}
-              </div>
-            )}
-            <input
-              type="text"
-              maxLength={20}
-              placeholder={t("quiz.namePlaceholder")}
-              value={participantName}
-              onChange={(e) => setParticipantName(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter" && participantName.trim().length >= 2) handleRegister(); }}
-              className="w-full rounded-xl border border-slate-700 bg-slate-800 px-5 py-4 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-center text-lg mb-3"
-              autoFocus
-            />
-            <Button
-              className="w-full py-4 text-base"
-              disabled={participantName.trim().length < 2}
-              loading={isRegistering}
-              onClick={handleRegister}
-            >
-              {t("quiz.joinChampionship")}
-            </Button>
           </div>
         </div>
       )}

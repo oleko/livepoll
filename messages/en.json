@@ -334,7 +334,8 @@
       },
       "creationTabs": {
         "pollTab": "📊 Poll",
-        "slideTab": "📽 Screen"
+        "slideTab": "📽 Screen",
+        "quizTab": "🏆 Quiz"
       },
       "connect": {
         "participants": "Participants",

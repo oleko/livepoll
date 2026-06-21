@@ -12,10 +12,13 @@ export default async function DisplayPage({
 
   const { data: session } = await admin
     .from("sessions")
-    .select("id, title, status, join_code, organization_id, total_attendees")
+    .select("id, title, status, join_code, organization_id, total_attendees, settings")
     .eq("join_code", code.toUpperCase())
     .single();
   const totalAttendees = (session as unknown as { total_attendees?: number })?.total_attendees ?? 0;
+  type SessionSettings = { championship?: { enabled?: boolean; auto?: boolean; reveal_duration?: number } };
+  const sessionSettings = (session as unknown as { settings?: SessionSettings })?.settings ?? {};
+  const championship = sessionSettings.championship ?? {};
 
   if (!session) {
     return (
@@ -73,6 +76,16 @@ export default async function DisplayPage({
     initialJoinedCount = new Set((voterRows ?? []).map((v) => v.voter_token)).size;
   }
 
+  // Championship: load initial participant names for lobby
+  let initialChampParticipants: string[] = [];
+  if (championship.enabled) {
+    const { data: pRows } = await admin
+      .from("participants" as never)
+      .select("name")
+      .eq("session_id", session.id);
+    initialChampParticipants = ((pRows ?? []) as { name: string }[]).map((r) => r.name);
+  }
+
   // Active slide
   const activeSlideId = (session as unknown as { active_slide_id?: string | null })?.active_slide_id;
   let initialActiveSlide = null;
@@ -100,6 +113,8 @@ export default async function DisplayPage({
       initialJoinedCount={initialJoinedCount}
       branding={branding}
       initialActiveSlide={initialActiveSlide}
+      championship={championship}
+      initialChampParticipants={initialChampParticipants}
     />
   );
 }
