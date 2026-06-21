@@ -212,6 +212,129 @@ async function generateFarewell(): Promise<string> {
   }
 }
 
+export async function duplicateSession(
+  sessionId: string,
+  orgSlug: string
+): Promise<{ error: string } | { redirectTo: string }> {
+  const { user, admin } = await getAuthUser();
+  await assertSessionMember(user.id, sessionId, admin);
+
+  // Fetch source session
+  const { data: source } = await admin
+    .from("sessions")
+    .select("title, organization_id")
+    .eq("id", sessionId)
+    .single();
+  if (!source) return { error: "Мероприятие не найдено" };
+
+  // Check sessions/month limit
+  const { data: org } = await admin
+    .from("organizations")
+    .select("plan")
+    .eq("id", source.organization_id)
+    .single();
+  if (org) {
+    const limits = getLimits(org.plan as OrgPlan);
+    if (isFinite(limits.sessionsPerMonth)) {
+      const monthStart = new Date();
+      monthStart.setDate(1);
+      monthStart.setHours(0, 0, 0, 0);
+      const { count } = await admin
+        .from("sessions")
+        .select("id", { count: "exact", head: true })
+        .eq("organization_id", source.organization_id)
+        .gte("created_at", monthStart.toISOString());
+      if ((count ?? 0) >= limits.sessionsPerMonth) {
+        return { error: `Лимит мероприятий на месяц исчерпан (${limits.sessionsPerMonth}). Перейдите на более высокий тариф.` };
+      }
+    }
+  }
+
+  // Generate unique join code
+  let join_code = generateJoinCode();
+  const { data: codeExists } = await admin.from("sessions").select("id").eq("join_code", join_code).maybeSingle();
+  if (codeExists) join_code = generateJoinCode();
+
+  // Create new session
+  const { data: newSession, error: sessionErr } = await admin
+    .from("sessions")
+    .insert({ title: `${source.title} (копия)`, organization_id: source.organization_id, created_by: user.id, join_code })
+    .select("id")
+    .single();
+  if (sessionErr || !newSession) return { error: "Не удалось создать копию" };
+
+  const newSessionId = newSession.id;
+
+  // Copy sections (build old → new id mapping)
+  const { data: sections } = await admin
+    .from("session_sections")
+    .select("id, title, sort_order")
+    .eq("session_id", sessionId)
+    .order("sort_order");
+  const sectionMap = new Map<string, string>();
+  if (sections && sections.length > 0) {
+    const { data: newSections } = await admin
+      .from("session_sections")
+      .insert(sections.map((s) => ({ session_id: newSessionId, title: s.title, sort_order: s.sort_order })))
+      .select("id, sort_order");
+    if (newSections) {
+      sections.forEach((old, i) => {
+        const created = newSections[i];
+        if (created) sectionMap.set(old.id, created.id);
+      });
+    }
+  }
+
+  // Copy polls (check pollsPerSession limit)
+  const { data: polls } = await admin
+    .from("polls")
+    .select("id, title, type, options, settings, sort_order, section_id")
+    .eq("session_id", sessionId)
+    .order("sort_order");
+  if (polls && polls.length > 0) {
+    const limits = getLimits((org?.plan ?? "free") as OrgPlan);
+    const allowed = isFinite(limits.pollsPerSession) ? limits.pollsPerSession : polls.length;
+    const pollsToInsert = polls.slice(0, allowed).map((p) => {
+      const s = (p.settings ?? {}) as Record<string, unknown>;
+      const copied = { ...s };
+      delete copied["activated_at"];
+      const newSectionId = p.section_id ? (sectionMap.get(p.section_id) ?? null) : null;
+      return {
+        session_id: newSessionId,
+        created_by: user.id,
+        title: p.title,
+        type: p.type,
+        options: p.options,
+        settings: copied,
+        sort_order: p.sort_order,
+        section_id: newSectionId,
+      };
+    });
+    await admin.from("polls").insert(pollsToInsert);
+  }
+
+  // Copy slides
+  const { data: slides } = await admin
+    .from("session_slides")
+    .select("type, content, sort_order, section_id")
+    .eq("session_id", sessionId)
+    .order("sort_order");
+  if (slides && slides.length > 0) {
+    await admin.from("session_slides").insert(
+      slides.map((sl) => ({
+        session_id: newSessionId,
+        type: sl.type,
+        content: sl.content,
+        sort_order: sl.sort_order,
+        section_id: sl.section_id ? (sectionMap.get(sl.section_id) ?? null) : null,
+      }))
+    );
+  }
+
+  revalidatePath(`/org/${orgSlug}`);
+  return { redirectTo: `/org/${orgSlug}/sessions/${newSessionId}` };
+}
+
 export async function updateSessionStatus(
   sessionId: string,
   status: "active" | "ended",

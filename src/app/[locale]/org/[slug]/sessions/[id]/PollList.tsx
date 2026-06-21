@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { createClient } from "@/lib/supabase/client";
 import { activatePoll, closePoll, clearPollResult, copyPoll, updatePoll, showPollOnDisplay, hidePollFromDisplay, reorderPolls } from "@/lib/actions/polls";
-import { movePollSection, createSection, deleteSection, renameSection } from "@/lib/actions/sections";
+import { movePollSection, createSection, deleteSection, renameSection, copySection } from "@/lib/actions/sections";
 import { showSlide, hideSlide, deleteSlide, duplicateSlide, updateSlide, reorderSlides, moveSlideToSection, startSpinWheel } from "@/lib/actions/slides";
 import { revealPoker } from "@/lib/actions/sessions";
 import { Button } from "@/components/ui/Button";
@@ -294,7 +294,15 @@ type PollRow = Pick<Poll, "id" | "title" | "type" | "status" | "sort_order"> & {
 
 // ─── CopyPollButton ───────────────────────────────────────────────────────────
 
-function CopyPollButton({ pollId, orgSlug, targets }: { pollId: string; orgSlug: string; targets: CopyTarget[] }) {
+function CopyPollButton({
+  pollId, orgSlug, sessionId, targets, sections,
+}: {
+  pollId: string;
+  orgSlug: string;
+  sessionId: string;
+  targets: CopyTarget[];
+  sections: SectionItem[];
+}) {
   const t = useTranslations("Org.session.pollList");
   const tShared = useTranslations("Org.shared");
   const [open, setOpen] = useState(false);
@@ -310,11 +318,12 @@ function CopyPollButton({ pollId, orgSlug, targets }: { pollId: string; orgSlug:
     return () => document.removeEventListener("mousedown", onClick);
   }, []);
 
-  async function handle(targetId: string) {
-    setPending(targetId);
-    await copyPoll(pollId, targetId, orgSlug);
+  async function handle(targetSessionId: string, sectionId?: string | null) {
+    const key = sectionId ? `${targetSessionId}:${sectionId}` : targetSessionId;
+    setPending(key);
+    await copyPoll(pollId, targetSessionId, orgSlug, sectionId ?? null);
     setPending(null);
-    setDone(targetId);
+    setDone(key);
     setTimeout(() => { setDone(null); setOpen(false); }, 1200);
   }
 
@@ -326,16 +335,62 @@ function CopyPollButton({ pollId, orgSlug, targets }: { pollId: string; orgSlug:
       {open && (
         <div className="absolute right-0 top-full mt-1 z-20 w-60 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl overflow-hidden">
           <p className="px-3 py-2 text-[11px] font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800">{t("copyTo")}</p>
-          {targets.map(target => (
-            <button key={target.id} type="button" disabled={!!pending} onClick={() => handle(target.id)}
-              className="w-full flex items-center justify-between px-3 py-2.5 text-left hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors disabled:opacity-50"
+          {/* Same session: show sections if any */}
+          {sections.length > 0 ? (
+            <>
+              <p className="px-3 pt-2 pb-1 text-[10px] text-slate-400">{t("copyToThisEvent")}</p>
+              <button
+                type="button"
+                disabled={!!pending}
+                onClick={() => handle(sessionId, null)}
+                className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors disabled:opacity-50"
+              >
+                <span className="text-sm text-slate-700 dark:text-slate-300 truncate pr-2">{t("noSection")}</span>
+                {done === sessionId ? <span className="text-xs font-semibold text-green-500 shrink-0">✓</span>
+                  : pending === sessionId ? <span className="text-xs text-slate-400 shrink-0">…</span> : null}
+              </button>
+              {sections.map(s => {
+                const key = `${sessionId}:${s.id}`;
+                return (
+                  <button key={s.id} type="button" disabled={!!pending} onClick={() => handle(sessionId, s.id)}
+                    className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors disabled:opacity-50 pl-5"
+                  >
+                    <span className="text-sm text-slate-700 dark:text-slate-300 truncate pr-2">↳ {s.title}</span>
+                    {done === key ? <span className="text-xs font-semibold text-green-500 shrink-0">✓</span>
+                      : pending === key ? <span className="text-xs text-slate-400 shrink-0">…</span> : null}
+                  </button>
+                );
+              })}
+              {targets.length > 0 && <div className="border-t border-slate-100 dark:border-slate-800 mt-1 mb-1" />}
+            </>
+          ) : (
+            <button
+              type="button"
+              disabled={!!pending}
+              onClick={() => handle(sessionId)}
+              className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors disabled:opacity-50"
             >
-              <span className="text-sm text-slate-700 dark:text-slate-300 truncate pr-2">{target.title}</span>
-              {done === target.id ? <span className="text-xs font-semibold text-green-500 shrink-0">✓</span>
-                : pending === target.id ? <span className="text-xs text-slate-400 shrink-0">…</span>
-                : <span className="text-[11px] text-slate-400 shrink-0">{tShared(`sessionStatus.${target.status}`)}</span>}
+              <span className="text-sm text-slate-700 dark:text-slate-300 truncate pr-2">{t("copyToThisEvent")}</span>
+              {done === sessionId ? <span className="text-xs font-semibold text-green-500 shrink-0">✓</span>
+                : pending === sessionId ? <span className="text-xs text-slate-400 shrink-0">…</span> : null}
             </button>
-          ))}
+          )}
+          {/* Other sessions */}
+          {targets.length > 0 && (
+            <>
+              {targets.length > 0 && sections.length === 0 && <div className="border-t border-slate-100 dark:border-slate-800" />}
+              {targets.map(target => (
+                <button key={target.id} type="button" disabled={!!pending} onClick={() => handle(target.id)}
+                  className="w-full flex items-center justify-between px-3 py-2.5 text-left hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors disabled:opacity-50"
+                >
+                  <span className="text-sm text-slate-700 dark:text-slate-300 truncate pr-2">{target.title}</span>
+                  {done === target.id ? <span className="text-xs font-semibold text-green-500 shrink-0">✓</span>
+                    : pending === target.id ? <span className="text-xs text-slate-400 shrink-0">…</span>
+                    : <span className="text-[11px] text-slate-400 shrink-0">{tShared(`sessionStatus.${target.status}`)}</span>}
+                </button>
+              ))}
+            </>
+          )}
         </div>
       )}
     </div>
@@ -447,7 +502,7 @@ function VoteTimeline({ timestamps }: { timestamps: string[] }) {
 // ─── PollCard ─────────────────────────────────────────────────────────────────
 
 function PollCard({
-  poll, votesByPoll, votesDataByPoll, votesTimeline, sessionId, orgSlug, sessionStatus, copyTargets,
+  poll, votesByPoll, votesDataByPoll, votesTimeline, sessionId, orgSlug, sessionStatus, copyTargets, sections,
   draggingId, onDragStart, onDragEnd,
   editingId, editTitle, editOptions, editSaving, editError,
   onStartEdit, onSaveEdit, onCancelEdit, onEditTitleChange, onEditOptionsChange,
@@ -457,7 +512,7 @@ function PollCard({
   votesByPoll: Record<string, number>;
   votesDataByPoll: Record<string, Record<string, number>>;
   votesTimeline?: string[];
-  sessionId: string; orgSlug: string; sessionStatus: SessionStatus; copyTargets: CopyTarget[];
+  sessionId: string; orgSlug: string; sessionStatus: SessionStatus; copyTargets: CopyTarget[]; sections: SectionItem[];
   draggingId: string | null;
   onDragStart: (id: string) => void;
   onDragEnd: () => void;
@@ -589,7 +644,7 @@ function PollCard({
                   {t("downloadCsv")}
                 </Button>
               )}
-              {copyTargets.length > 0 && <CopyPollButton pollId={poll.id} orgSlug={orgSlug} targets={copyTargets} />}
+              <CopyPollButton pollId={poll.id} orgSlug={orgSlug} sessionId={sessionId} targets={copyTargets} sections={sections} />
             </div>
           </div>
           {showResults && <PollResults poll={poll} valueCounts={valueCounts} total={voteCount} />}
@@ -605,9 +660,10 @@ function PollCard({
 // ─── SectionHeader ────────────────────────────────────────────────────────────
 
 function SectionHeader({
-  section, orgSlug, sessionId, isPending, onBeforeDelete,
+  section, orgSlug, sessionId, isPending, copyTargets, onBeforeDelete,
 }: {
   section: SectionItem; orgSlug: string; sessionId: string; isPending: boolean;
+  copyTargets?: CopyTarget[];
   onBeforeDelete?: (sectionId: string) => void;
 }) {
   const t = useTranslations("Org.session.pollList");
@@ -615,6 +671,19 @@ function SectionHeader({
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(section.title);
   const [, startT] = useTransition();
+  const [copyOpen, setCopyOpen] = useState(false);
+  const [copyPending, setCopyPending] = useState<string | null>(null);
+  const [copyDone, setCopyDone] = useState<string | null>(null);
+  const [copyError, setCopyError] = useState<string | null>(null);
+  const copyRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function onMouseDown(e: MouseEvent) {
+      if (copyRef.current && !copyRef.current.contains(e.target as Node)) setCopyOpen(false);
+    }
+    document.addEventListener("mousedown", onMouseDown);
+    return () => document.removeEventListener("mousedown", onMouseDown);
+  }, []);
 
   function save() {
     if (!title.trim() || title.trim() === section.title) { setEditing(false); return; }
@@ -633,6 +702,25 @@ function SectionHeader({
       router.refresh();
     });
   }
+
+  async function handleCopy(targetSessionId: string) {
+    setCopyPending(targetSessionId);
+    setCopyError(null);
+    const result = await copySection(section.id, sessionId, targetSessionId, orgSlug);
+    setCopyPending(null);
+    if ("error" in result) {
+      setCopyError(result.error);
+      setTimeout(() => setCopyError(null), 4000);
+    } else {
+      setCopyDone(targetSessionId);
+      setTimeout(() => { setCopyDone(null); setCopyOpen(false); if (targetSessionId === sessionId) router.refresh(); }, 1200);
+    }
+  }
+
+  const allCopyTargets: CopyTarget[] = [
+    { id: sessionId, title: t("copySectionToSame"), status: "current" },
+    ...(copyTargets ?? []),
+  ];
 
   return (
     <div className="flex items-center gap-2 mb-2 px-1">
@@ -654,6 +742,43 @@ function SectionHeader({
             {section.title}
           </span>
           <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
+          {/* Copy section */}
+          <div className="relative shrink-0" ref={copyRef}>
+            <button
+              type="button"
+              onClick={() => setCopyOpen(v => !v)}
+              title={t("copySectionTitle")}
+              className="text-[11px] text-slate-300 dark:text-slate-600 hover:text-indigo-500 dark:hover:text-indigo-400 px-0.5 shrink-0 transition-colors"
+            >⎘</button>
+            {copyOpen && (
+              <div className="absolute right-0 top-full mt-1 z-30 w-52 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl overflow-hidden">
+                <p className="px-3 py-2 text-[11px] font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800">
+                  {t("copySectionTo")}
+                </p>
+                {copyError && (
+                  <p className="px-3 py-2 text-xs text-red-500 border-b border-slate-100 dark:border-slate-800">{copyError}</p>
+                )}
+                {allCopyTargets.map(target => (
+                  <button
+                    key={target.id}
+                    type="button"
+                    disabled={!!copyPending}
+                    onClick={() => handleCopy(target.id)}
+                    className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors disabled:opacity-50"
+                  >
+                    <span className="text-sm text-slate-700 dark:text-slate-300 truncate pr-2">{target.title}</span>
+                    {copyDone === target.id
+                      ? <span className="text-xs font-semibold text-green-500 shrink-0">✓</span>
+                      : copyPending === target.id
+                        ? <span className="text-xs text-slate-400 shrink-0">…</span>
+                        : target.status === "current"
+                          ? null
+                          : <span className="text-[11px] text-slate-400 shrink-0">{target.status}</span>}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <button type="button" onClick={() => setEditing(true)} title={t("renameSectionTitle")}
             className="text-slate-300 dark:text-slate-600 hover:text-slate-500 dark:hover:text-slate-400 px-0.5 shrink-0 transition-colors"
           ><EditIcon size={12} /></button>
@@ -911,7 +1036,7 @@ export function PollList({
   }
 
   const baseCardProps = {
-    votesByPoll, votesDataByPoll, sessionId, orgSlug, sessionStatus, copyTargets,
+    votesByPoll, votesDataByPoll, sessionId, orgSlug, sessionStatus, copyTargets, sections: optimisticSections,
     draggingId, onDragStart: (id: string) => { setDraggingId(id); },
     onDragEnd: () => { setDraggingId(null); setOverSectionId(null); setOverPollId(null); },
     editingId, editTitle, editOptions, editSaving, editError,
@@ -1126,6 +1251,7 @@ export function PollList({
           >
             <SectionHeader
               section={section} orgSlug={orgSlug} sessionId={sessionId} isPending={isPending}
+              copyTargets={copyTargets}
               onBeforeDelete={(sectionId) => {
                 setOptimisticSections(prev => prev.filter(s => s.id !== sectionId));
                 setOptimisticPolls(prev => prev.map(p => p.section_id === sectionId ? { ...p, section_id: null } : p));

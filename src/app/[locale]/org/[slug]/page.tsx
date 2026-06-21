@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getTranslations, getLocale } from "next-intl/server";
 import { Button } from "@/components/ui/Button";
+import { DuplicateSessionButton } from "./DuplicateSessionButton";
 import type { Session } from "@/types/database";
 
 const STATUS_COLOR: Record<Session["status"], string> = {
@@ -100,35 +101,42 @@ export default async function OrgDashboardPage({
       ) : (
         <div className="flex flex-col gap-3">
           {sessions.map((session) => (
-            <Link
+            <div
               key={session.id}
-              href={`/org/${slug}/sessions/${session.id}`}
-              className="flex items-center justify-between rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-5 py-4 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+              className="flex items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
             >
-              <div className="flex items-center gap-4 min-w-0">
-                <div className="min-w-0">
-                  <p className="font-medium text-slate-900 dark:text-white truncate">{session.title}</p>
-                  <div className="flex items-center gap-3 mt-0.5 flex-wrap">
-                    <p className="text-sm text-slate-400 dark:text-slate-500">
-                      {new Date(session.created_at).toLocaleDateString(locale === "ru" ? "ru-RU" : "en-US")}
-                    </p>
-                    {(pollCountBySession[session.id] ?? 0) > 0 && (
-                      <span className="text-xs text-slate-400 dark:text-slate-500">
-                        📊 {pollCountBySession[session.id]}
-                      </span>
-                    )}
-                    {(participantCountBySession[session.id] ?? 0) > 0 && (
-                      <span className="text-xs text-slate-400 dark:text-slate-500">
-                        👥 {participantCountBySession[session.id]}
-                      </span>
-                    )}
+              <Link
+                href={`/org/${slug}/sessions/${session.id}`}
+                className="flex flex-1 items-center justify-between px-5 py-4 min-w-0"
+              >
+                <div className="flex items-center gap-4 min-w-0">
+                  <div className="min-w-0">
+                    <p className="font-medium text-slate-900 dark:text-white truncate">{session.title}</p>
+                    <div className="flex items-center gap-3 mt-0.5 flex-wrap">
+                      <p className="text-sm text-slate-400 dark:text-slate-500">
+                        {new Date(session.created_at).toLocaleDateString(locale === "ru" ? "ru-RU" : "en-US")}
+                      </p>
+                      {(pollCountBySession[session.id] ?? 0) > 0 && (
+                        <span className="text-xs text-slate-400 dark:text-slate-500">
+                          📊 {pollCountBySession[session.id]}
+                        </span>
+                      )}
+                      {(participantCountBySession[session.id] ?? 0) > 0 && (
+                        <span className="text-xs text-slate-400 dark:text-slate-500">
+                          👥 {participantCountBySession[session.id]}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
+                <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium ${STATUS_COLOR[session.status]}`}>
+                  {tShared(`sessionStatus.${session.status}`)}
+                </span>
+              </Link>
+              <div className="pr-3 shrink-0">
+                <DuplicateSessionButton sessionId={session.id} orgSlug={slug} />
               </div>
-              <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium ${STATUS_COLOR[session.status]}`}>
-                {tShared(`sessionStatus.${session.status}`)}
-              </span>
-            </Link>
+            </div>
           ))}
         </div>
       )}

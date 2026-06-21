@@ -305,6 +305,7 @@ export type Database = {
           type: "splash" | "speaker" | "schedule" | "quote" | "final" | "spin_wheel" | "announcement" | "reveal"
           content: Record<string, unknown>
           sort_order: number
+          section_id: string | null
           created_at: string
         }
         Insert: {
@@ -313,12 +314,14 @@ export type Database = {
           type: "splash" | "speaker" | "schedule" | "quote" | "final" | "spin_wheel" | "announcement" | "reveal"
           content?: Record<string, unknown>
           sort_order?: number
+          section_id?: string | null
           created_at?: string
         }
         Update: {
           type?: "splash" | "speaker" | "schedule" | "quote" | "final"
           content?: Record<string, unknown>
           sort_order?: number
+          section_id?: string | null
         }
         Relationships: [
           {

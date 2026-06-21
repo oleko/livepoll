@@ -628,7 +628,8 @@ export async function upvoteQuestion(questionId: string, voterToken: string, ses
 export async function copyPoll(
   pollId: string,
   targetSessionId: string,
-  orgSlug: string
+  orgSlug: string,
+  targetSectionId?: string | null
 ) {
   const { user, admin } = await getAuthUser();
   await assertSessionMember(user.id, targetSessionId, admin);
@@ -665,6 +666,7 @@ export async function copyPoll(
     options: poll.options,
     settings: copiedSettings,
     sort_order: (last?.sort_order ?? -1) + 1,
+    ...(targetSectionId !== undefined ? { section_id: targetSectionId } : {}),
   });
 
   revalidatePath(`/org/${orgSlug}/sessions/${targetSessionId}`);
