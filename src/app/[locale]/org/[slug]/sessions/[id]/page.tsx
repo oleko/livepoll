@@ -11,7 +11,6 @@ import { SessionConnectPanel } from "./SessionConnectPanel";
 import { AttendeesInput } from "./AttendeesInput";
 import { ExportButton } from "./ExportButton";
 import { SessionSummaryButton } from "./SessionSummaryButton";
-import { ChampionshipPanel } from "./ChampionshipPanel";
 import type { Session } from "@/types/database";
 
 const STATUS_COLOR: Record<Session["status"], string> = {
@@ -220,19 +219,18 @@ export default async function SessionPage({
         {/* 4. Creation & moderation */}
         <div className="flex flex-col gap-6">
           {session.status !== "ended" && (
-            <>
-              <ChampionshipPanel
-                sessionId={id}
-                orgSlug={slug}
-                quizPollCount={quizPolls.length}
-                initial={{
-                  enabled: championship.enabled ?? false,
-                  auto: championship.auto ?? true,
-                  reveal_duration: championship.reveal_duration ?? 10,
-                }}
-              />
-              <CreationTabs sessionId={id} orgSlug={slug} sections={sections ?? []} />
-            </>
+            <CreationTabs
+              sessionId={id}
+              orgSlug={slug}
+              sections={sections ?? []}
+              quizPolls={quizPolls.map((p) => ({ id: p.id, title: p.title, settings: p.settings as Record<string, unknown> | null }))}
+              championship={{
+                enabled: championship.enabled ?? false,
+                auto: championship.auto ?? true,
+                reveal_duration: championship.reveal_duration ?? 10,
+              }}
+              sessionStatus={session.status}
+            />
           )}
           {hasQA && (
             <QAPanel sessionId={id} orgSlug={slug} initialQuestions={questions ?? []} />
