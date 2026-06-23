@@ -274,7 +274,7 @@ export default async function ChangelogPage() {
       <div className="mt-14 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-5 text-center">
         <p className="text-sm text-slate-600 dark:text-slate-400">
           Есть идея или нашли баг?{" "}
-          <a href="mailto:hello@livepoll.ai" className="text-indigo-600 dark:text-indigo-400 hover:underline font-medium">
+          <a href="mailto:hello@kvoroom.ru" className="text-indigo-600 dark:text-indigo-400 hover:underline font-medium">
             Напишите нам
           </a>
         </p>

@@ -61,7 +61,7 @@ export async function sendFeedbackEmail({
 
       <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
       <p style="margin: 0; font-size: 12px; color: #94a3b8;">
-        Все обращения: <a href="https://livepoll.ai/admin/feedback" style="color: #4f46e5;">livepoll.ai/admin/feedback</a>
+        Все обращения: <a href="https://kvoroom.ru/admin/feedback" style="color: #4f46e5;">kvoroom.ru/admin/feedback</a>
       </p>
     </div>
   `;
