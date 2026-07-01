@@ -13,6 +13,8 @@ const STATUS_COLOR: Record<Session["status"], string> = {
   ended:  "text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800",
 };
 
+const CARD_ACTIVE = "ring-1 ring-green-200 dark:ring-green-500/20 border-l-[3px] border-l-green-500";
+
 export default async function OrgDashboardPage({
   params,
 }: {
@@ -103,33 +105,42 @@ export default async function OrgDashboardPage({
           {sessions.map((session) => (
             <div
               key={session.id}
-              className="flex items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+              className={`flex items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors overflow-hidden ${
+                session.status === "active" ? CARD_ACTIVE : ""
+              }`}
             >
               <Link
                 href={`/org/${slug}/sessions/${session.id}`}
                 className="flex flex-1 items-center justify-between px-5 py-4 min-w-0"
               >
-                <div className="flex items-center gap-4 min-w-0">
-                  <div className="min-w-0">
-                    <p className="font-medium text-slate-900 dark:text-white truncate">{session.title}</p>
-                    <div className="flex items-center gap-3 mt-0.5 flex-wrap">
-                      <p className="text-sm text-slate-400 dark:text-slate-500">
-                        {new Date(session.created_at).toLocaleDateString(locale === "ru" ? "ru-RU" : "en-US")}
-                      </p>
-                      {(pollCountBySession[session.id] ?? 0) > 0 && (
+                <div className="min-w-0">
+                  <p className="font-medium text-slate-900 dark:text-white truncate">{session.title}</p>
+                  <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                    <p className="text-sm text-slate-400 dark:text-slate-500">
+                      {new Date(session.created_at).toLocaleDateString(locale === "ru" ? "ru-RU" : "en-US")}
+                    </p>
+                    {(pollCountBySession[session.id] ?? 0) > 0 && (
+                      <>
+                        <span className="text-slate-300 dark:text-slate-600 select-none">·</span>
                         <span className="text-xs text-slate-400 dark:text-slate-500">
-                          📊 {pollCountBySession[session.id]}
+                          {pollCountBySession[session.id]} {locale === "ru" ? "опросов" : "polls"}
                         </span>
-                      )}
-                      {(participantCountBySession[session.id] ?? 0) > 0 && (
+                      </>
+                    )}
+                    {(participantCountBySession[session.id] ?? 0) > 0 && (
+                      <>
+                        <span className="text-slate-300 dark:text-slate-600 select-none">·</span>
                         <span className="text-xs text-slate-400 dark:text-slate-500">
-                          👥 {participantCountBySession[session.id]}
+                          {participantCountBySession[session.id]} {locale === "ru" ? "участников" : "participants"}
                         </span>
-                      )}
-                    </div>
+                      </>
+                    )}
                   </div>
                 </div>
-                <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium ${STATUS_COLOR[session.status]}`}>
+                <span className={`shrink-0 flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${STATUS_COLOR[session.status]}`}>
+                  {session.status === "active" && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse shrink-0" />
+                  )}
                   {tShared(`sessionStatus.${session.status}`)}
                 </span>
               </Link>

@@ -29,6 +29,21 @@ function IconExternal() {
     </svg>
   );
 }
+function IconChevron({ open }: { open: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={`w-3.5 h-3.5 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+    >
+      <polyline points="6 9 12 15 18 9" />
+    </svg>
+  );
+}
 
 export function SessionConnectPanel({
   joinUrl,
@@ -43,6 +58,7 @@ export function SessionConnectPanel({
 }) {
   const t = useTranslations("Org.session.connect");
   const [copied, setCopied] = useState(false);
+  const [expanded, setExpanded] = useState(false);
 
   async function copyLink() {
     await navigator.clipboard.writeText(joinUrl);
@@ -122,88 +138,119 @@ export function SessionConnectPanel({
   ];
 
   return (
-    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden">
-      <div className="grid md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-slate-100 dark:divide-slate-800">
+    <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden">
 
-        {/* ── Participants ── */}
-        <div className="p-5 flex flex-col gap-4">
-          <p className="text-[10px] font-semibold tracking-widest uppercase text-slate-400 dark:text-slate-600">
-            {t("participants")}
-          </p>
+      {/* ── Compact bar ─────────────────────────────────────────────────────── */}
+      <div className="flex items-center gap-3 px-4 py-2.5">
+        {/* Join code */}
+        <span className="font-mono text-sm font-bold text-slate-900 dark:text-white tracking-[0.12em] shrink-0">
+          {joinCode}
+        </span>
 
-          <div className="flex items-center gap-3">
-            <span className="text-[11px] text-slate-400">{t("code")}</span>
-            <span className="font-mono text-[2rem] leading-none font-black text-slate-900 dark:text-white tracking-[0.15em]">
-              {joinCode}
-            </span>
-          </div>
+        <span className="text-slate-200 dark:text-slate-700 shrink-0 select-none">·</span>
 
-          <div className="flex items-center gap-2 rounded-xl bg-slate-50 dark:bg-slate-800 px-3 py-2.5">
-            <span className="flex-1 min-w-0 text-[11px] text-slate-500 dark:text-slate-400 font-mono truncate">
-              {joinUrl.replace(/^https?:\/\//, "")}
-            </span>
-            <button
-              onClick={copyLink}
-              className={`shrink-0 flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all ${
-                copied
-                  ? "bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400"
-                  : "bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-600 hover:border-slate-300"
-              }`}
+        {/* URL + copy */}
+        <div className="flex items-center gap-2 flex-1 min-w-0 rounded-lg bg-slate-50 dark:bg-slate-800 px-3 py-1.5">
+          <span className="flex-1 min-w-0 text-[11px] text-slate-500 dark:text-slate-400 font-mono truncate">
+            {joinUrl.replace(/^https?:\/\//, "")}
+          </span>
+          <button
+            onClick={copyLink}
+            className={`shrink-0 flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium transition-all ${
+              copied
+                ? "text-green-600 dark:text-green-400"
+                : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+            }`}
+          >
+            {copied ? <IconCheck /> : <IconCopy />}
+            <span className="hidden sm:inline">{copied ? t("copied") : t("copy")}</span>
+          </button>
+        </div>
+
+        {/* Screen links (icon only) */}
+        <div className="flex items-center gap-1 shrink-0">
+          {screens.map((s) => (
+            <Link
+              key={s.label}
+              href={s.href}
+              target="_blank"
+              title={s.label}
+              className="flex items-center justify-center w-7 h-7 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-base hover:border-slate-300 dark:hover:border-slate-600 hover:bg-white dark:hover:bg-slate-700 transition-colors"
             >
-              {copied ? <IconCheck /> : <IconCopy />}
-              {copied ? t("copied") : t("copy")}
-            </button>
-          </div>
-
-          <div className="flex items-center gap-2.5">
-            <span className="text-[11px] text-slate-400 dark:text-slate-600">{t("share")}</span>
-            <div className="flex items-center gap-1.5">
-              {shares.map((s) => (
-                <a
-                  key={s.label}
-                  href={s.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  title={s.label}
-                  className={`w-7 h-7 flex items-center justify-center rounded-full text-white transition-all hover:scale-110 hover:opacity-90 ${s.bg}`}
-                >
-                  {s.icon}
-                </a>
-              ))}
-            </div>
-          </div>
+              {s.icon}
+            </Link>
+          ))}
         </div>
 
-        {/* ── Screens ── */}
-        <div className="p-5 flex flex-col gap-4">
-          <p className="text-[10px] font-semibold tracking-widest uppercase text-slate-400 dark:text-slate-600">
-            {t("screens")}
-          </p>
-
-          <div className="grid grid-cols-3 gap-2">
-            {screens.map((s) => (
-              <Link
-                key={s.label}
-                href={s.href}
-                target="_blank"
-                className={`group flex flex-col items-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 px-2 py-3.5 text-center transition-all duration-150 ${s.accent}`}
-              >
-                <span className="text-xl">{s.icon}</span>
-                <div className="flex items-center gap-1">
-                  <span className={`text-[11px] font-semibold text-slate-700 dark:text-slate-200 transition-colors ${s.labelColor}`}>
-                    {s.label}
-                  </span>
-                  <IconExternal />
-                </div>
-                <span className="text-[10px] text-slate-400 dark:text-slate-600 leading-tight">
-                  {s.desc}
-                </span>
-              </Link>
-            ))}
-          </div>
-        </div>
-
+        {/* Expand toggle */}
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="shrink-0 flex items-center justify-center w-6 h-6 rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+          aria-label={expanded ? "Свернуть" : "Развернуть"}
+        >
+          <IconChevron open={expanded} />
+        </button>
       </div>
+
+      {/* ── Expanded panel ───────────────────────────────────────────────────── */}
+      {expanded && (
+        <div className="border-t border-slate-100 dark:border-slate-800">
+          <div className="grid md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-slate-100 dark:divide-slate-800">
+
+            {/* Social share */}
+            <div className="p-5 flex flex-col gap-3">
+              <p className="text-[10px] font-semibold tracking-widest uppercase text-slate-400 dark:text-slate-600">
+                {t("share")}
+              </p>
+              <div className="flex items-center gap-2">
+                {shares.map((s) => (
+                  <a
+                    key={s.label}
+                    href={s.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title={s.label}
+                    className={`w-8 h-8 flex items-center justify-center rounded-full text-white transition-all hover:scale-110 hover:opacity-90 ${s.bg}`}
+                  >
+                    {s.icon}
+                  </a>
+                ))}
+              </div>
+            </div>
+
+            {/* Screen cards */}
+            <div className="p-5 flex flex-col gap-3">
+              <p className="text-[10px] font-semibold tracking-widest uppercase text-slate-400 dark:text-slate-600">
+                {t("screens")}
+              </p>
+              <div className="grid grid-cols-3 gap-2">
+                {screens.map((s) => (
+                  <Link
+                    key={s.label}
+                    href={s.href}
+                    target="_blank"
+                    className={`group flex flex-col items-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 px-2 py-3.5 text-center transition-all duration-150 ${s.accent}`}
+                  >
+                    <span className="text-xl">{s.icon}</span>
+                    <div className="flex items-center gap-1">
+                      <span className={`text-[11px] font-semibold text-slate-700 dark:text-slate-200 transition-colors ${s.labelColor}`}>
+                        {s.label}
+                      </span>
+                      <IconExternal />
+                    </div>
+                    <span className="text-[10px] text-slate-400 dark:text-slate-600 leading-tight">
+                      {s.desc}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

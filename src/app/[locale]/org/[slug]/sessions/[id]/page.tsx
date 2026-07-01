@@ -134,58 +134,58 @@ export default async function SessionPage({
     <div className="flex flex-col gap-6">
 
       {/* ── 1. Header ────────────────────────────────────────────────────────── */}
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div className="flex flex-col gap-1 min-w-0">
+      <div className="flex flex-col gap-1.5">
+        {/* Row 1: back link + primary actions */}
+        <div className="flex items-center justify-between gap-4">
           <Link
             href={`/org/${slug}`}
-            className="text-xs text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors w-fit"
+            className="text-xs text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
           >
             {t("Org.session.page.backLink")}
           </Link>
+          <div className="flex items-center gap-2 shrink-0">
+            {(session.status === "active" || session.status === "ended") && (polls?.length ?? 0) > 0 && (
+              <SessionSummaryButton sessionId={id} />
+            )}
+            {(polls?.length ?? 0) > 0 && (
+              <ExportButton
+                session={{ title: session.title, join_code: session.join_code }}
+                polls={(polls ?? []).map((p) => ({
+                  id: p.id,
+                  title: p.title,
+                  type: p.type,
+                  options: Array.isArray(p.options) ? (p.options as string[]) : [],
+                  section_id: (p as unknown as { section_id?: string | null }).section_id ?? null,
+                }))}
+                sections={sections ?? []}
+                votesByPoll={votesByPoll}
+                votesDataByPoll={votesDataByPoll}
+                questions={(questions ?? []).map((q) => ({ text: q.text, status: q.status }))}
+              />
+            )}
+            <SessionControls sessionId={session.id} status={session.status} orgSlug={slug} />
+          </div>
+        </div>
+        {/* Row 2: title + status badge + attendees */}
+        <div className="flex items-baseline gap-3 flex-wrap">
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white truncate">
             {session.title}
           </h1>
-          <div className="flex items-center gap-3 flex-wrap mt-0.5">
-            <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_COLOR[session.status]}`}>
-              {t(`Org.shared.sessionStatus.${session.status}`)}
-            </span>
-            {session.status !== "ended" && (
-              <AttendeesInput
-                sessionId={session.id}
-                orgSlug={slug}
-                initial={totalAttendees}
-              />
-            )}
-          </div>
-        </div>
-
-        {/* Primary actions */}
-        <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
-          {(session.status === "active" || session.status === "ended") && (polls?.length ?? 0) > 0 && (
-            <SessionSummaryButton sessionId={id} />
-          )}
-          {(polls?.length ?? 0) > 0 && (
-            <ExportButton
-              session={{ title: session.title, join_code: session.join_code }}
-              polls={(polls ?? []).map((p) => ({
-                id: p.id,
-                title: p.title,
-                type: p.type,
-                options: Array.isArray(p.options) ? (p.options as string[]) : [],
-                section_id: (p as unknown as { section_id?: string | null }).section_id ?? null,
-              }))}
-              sections={sections ?? []}
-              votesByPoll={votesByPoll}
-              votesDataByPoll={votesDataByPoll}
-              questions={(questions ?? []).map((q) => ({ text: q.text, status: q.status }))}
+          <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold shrink-0 ${STATUS_COLOR[session.status]}`}>
+            {t(`Org.shared.sessionStatus.${session.status}`)}
+          </span>
+          {session.status !== "ended" && (
+            <AttendeesInput
+              sessionId={session.id}
+              orgSlug={slug}
+              initial={totalAttendees}
             />
           )}
-          <SessionControls sessionId={session.id} status={session.status} orgSlug={slug} />
         </div>
       </div>
 
-      {/* ── 2. Share & Screens ───────────────────────────────────────────────── */}
-      {session.status !== "ended" && (
+      {/* ── 2. Share & Screens (compact, only when active) ───────────────────── */}
+      {session.status === "active" && (
         <SessionConnectPanel
           joinUrl={joinUrl}
           joinCode={session.join_code}
@@ -195,9 +195,9 @@ export default async function SessionPage({
       )}
 
       {/* ── 3 & 4. Lineup + Creation ─────────────────────────────────────────── */}
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid gap-6 lg:grid-cols-[1fr_380px] xl:grid-cols-[1fr_440px]">
         {/* 3. Poll & slide lineup */}
-        <div className="lg:col-span-2">
+        <div>
           <PollList
             polls={(polls ?? []).map((p) => ({
               ...p,
@@ -218,7 +218,7 @@ export default async function SessionPage({
 
         {/* 4. Creation & moderation */}
         <div className="flex flex-col gap-6">
-          {session.status !== "ended" && (
+          {session.status !== "ended" ? (
             <CreationTabs
               sessionId={id}
               orgSlug={slug}
@@ -230,10 +230,10 @@ export default async function SessionPage({
                 reveal_duration: championship.reveal_duration ?? 10,
               }}
               sessionStatus={session.status}
+              initialQuestions={questions ?? []}
             />
-          )}
-          {hasQA && (
-            <QAPanel sessionId={id} orgSlug={slug} initialQuestions={questions ?? []} />
+          ) : (
+            hasQA && <QAPanel sessionId={id} orgSlug={slug} initialQuestions={questions ?? []} />
           )}
         </div>
       </div>

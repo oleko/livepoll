@@ -335,7 +335,8 @@
       "creationTabs": {
         "pollTab": "📊 Опрос",
         "slideTab": "📽 Экран",
-        "quizTab": "🏆 Квиз"
+        "quizTab": "🏆 Квиз",
+        "qaTab": "❓ Q&A"
       },
       "connect": {
         "participants": "Участники",
