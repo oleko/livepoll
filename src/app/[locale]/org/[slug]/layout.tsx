@@ -6,6 +6,7 @@ import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { Button } from "@/components/ui/Button";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { LangToggle } from "@/components/LangToggle";
 import { FeedbackWidget } from "@/components/FeedbackWidget";
 import { OnboardingTour } from "@/components/OnboardingTour";
 
@@ -68,6 +69,7 @@ export default async function OrgLayout({
           <div className="flex items-center justify-between px-4 py-3">
             <span className="font-semibold text-slate-900 dark:text-white truncate mr-2">{org.name}</span>
             <div className="flex items-center gap-1 shrink-0">
+              <LangToggle />
               <ThemeToggle />
               <Link
                 href="/account"
@@ -111,6 +113,7 @@ export default async function OrgLayout({
           </div>
           <div className="flex items-center gap-2">
             <span className="text-xs text-slate-400 dark:text-slate-500 uppercase font-medium">{org.plan}</span>
+            <LangToggle />
             <ThemeToggle />
             <Link
               href="/account"
