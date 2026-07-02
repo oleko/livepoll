@@ -1081,7 +1081,7 @@ export function DisplayScreen({
       {!branding?.white_label && (
         <div className="absolute bottom-3 left-4 pointer-events-none">
           <span className="text-[11px] text-slate-400/50 dark:text-slate-600/60 font-medium tracking-wide select-none">
-            Powered by LivePoll AI
+            Powered by Kvoroom
           </span>
         </div>
       )}

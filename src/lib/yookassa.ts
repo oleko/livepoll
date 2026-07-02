@@ -39,7 +39,7 @@ export async function createYookassaPayment({
         amount: { value: amount.toFixed(2), currency: "RUB" },
         capture: true,
         confirmation: { type: "redirect", return_url: returnUrl },
-        description: `LivePoll AI — тариф «${PLAN_DISPLAY_NAME[plan as keyof typeof PLAN_DISPLAY_NAME] ?? plan}» (1 месяц)`,
+        description: `Kvoroom — тариф «${PLAN_DISPLAY_NAME[plan as keyof typeof PLAN_DISPLAY_NAME] ?? plan}» (1 месяц)`,
         metadata: { order_id: orderId, org_id: orgId, plan },
       }),
     });

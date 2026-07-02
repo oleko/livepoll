@@ -45,7 +45,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <div className="sm:hidden">
           <div className="flex items-center justify-between px-4 py-3">
             <span className="font-semibold text-slate-900 dark:text-white">
-              LivePoll <span className="text-indigo-600 dark:text-indigo-400">Admin</span>
+              Kvoroom <span className="text-indigo-600 dark:text-indigo-400">Admin</span>
             </span>
             <div className="flex items-center gap-1">
               <ThemeToggle />
@@ -79,7 +79,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <div className="hidden sm:flex mx-auto max-w-6xl items-center justify-between px-6 py-3">
           <div className="flex items-center gap-8">
             <span className="font-semibold text-slate-900 dark:text-white">
-              LivePoll <span className="text-indigo-600 dark:text-indigo-400">Admin</span>
+              Kvoroom <span className="text-indigo-600 dark:text-indigo-400">Admin</span>
             </span>
             <nav className="flex gap-1">
               {navLinks.map((link) => (

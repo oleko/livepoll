@@ -313,7 +313,7 @@ export function PresenterScreen({
 
       {/* ── Footer ── */}
       <footer className="border-t border-slate-800 px-6 py-2 flex items-center justify-between text-xs text-slate-600">
-        <span>Режим ведущего — LivePoll AI</span>
+        <span>Режим ведущего — Kvoroom</span>
         <span>{lineup.length} элементов в программе</span>
       </footer>
     </div>

@@ -1,5 +1,5 @@
 export const metadata = {
-  title: "Политика в отношении обработки персональных данных — LivePoll AI",
+  title: "Политика в отношении обработки персональных данных — Kvoroom",
 };
 
 export default function PrivacyPage() {

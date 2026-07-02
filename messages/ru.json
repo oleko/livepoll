@@ -2,7 +2,7 @@
   "Common": {
     "error": "Ошибка",
     "loading": "Загрузка...",
-    "poweredBy": "Powered by LivePoll AI"
+    "poweredBy": "Powered by Kvoroom"
   },
   "Landing": {
     "nav": {
@@ -24,7 +24,7 @@
       "mockupOpt1": "Отлично",
       "mockupOpt2": "Хорошо",
       "mockupOpt3": "Нейтрально",
-      "mockupJoinUrl": "livepoll.ru/join"
+      "mockupJoinUrl": "kvoroom.ru/join"
     },
     "pillars": {
       "heading": "Всё что нужно ведущему в одном месте",
@@ -205,12 +205,12 @@
         "changelog": "Обновления",
         "privacy": "Политика конфиденциальности"
       },
-      "copyright": "© {year} LivePoll AI"
+      "copyright": "© {year} Kvoroom"
     }
   },
   "Auth": {
     "login": {
-      "title": "LivePoll AI",
+      "title": "Kvoroom",
       "subtitle": "Войдите в свой аккаунт",
       "email": "Email",
       "password": "Пароль",
@@ -220,7 +220,7 @@
       "errorFallback": "Ошибка авторизации, попробуйте снова"
     },
     "register": {
-      "title": "LivePoll AI",
+      "title": "Kvoroom",
       "subtitle": "Создайте аккаунт",
       "name": "Ваше имя",
       "email": "Email",
@@ -662,7 +662,7 @@
       "fontMono": "Технический",
       "displayHeaderPlaceholder": "По умолчанию — название мероприятия",
       "displayHeaderHint": "Например: «DevConf 2026» или «Утренний блок». Если пусто — показывается название конкретного мероприятия.",
-      "whiteLabelText": "Скрыть «Powered by LivePoll AI»",
+      "whiteLabelText": "Скрыть «Powered by Kvoroom»",
       "whiteLabelDesc": "Убирает упоминание платформы со страниц участников и дисплейного экрана",
       "whiteLabelUnavailable": "Доступно на тарифах Команда и Безлимитный",
       "whiteLabelLocked": "🔒 Недоступно",
@@ -848,7 +848,7 @@
     },
     "index": {
       "title": "Центр помощи",
-      "subtitle": "Всё необходимое для работы с LivePoll AI — от первого запуска до настройки команды.",
+      "subtitle": "Всё необходимое для работы с Kvoroom — от первого запуска до настройки команды.",
       "contactTitle": "Остались вопросы?",
       "contactText": "Напишите нам на {email} — ответим в течение рабочего дня.",
       "back": "← Помощь",

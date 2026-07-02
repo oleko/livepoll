@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { getLocale } from "next-intl/server";
 
-export const metadata = { title: "Account | LivePoll AI" };
+export const metadata = { title: "Account | Kvoroom" };
 
 export default async function AccountHelpPage() {
   const locale = await getLocale();

@@ -3,7 +3,7 @@ import { getTranslations } from "next-intl/server";
 import HelpNav, { HelpNavMobile } from "./HelpNav";
 
 export const metadata = {
-  title: { template: "%s — Help | LivePoll AI", default: "Help | LivePoll AI" },
+  title: { template: "%s — Help | Kvoroom", default: "Help | Kvoroom" },
 };
 
 export default async function HelpLayout({ children }: { children: React.ReactNode }) {
@@ -13,7 +13,7 @@ export default async function HelpLayout({ children }: { children: React.ReactNo
     <div className="min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-white flex flex-col">
       <header className="border-b border-slate-200 dark:border-slate-800 px-6 py-4 flex items-center justify-between bg-white dark:bg-slate-950 sticky top-0 z-10">
         <Link href="/" className="font-bold text-slate-900 dark:text-white hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
-          LivePoll AI
+          Kvoroom
         </Link>
         <div className="flex items-center gap-4">
           <Link href="/help" className="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">

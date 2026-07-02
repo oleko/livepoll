@@ -8,7 +8,7 @@ import { EmailForm } from "./EmailForm";
 import { PasswordForm } from "./PasswordForm";
 import { DeleteAccount } from "./DeleteAccount";
 
-export const metadata = { title: "Аккаунт | LivePoll AI" };
+export const metadata = { title: "Аккаунт | Kvoroom" };
 
 export default async function AccountPage() {
   const supabase = await createClient();

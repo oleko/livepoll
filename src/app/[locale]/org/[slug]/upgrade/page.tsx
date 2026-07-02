@@ -155,14 +155,14 @@ export default async function UpgradePage({
                 </div>
               ) : price ? (
                 <a
-                  href="mailto:oleko85@gmail.com?subject=LivePoll%20AI%20%E2%80%94%20Тариф%20тестирование"
+                  href="mailto:oleko85@gmail.com?subject=Kvoroom%20%E2%80%94%20Тариф%20тестирование"
                   className="w-full rounded-xl border border-indigo-300 dark:border-indigo-700 px-4 py-2.5 text-sm font-medium text-center text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition-colors block"
                 >
                   {t("testingButton")}
                 </a>
               ) : (
                 <a
-                  href="mailto:oleko85@gmail.com?subject=LivePoll%20AI%20%E2%80%94%20Безлимитный%20тариф"
+                  href="mailto:oleko85@gmail.com?subject=Kvoroom%20%E2%80%94%20Безлимитный%20тариф"
                   className="w-full rounded-xl border border-slate-200 dark:border-slate-700 px-4 py-2.5 text-sm font-medium text-center text-slate-600 dark:text-slate-400 hover:border-indigo-400 transition-colors"
                 >
                   {t("contactButton")}

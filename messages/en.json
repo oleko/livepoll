@@ -2,7 +2,7 @@
   "Common": {
     "error": "Error",
     "loading": "Loading...",
-    "poweredBy": "Powered by LivePoll AI"
+    "poweredBy": "Powered by Kvoroom"
   },
   "Landing": {
     "nav": {
@@ -24,7 +24,7 @@
       "mockupOpt1": "Excellent",
       "mockupOpt2": "Good",
       "mockupOpt3": "Neutral",
-      "mockupJoinUrl": "livepoll.ru/join"
+      "mockupJoinUrl": "kvoroom.ru/join"
     },
     "pillars": {
       "heading": "Everything a presenter needs in one place",
@@ -205,12 +205,12 @@
         "changelog": "Changelog",
         "privacy": "Privacy policy"
       },
-      "copyright": "© {year} LivePoll AI"
+      "copyright": "© {year} Kvoroom"
     }
   },
   "Auth": {
     "login": {
-      "title": "LivePoll AI",
+      "title": "Kvoroom",
       "subtitle": "Sign in to your account",
       "email": "Email",
       "password": "Password",
@@ -220,7 +220,7 @@
       "errorFallback": "Authentication error, please try again"
     },
     "register": {
-      "title": "LivePoll AI",
+      "title": "Kvoroom",
       "subtitle": "Create an account",
       "name": "Your name",
       "email": "Email",
@@ -662,7 +662,7 @@
       "fontMono": "Technical",
       "displayHeaderPlaceholder": "Defaults to the event name",
       "displayHeaderHint": "e.g. «DevConf 2026» or «Morning block». If empty, the current event name is shown.",
-      "whiteLabelText": "Hide «Powered by LivePoll AI»",
+      "whiteLabelText": "Hide «Powered by Kvoroom»",
       "whiteLabelDesc": "Removes platform branding from participant and display screens",
       "whiteLabelUnavailable": "Available on Team and Unlimited plans",
       "whiteLabelLocked": "🔒 Unavailable",
@@ -848,7 +848,7 @@
     },
     "index": {
       "title": "Help Center",
-      "subtitle": "Everything you need to run LivePoll AI — from first launch to team setup.",
+      "subtitle": "Everything you need to run Kvoroom — from first launch to team setup.",
       "contactTitle": "Still have questions?",
       "contactText": "Email us at {email} — we'll respond within one business day.",
       "back": "← Help",

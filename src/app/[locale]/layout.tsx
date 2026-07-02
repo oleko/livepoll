@@ -11,7 +11,7 @@ import { notFound } from "next/navigation";
 const rubik = Rubik({ subsets: ["latin", "cyrillic"], variable: "--font-rubik" });
 
 export const metadata: Metadata = {
-  title: "LivePoll AI",
+  title: "Kvoroom",
   description: "Интерактивные голосования для живых мероприятий",
 };
 

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { NAV_ITEMS, slugToNavKey } from "./nav-items";
 
-export const metadata = { title: "Help Center | LivePoll AI" };
+export const metadata = { title: "Help Center | Kvoroom" };
 
 export default async function HelpIndexPage() {
   const t = await getTranslations("Help");

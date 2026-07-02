@@ -24,7 +24,7 @@ export function LandingPage() {
 
       {/* ─── Nav ─── */}
       <nav aria-label={t("nav.ariaLabel")} className="sticky top-0 z-50 flex items-center justify-between px-6 md:px-10 py-4 border-b border-zinc-200/70 dark:border-zinc-800/70 bg-white/90 dark:bg-zinc-950/90 backdrop-blur-md">
-        <Link href="/" className="text-lg font-bold tracking-tight">LivePoll AI</Link>
+        <Link href="/" className="text-lg font-bold tracking-tight">Kvoroom</Link>
         <div className="flex items-center gap-2">
           <LangToggle />
           <ThemeToggle />
@@ -504,7 +504,7 @@ export function LandingPage() {
       {/* ─── Footer ─── */}
       <footer className="border-t border-zinc-200 dark:border-zinc-800 px-6 md:px-10 py-8">
         <div className="mx-auto max-w-6xl flex flex-col md:flex-row items-center justify-between gap-4">
-          <span className="font-bold text-zinc-900 dark:text-white">LivePoll AI</span>
+          <span className="font-bold text-zinc-900 dark:text-white">Kvoroom</span>
           <p className="text-xs text-zinc-400 dark:text-zinc-600">{t("footer.copyright", { year: new Date().getFullYear() })}</p>
           <div className="flex gap-6 text-xs text-zinc-400 dark:text-zinc-600">
             <Link href="/help" className="hover:text-zinc-600 dark:hover:text-zinc-400 transition-colors">{t("footer.links.help")}</Link>

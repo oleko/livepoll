@@ -22,12 +22,12 @@ export async function sendFeedbackEmail({
 
   const typeLabel = TYPE_LABEL[type] ?? type;
   const from = userEmail ?? "аноним";
-  const subject = `[LivePoll] ${typeLabel} от ${from}`;
+  const subject = `[Kvoroom] ${typeLabel} от ${from}`;
 
   const html = `
     <div style="font-family: sans-serif; max-width: 560px; margin: 0 auto; padding: 24px;">
       <h2 style="margin: 0 0 16px; font-size: 18px; color: #1e293b;">
-        Новое обращение в LivePoll AI
+        Новое обращение в Kvoroom
       </h2>
 
       <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin-bottom: 16px;">
@@ -74,7 +74,7 @@ export async function sendFeedbackEmail({
         "Authorization": `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        from: "LivePoll AI <noreply@livepoll.ru>",
+        from: "Kvoroom <noreply@kvoroom.ru>",
         to: ["oleko85@gmail.com"],
         subject,
         html,
