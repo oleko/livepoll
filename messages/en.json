@@ -114,7 +114,17 @@
           "title": "Leaderboard fires up the room",
           "desc": "Top 5 on the main screen. The audience cheers the winner and asks for another round."
         }
-      ]
+      ],
+      "mockup": {
+        "tag": "Quiz · Question 3",
+        "question": "What is SOLID?",
+        "opt0": "OOP principles",
+        "opt1": "DB pattern",
+        "opt2": "Network protocol",
+        "correct": "Correct! ✓",
+        "rank": "You're in 2nd place",
+        "correctAnswer": "OOP principles"
+      }
     },
     "pollTypes": {
       "heading": "8 poll formats",

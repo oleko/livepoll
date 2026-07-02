@@ -338,24 +338,24 @@ export function LandingPage() {
                   <span>●●●</span>
                 </div>
                 <div className="px-3.5 pt-2.5 pb-2 border-b border-zinc-100 dark:border-zinc-800/80">
-                  <p className="text-[8px] text-amber-500 dark:text-amber-400 font-semibold uppercase tracking-wider mb-0.5">Квиз · Вопрос 3</p>
-                  <p className="text-zinc-900 dark:text-white text-[10px] font-semibold leading-snug">Что такое SOLID?</p>
+                  <p className="text-[8px] text-amber-500 dark:text-amber-400 font-semibold uppercase tracking-wider mb-0.5">{t("quiz.mockup.tag")}</p>
+                  <p className="text-zinc-900 dark:text-white text-[10px] font-semibold leading-snug">{t("quiz.mockup.question")}</p>
                 </div>
                 <div className="px-3.5 py-2.5 space-y-1.5">
-                  {[
-                    { label: "Принципы ООП", correct: true },
-                    { label: "Паттерн БД", correct: false },
-                    { label: "Протокол сети", correct: false },
-                  ].map((opt) => (
-                    <div key={opt.label} className={`rounded-lg px-2.5 py-1.5 text-[9px] font-medium flex items-center gap-1.5 ${opt.correct ? "bg-green-500/10 border border-green-500/30 text-green-600 dark:text-green-400" : "bg-zinc-100 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700/40 text-zinc-400 dark:text-zinc-500"}`}>
+                  {([
+                    { key: "opt0", correct: true },
+                    { key: "opt1", correct: false },
+                    { key: "opt2", correct: false },
+                  ] as const).map((opt) => (
+                    <div key={opt.key} className={`rounded-lg px-2.5 py-1.5 text-[9px] font-medium flex items-center gap-1.5 ${opt.correct ? "bg-green-500/10 border border-green-500/30 text-green-600 dark:text-green-400" : "bg-zinc-100 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700/40 text-zinc-400 dark:text-zinc-500"}`}>
                       {opt.correct ? <Check size={9} weight="bold" /> : <span className="w-[9px]" />}
-                      {opt.label}
+                      {t(`quiz.mockup.${opt.key}`)}
                     </div>
                   ))}
                 </div>
                 <div className="mx-3 mb-4 rounded-xl bg-green-500/10 border border-green-500/25 px-3 py-2 text-center">
-                  <p className="text-green-600 dark:text-green-400 font-bold text-xs">Правильно! ✓</p>
-                  <p className="text-green-600/50 dark:text-green-400/60 text-[9px] mt-0.5">Вы на 2 месте</p>
+                  <p className="text-green-600 dark:text-green-400 font-bold text-xs">{t("quiz.mockup.correct")}</p>
+                  <p className="text-green-600/50 dark:text-green-400/60 text-[9px] mt-0.5">{t("quiz.mockup.rank")}</p>
                 </div>
               </div>
 
@@ -372,7 +372,7 @@ export function LandingPage() {
                     <p className="flex items-center gap-1 text-[10px] font-semibold text-green-600 dark:text-green-400 mb-0.5">
                       <Check size={10} weight="bold" /> {t("quiz.correctAnswerLabel")}
                     </p>
-                    <p className="text-[13px] font-bold text-zinc-900 dark:text-white">Принципы SOLID</p>
+                    <p className="text-[13px] font-bold text-zinc-900 dark:text-white">{t("quiz.mockup.correctAnswer")}</p>
                   </div>
                   {[
                     { rank: 1, name: "AB12F3", score: "3/3", top: true },
