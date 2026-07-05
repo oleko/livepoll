@@ -116,8 +116,8 @@ export function SessionConnectPanel({
       icon: "🖥",
       label: t("projector"),
       desc: t("projectorDesc"),
-      accent: "group-hover:border-purple-300 dark:group-hover:border-purple-700 group-hover:bg-purple-50/60 dark:group-hover:bg-purple-900/20",
-      labelColor: "group-hover:text-purple-700 dark:group-hover:text-purple-300",
+      accent: "group-hover:border-indigo-300 dark:group-hover:border-indigo-700 group-hover:bg-indigo-50/60 dark:group-hover:bg-indigo-900/20",
+      labelColor: "group-hover:text-indigo-700 dark:group-hover:text-indigo-300",
     },
     {
       href: presenterUrl,

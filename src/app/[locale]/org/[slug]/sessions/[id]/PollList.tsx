@@ -10,6 +10,7 @@ import { showSlide, hideSlide, deleteSlide, duplicateSlide, updateSlide, reorder
 import { revealPoker } from "@/lib/actions/sessions";
 import { Button } from "@/components/ui/Button";
 import { EditIcon } from "@/components/icons";
+import { Dialog, DialogRawContent } from "@/components/ui/Dialog";
 import { SlideView } from "@/app/[locale]/display/[code]/SlideView";
 import type { Poll, SessionStatus } from "@/types/database";
 import type { SlideRow, SlideType } from "@/lib/actions/slides";
@@ -70,11 +71,11 @@ function SlideEditForm({ slide, onDone, onCancel }: {
   const inp = (k: string) => ({
     value: (content as Record<string, string>)[k] ?? "",
     onChange: (e: React.ChangeEvent<HTMLInputElement>) => setContent({ ...content, [k]: e.target.value }),
-    className: "w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500",
+    className: "w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500",
   });
 
   return (
-    <div className="space-y-2 pt-3 border-t border-purple-100 dark:border-purple-900/40">
+    <div className="space-y-2 pt-3 border-t border-indigo-100 dark:border-indigo-900/40">
       {slide.type === "splash" && <>
         <input placeholder={t("name")} {...inp("title")} />
         <input placeholder={t("subtitle")} {...inp("subtitle")} />
@@ -93,7 +94,7 @@ function SlideEditForm({ slide, onDone, onCancel }: {
           value={(content as Record<string, string>).text ?? ""}
           onChange={e => setContent({ ...content, text: e.target.value })}
           placeholder={t("quoteText")} rows={2}
-          className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+          className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
         />
         <input placeholder={t("author")} {...inp("author")} />
       </>}
@@ -104,18 +105,18 @@ function SlideEditForm({ slide, onDone, onCancel }: {
             return (
               <div key={idx} className="flex items-center gap-1.5">
                 <input value={item.time} onChange={e => setContent({ ...content, items: items.map((it, i) => i === idx ? { ...it, time: e.target.value } : it) })}
-                  placeholder={t("time")} className="w-16 shrink-0 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 text-slate-900 dark:text-white" />
+                  placeholder={t("time")} className="w-16 shrink-0 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-900 dark:text-white" />
                 <input value={item.title} onChange={e => setContent({ ...content, items: items.map((it, i) => i === idx ? { ...it, title: e.target.value } : it) })}
-                  placeholder={t("block")} className="flex-1 min-w-0 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 text-slate-900 dark:text-white" />
+                  placeholder={t("block")} className="flex-1 min-w-0 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-900 dark:text-white" />
                 <button type="button" onClick={() => setContent({ ...content, items: items.map((it, i) => ({ ...it, active: i === idx })) })}
-                  className={`text-sm px-1 ${item.active ? "text-purple-500" : "text-slate-300 hover:text-purple-400"}`}>▶</button>
+                  className={`text-sm px-1 ${item.active ? "text-indigo-500" : "text-slate-300 hover:text-indigo-400"}`}>▶</button>
                 <button type="button" onClick={() => setContent({ ...content, items: items.filter((_, i) => i !== idx) })}
                   className="text-slate-300 hover:text-red-400 text-xs px-0.5">✕</button>
               </div>
             );
           })}
           <button type="button" onClick={() => setContent({ ...content, items: [...((content as { items?: ScheduleItem[] }).items ?? []), { time: "", title: "" }] })}
-            className="text-xs text-purple-600 dark:text-purple-400 hover:underline">{t("addItem")}</button>
+            className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline">{t("addItem")}</button>
         </div>
       )}
       {slide.type === "final" && <>
@@ -125,7 +126,7 @@ function SlideEditForm({ slide, onDone, onCancel }: {
       </>}
       <div className="flex gap-2">
         <button type="button" onClick={save} disabled={saving}
-          className="rounded-lg bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white px-3 py-1.5 text-xs font-medium transition-colors"
+          className="rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white px-3 py-1.5 text-xs font-medium transition-colors"
         >{saving ? t("saving") : t("save")}</button>
         <button type="button" onClick={onCancel}
           className="rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-1.5 text-xs text-slate-500 hover:text-slate-700 transition-colors"
@@ -139,22 +140,24 @@ function SlidePreviewModal({ slide, onClose }: { slide: SlideRow; onClose: () =>
   const t = useTranslations("Org.session.pollList");
   const tShared = useTranslations("Org.shared");
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 animate-overlay-in" onClick={onClose}>
-      <div className="relative animate-modal-in" onClick={e => e.stopPropagation()}>
-        <div style={{ width: 480, height: 270, overflow: "hidden", borderRadius: 8, position: "relative" }}>
-          <div style={{ width: 1440, height: 810, transformOrigin: "top left", transform: "scale(0.3333)", position: "absolute", top: 0, left: 0 }}>
-            <SlideView slide={{ id: slide.id, type: slide.type, content: slide.content }} />
+    <Dialog open onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogRawContent>
+        <div className="relative">
+          <div style={{ width: 480, height: 270, overflow: "hidden", borderRadius: 8, position: "relative" }}>
+            <div style={{ width: 1440, height: 810, transformOrigin: "top left", transform: "scale(0.3333)", position: "absolute", top: 0, left: 0 }}>
+              <SlideView slide={{ id: slide.id, type: slide.type, content: slide.content }} />
+            </div>
           </div>
+          <button
+            onClick={onClose}
+            className="absolute -top-3 -right-3 h-7 w-7 rounded-full bg-slate-700 text-white text-xs flex items-center justify-center hover:bg-slate-600 transition-colors"
+          >✕</button>
+          <p className="mt-2 text-center text-xs text-slate-400">
+            {tShared(`slideTypeLabel.${slide.type}`)} — {slidePreview(slide, t)}
+          </p>
         </div>
-        <button
-          onClick={onClose}
-          className="absolute -top-3 -right-3 h-7 w-7 rounded-full bg-slate-700 text-white text-xs flex items-center justify-center hover:bg-slate-600 transition-colors"
-        >✕</button>
-        <p className="mt-2 text-center text-xs text-slate-400">
-          {tShared(`slideTypeLabel.${slide.type}`)} — {slidePreview(slide, t)}
-        </p>
-      </div>
-    </div>
+      </DialogRawContent>
+    </Dialog>
   );
 }
 
@@ -208,7 +211,7 @@ function SlideLineupCard({
       className={`rounded-xl border px-4 py-3.5 transition-[border-color,box-shadow,opacity] duration-150 select-none cursor-grab active:cursor-grabbing
         ${isDragging ? "opacity-30 scale-95" : ""}
         ${isActive
-          ? "border-purple-500/40 bg-purple-500/5 shadow-[0_0_20px_rgba(168,85,247,0.06)]"
+          ? "border-indigo-500/40 bg-indigo-500/5 shadow-[0_0_20px_rgba(168,85,247,0.06)]"
           : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
         }`}
     >
@@ -219,11 +222,11 @@ function SlideLineupCard({
           <span className="text-xl shrink-0">{SLIDE_TYPE_ICON[slide.type]}</span>
           <div className="flex-1 min-w-0">
             <p className="font-medium text-sm truncate text-slate-900 dark:text-white">{slidePreview(slide, t)}</p>
-            <p className="text-xs text-purple-500 dark:text-purple-400 mt-0.5">{tShared(`slideTypeLabel.${slide.type}`)}</p>
+            <p className="text-xs text-indigo-500 dark:text-indigo-400 mt-0.5">{tShared(`slideTypeLabel.${slide.type}`)}</p>
           </div>
           {isActive && (
-            <span className="flex items-center gap-1.5 text-xs font-semibold text-purple-600 dark:text-purple-400 shrink-0">
-              <span className="h-1.5 w-1.5 rounded-full bg-purple-500 animate-pulse" />{t("onScreen")}
+            <span className="flex items-center gap-1.5 text-xs font-semibold text-indigo-600 dark:text-indigo-400 shrink-0">
+              <span className="h-1.5 w-1.5 rounded-full bg-indigo-500 animate-pulse" />{t("onScreen")}
             </span>
           )}
         </div>
@@ -258,7 +261,7 @@ function SlideLineupCard({
             setPending(false);
           }}>⎘</Button>
           {isActive && slide.type === "spin_wheel" && (
-            <Button size="sm" className="bg-purple-600 hover:bg-purple-500" onClick={async () => {
+            <Button size="sm" className="bg-indigo-600 hover:bg-indigo-500" onClick={async () => {
               setPending(true);
               await startSpinWheel(slide.id, sessionId, orgSlug);
               setPending(false);
@@ -624,7 +627,7 @@ function PollCard({
                     </button>
                   )}
                   {isActive && poll.type === "planning_poker" && (
-                    <Button size="sm" className="bg-purple-600 hover:bg-purple-700" onClick={() => revealPoker(sessionId, orgSlug)}>{t("revealPoker")}</Button>
+                    <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700" onClick={() => revealPoker(sessionId, orgSlug)}>{t("revealPoker")}</Button>
                   )}
                   {isActive && (
                     <>
@@ -1152,7 +1155,7 @@ export function PollList({
         }}
         className={`rounded-xl transition-[box-shadow,background-color] duration-150 ${
           overSlideId === slide.id && draggingSlideId && draggingSlideId !== slide.id
-            ? "ring-2 ring-purple-400 ring-inset" : ""
+            ? "ring-2 ring-indigo-400 ring-inset" : ""
         }`}
       >
         <SlideLineupCard
@@ -1198,7 +1201,7 @@ export function PollList({
           onDrop={e => { e.preventDefault(); handleSlideToSection(draggingSlideId, null); }}
           className={`rounded-xl border-2 border-dashed py-3 text-center text-xs font-medium transition-colors ${
             overSlideSection === "none"
-              ? "border-purple-400 bg-purple-50/30 dark:bg-purple-900/10 text-purple-500"
+              ? "border-indigo-400 bg-indigo-50/30 dark:bg-indigo-900/10 text-indigo-500"
               : "border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-600"
           }`}
         >
@@ -1231,7 +1234,7 @@ export function PollList({
             key={section.id}
             className={`rounded-xl -mx-1 px-1 py-0.5 transition-[box-shadow] ${
               isPollDropping ? "ring-2 ring-indigo-400 ring-inset" :
-              isSlideOver   ? "ring-2 ring-purple-400 ring-inset" : ""
+              isSlideOver   ? "ring-2 ring-indigo-400 ring-inset" : ""
             }`}
             onDragOver={e => {
               if (draggingId && isDragFromOtherSection) { e.preventDefault(); setOverSectionId(section.id); }

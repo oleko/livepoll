@@ -4,9 +4,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { SessionControls } from "./SessionControls";
-import { PollList } from "./PollList";
-import { QAPanel } from "./QAPanel";
-import { CreationTabs } from "./CreationTabs";
+import { SessionLayout } from "./SessionLayout";
 import { SessionConnectPanel } from "./SessionConnectPanel";
 import { AttendeesInput } from "./AttendeesInput";
 import { ExportButton } from "./ExportButton";
@@ -106,8 +104,6 @@ export default async function SessionPage({
     .eq("session_id", id)
     .order("upvotes", { ascending: false });
 
-  const hasQA = polls?.some((p) => p.type === "qa" || p.type === "idea_wall") ?? false;
-
   const { data: slides } = await admin
     .from("session_slides")
     .select("id, session_id, type, content, sort_order, section_id, created_at")
@@ -194,49 +190,36 @@ export default async function SessionPage({
         />
       )}
 
-      {/* ── 3 & 4. Lineup + Creation ─────────────────────────────────────────── */}
-      <div className="grid gap-6 lg:grid-cols-[1fr_380px] xl:grid-cols-[1fr_440px]">
-        {/* 3. Poll & slide lineup */}
-        <div>
-          <PollList
-            polls={(polls ?? []).map((p) => ({
-              ...p,
-              section_id: (p as unknown as { section_id?: string | null }).section_id ?? null,
-            }))}
-            slides={(slides ?? []) as unknown as import("@/lib/actions/slides").SlideRow[]}
-            activeSlideId={activeSlideId}
-            votesByPoll={votesByPoll}
-            votesDataByPoll={votesDataByPoll}
-            votesTimelineByPoll={votesTimelineByPoll}
-            sessionId={id}
-            orgSlug={slug}
-            sessionStatus={session.status}
-            copyTargets={otherSessions ?? []}
-            sections={sections ?? []}
-          />
-        </div>
-
-        {/* 4. Creation & moderation */}
-        <div className="flex flex-col gap-6">
-          {session.status !== "ended" ? (
-            <CreationTabs
-              sessionId={id}
-              orgSlug={slug}
-              sections={sections ?? []}
-              quizPolls={quizPolls.map((p) => ({ id: p.id, title: p.title, settings: p.settings as Record<string, unknown> | null }))}
-              championship={{
-                enabled: championship.enabled ?? false,
-                auto: championship.auto ?? true,
-                reveal_duration: championship.reveal_duration ?? 10,
-              }}
-              sessionStatus={session.status}
-              initialQuestions={questions ?? []}
-            />
-          ) : (
-            hasQA && <QAPanel sessionId={id} orgSlug={slug} initialQuestions={questions ?? []} />
-          )}
-        </div>
-      </div>
+      {/* ── 3. Session tabs: lineup + Q&A + settings ────────────────────────── */}
+      <SessionLayout
+        sessionId={id}
+        orgSlug={slug}
+        sessionStatus={session.status}
+        polls={(polls ?? []).map((p) => ({
+          ...p,
+          section_id: (p as unknown as { section_id?: string | null }).section_id ?? null,
+        }))}
+        slides={(slides ?? []) as unknown as import("@/lib/actions/slides").SlideRow[]}
+        activeSlideId={activeSlideId}
+        votesByPoll={votesByPoll}
+        votesDataByPoll={votesDataByPoll}
+        votesTimelineByPoll={votesTimelineByPoll}
+        sections={sections ?? []}
+        questions={(questions ?? []).map((q) => ({
+          id: q.id,
+          text: q.text,
+          status: q.status as "pending" | "answered" | "hidden",
+          upvotes: q.upvotes,
+          created_at: q.created_at,
+        }))}
+        quizPolls={quizPolls.map((p) => ({ id: p.id, title: p.title, settings: p.settings as Record<string, unknown> | null }))}
+        championship={{
+          enabled: championship.enabled ?? false,
+          auto: championship.auto ?? true,
+          reveal_duration: championship.reveal_duration ?? 10,
+        }}
+        copyTargets={otherSessions ?? []}
+      />
 
     </div>
   );

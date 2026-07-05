@@ -336,6 +336,18 @@
       "page": {
         "backLink": "← Events"
       },
+      "layout": {
+        "lineupTab": "Program",
+        "qaTab": "Q&A",
+        "settingsTab": "Session settings",
+        "addButton": "Add to program",
+        "drawerTitle": "New program item",
+        "closeDrawer": "Close",
+        "emptyTitle": "Nothing here yet",
+        "emptyDesc": "Select a program item on the left to see results, or click Add to create a new poll, screen, or quiz.",
+        "totalVotes": "Total session votes: {count}",
+        "settingsLink": "Go to settings"
+      },
       "controls": {
         "start": "▶ Start",
         "end": "End",
