@@ -3,6 +3,7 @@
 import { useState, useEffect, useTransition } from "react";
 import { createSlide, updateSlide, deleteSlide, showSlide, hideSlide, revealAnswer } from "@/lib/actions/slides";
 import type { SlideType, SlideRow } from "@/lib/actions/slides";
+import { Checkbox } from "@/components/ui/Checkbox";
 
 const TYPE_META: Record<SlideType, { label: string; icon: string; description: string }> = {
   splash:       { label: "Заставка",        icon: "🎯", description: "Название мероприятия и подзаголовок" },
@@ -155,11 +156,9 @@ function RevealForm({ value, onChange }: { value: Record<string, unknown>; onCha
         className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 py-1.5 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-none"
       />
       <label className="flex items-center gap-2 cursor-pointer select-none">
-        <input
-          type="checkbox"
+        <Checkbox
           checked={!!value.buzz}
-          onChange={e => onChange({ ...value, buzz: e.target.checked })}
-          className="rounded border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500"
+          onCheckedChange={(checked) => onChange({ ...value, buzz: checked === true })}
         />
         <span className="text-xs text-slate-600 dark:text-slate-400">Кнопка «Я знаю!» для участников</span>
       </label>

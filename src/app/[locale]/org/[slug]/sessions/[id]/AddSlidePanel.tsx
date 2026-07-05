@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { createSlide } from "@/lib/actions/slides";
 import type { SlideType } from "@/lib/actions/slides";
+import { Checkbox } from "@/components/ui/Checkbox";
 
 const TYPE_ICON: Record<SlideType, string> = {
   splash:       "🎯",
@@ -22,7 +23,7 @@ type ScheduleItem = { time: string; title: string; active?: boolean };
 function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input {...props}
-      className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+      className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
     />
   );
 }
@@ -70,13 +71,13 @@ function ScheduleForm({ v, set }: { v: { items?: ScheduleItem[] }; set: (v: { it
       {items.map((item, idx) => (
         <div key={idx} className="flex items-center gap-1.5">
           <input value={item.time} onChange={e => upd(idx, { time: e.target.value })} placeholder={t("time")}
-            className="w-16 shrink-0 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 text-slate-900 dark:text-white"
+            className="w-16 shrink-0 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-900 dark:text-white"
           />
           <input value={item.title} onChange={e => upd(idx, { title: e.target.value })} placeholder={t("block")}
-            className="flex-1 min-w-0 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 text-slate-900 dark:text-white"
+            className="flex-1 min-w-0 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-900 dark:text-white"
           />
           <button type="button" onClick={() => set({ items: items.map((it, i) => ({ ...it, active: i === idx })) })}
-            className={`text-sm px-1 ${item.active ? "text-purple-500" : "text-slate-300 hover:text-purple-400"}`}
+            className={`text-sm px-1 ${item.active ? "text-indigo-500" : "text-slate-300 hover:text-indigo-400"}`}
           >▶</button>
           <button type="button" onClick={() => set({ items: items.filter((_, i) => i !== idx) })}
             className="text-slate-300 hover:text-red-400 text-xs px-0.5"
@@ -84,7 +85,7 @@ function ScheduleForm({ v, set }: { v: { items?: ScheduleItem[] }; set: (v: { it
         </div>
       ))}
       <button type="button" onClick={() => set({ items: [...items, { time: "", title: "" }] })}
-        className="text-xs text-purple-600 dark:text-purple-400 hover:underline"
+        className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline"
       >{t("addItem")}</button>
     </div>
   );
@@ -96,7 +97,7 @@ function QuoteForm({ v, set }: { v: Record<string, string>; set: (v: Record<stri
     <div className="space-y-2">
       <textarea value={v.text ?? ""} onChange={e => set({ ...v, text: e.target.value })}
         placeholder={t("text")} rows={3}
-        className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+        className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
       />
       <Input placeholder={t("author")} value={v.author ?? ""} onChange={e => set({ ...v, author: e.target.value })} />
     </div>
@@ -112,14 +113,14 @@ function AnnouncementForm({ v, set }: { v: Record<string, unknown>; set: (v: Rec
         onChange={e => set({ ...v, text: e.target.value })}
         rows={3}
         placeholder={t("text")}
-        className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+        className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
       />
       <div className="flex items-center gap-2">
         <span className="text-xs text-slate-500 dark:text-slate-400 shrink-0">{t("timer")}</span>
         <select
           value={(v.duration as number | undefined) ?? 0}
           onChange={e => set({ ...v, duration: Number(e.target.value) })}
-          className="flex-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+          className="flex-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
         >
           <option value={0}>{t("noTimer")}</option>
           <option value={15}>{t("sec15")}</option>
@@ -158,7 +159,7 @@ function SpinWheelForm({ v, set }: { v: Record<string, unknown>; set: (v: Record
           className={`w-full rounded-lg border bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 resize-none ${
             tooLong
               ? "border-amber-400 dark:border-amber-500 focus:ring-amber-400"
-              : "border-slate-300 dark:border-slate-700 focus:ring-purple-500"
+              : "border-slate-300 dark:border-slate-700 focus:ring-indigo-500"
           }`}
         />
         {tooLong && (
@@ -178,21 +179,19 @@ function RevealForm({ v, set }: { v: Record<string, unknown>; set: (v: Record<st
         onChange={e => set({ ...v, question: e.target.value })}
         rows={2}
         placeholder={t("question")}
-        className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+        className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
       />
       <textarea
         value={(v.answer as string) ?? ""}
         onChange={e => set({ ...v, answer: e.target.value })}
         rows={2}
         placeholder={t("answer")}
-        className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+        className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
       />
       <label className="flex items-center gap-2 cursor-pointer select-none">
-        <input
-          type="checkbox"
+        <Checkbox
           checked={!!v.buzz}
-          onChange={e => set({ ...v, buzz: e.target.checked })}
-          className="rounded border-slate-300 dark:border-slate-600 text-purple-600 focus:ring-purple-500"
+          onCheckedChange={(checked) => set({ ...v, buzz: checked === true })}
         />
         <span className="text-xs text-slate-600 dark:text-slate-400">{t("buzz")}</span>
       </label>
@@ -246,8 +245,8 @@ export function AddSlidePanel({ sessionId, orgSlug, bare = false }: { sessionId:
           <button key={st} type="button" onClick={() => { setType(st); setContent({}); setError(null); }}
             className={`flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors ${
               type === st
-                ? "bg-purple-600 text-white"
-                : "border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-purple-300 dark:hover:border-purple-700"
+                ? "bg-indigo-600 text-white"
+                : "border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-indigo-300 dark:hover:border-indigo-700"
             }`}
           >
             <span className="shrink-0">{TYPE_ICON[st]}</span>
@@ -269,7 +268,7 @@ export function AddSlidePanel({ sessionId, orgSlug, bare = false }: { sessionId:
       {error && <p className="text-xs text-red-500">{error}</p>}
 
       <button type="button" onClick={save} disabled={saving}
-        className="w-full rounded-lg bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white px-4 py-2 text-sm font-medium transition-colors"
+        className="w-full rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white px-4 py-2 text-sm font-medium transition-colors"
       >{saving ? t("creating") : t("create")}</button>
     </div>
   );

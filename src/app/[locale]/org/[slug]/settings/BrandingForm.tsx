@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { saveBranding, type BrandingSettings } from "@/lib/actions/branding";
+import { Checkbox } from "@/components/ui/Checkbox";
 
 const PRESET_COLORS = [
   { key: "presetIndigo",   value: "#6366f1" },
@@ -303,11 +304,9 @@ export function BrandingForm({
         <Label>{t("whiteLabelLabel")}</Label>
         {whiteLabelAvailable ? (
           <label className="flex items-start gap-3 cursor-pointer">
-            <input
-              type="checkbox"
+            <Checkbox
               checked={whiteLabel}
-              onChange={(e) => setWhiteLabel(e.target.checked)}
-              className="mt-0.5 h-4 w-4 rounded border-slate-300 dark:border-slate-600 accent-indigo-600 shrink-0"
+              onCheckedChange={(v) => setWhiteLabel(v === true)}
             />
             <div>
               <p className="text-sm text-slate-900 dark:text-white">{t("whiteLabelText")}</p>
