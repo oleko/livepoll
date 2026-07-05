@@ -3,6 +3,7 @@
 import { useState, useTransition, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/Button";
+import { Switch } from "@/components/ui/Switch";
 import {
   saveChampionshipSettings,
   startChampionship,
@@ -106,15 +107,11 @@ export function QuizTab({ sessionId, orgSlug, quizPolls, initial, sessionStatus 
           <span className="text-xs font-medium text-slate-700 dark:text-slate-300">
             Режим чемпионата
           </span>
-          <label className="relative inline-flex items-center cursor-pointer">
-            <input
-              type="checkbox"
-              className="sr-only peer"
-              checked={enabled}
-              onChange={(e) => handleToggleEnabled(e.target.checked)}
-            />
-            <div className="w-10 h-5 bg-slate-200 dark:bg-slate-700 rounded-full peer peer-checked:after:translate-x-5 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600" />
-          </label>
+          <Switch
+            checked={enabled}
+            onCheckedChange={handleToggleEnabled}
+            aria-label="Режим чемпионата"
+          />
         </div>
 
         {enabled && (

@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { createClient } from "@/lib/supabase/client";
 import { updateQuestionStatus, pinQuestion, deleteQuestion } from "@/lib/actions/polls";
 import { summarizeQuestions } from "@/lib/actions/ai";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/Dialog";
 
 type Question = {
   id: string;
@@ -167,18 +168,6 @@ export function QAPanel({
     return () => { supabase.current.removeChannel(channel); };
   }, [sessionId]);
 
-  useEffect(() => {
-    if (!open) return;
-    function onKey(e: KeyboardEvent) { if (e.key === "Escape") setOpen(false); }
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [open]);
-
-  useEffect(() => {
-    document.body.style.overflow = open ? "hidden" : "";
-    return () => { document.body.style.overflow = ""; };
-  }, [open]);
-
   const handleOpen = useCallback(() => {
     setOpen(true);
     setNewCount(0);
@@ -312,121 +301,109 @@ export function QAPanel({
         </div>
       </div>
 
-      {/* ── Modal ────────────────────────────────────────────── */}
-      {open && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ background: "rgba(2,6,23,0.7)", backdropFilter: "blur(4px)" }}
-          onClick={(e) => { if (e.target === e.currentTarget) setOpen(false); }}
-        >
-          <div className="w-full max-w-2xl flex flex-col rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl overflow-hidden"
-            style={{ maxHeight: "88vh" }}
-          >
-            {/* Modal header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-slate-800 shrink-0">
-              <h2 className="font-semibold text-slate-900 dark:text-white">
-                {t("modalTitle")}
-                <span className="ml-2 text-slate-400 dark:text-slate-500 font-normal text-sm">
-                  ({questions.length})
-                </span>
-              </h2>
+      {/* ── Modal — Radix Dialog ──────────────────────────────── */}
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              {t("modalTitle")}
+              <span className="ml-2 text-slate-400 dark:text-slate-500 font-normal text-sm">
+                ({questions.length})
+              </span>
+            </DialogTitle>
+            <DialogClose
+              className="rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 w-8 h-8 flex items-center justify-center transition-colors text-lg"
+              title={t("closeTitle")}
+            >
+              ×
+            </DialogClose>
+          </DialogHeader>
+
+          {/* Search + filters + AI */}
+          <div className="px-5 py-3 border-b border-slate-100 dark:border-slate-800 flex flex-col gap-3 shrink-0">
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={t("searchPlaceholder")}
+              className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex gap-1 flex-wrap">
+                {TABS.map((tab) => (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    onClick={() => setFilter(tab.key)}
+                    className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                      filter === tab.key
+                        ? "bg-indigo-600 text-white"
+                        : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
+                    }`}
+                  >
+                    {tab.label}
+                    {tab.count > 0 && (
+                      <span className={`ml-1.5 ${filter === tab.key ? "text-indigo-200" : "text-slate-400 dark:text-slate-500"}`}>
+                        {tab.count}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
               <button
                 type="button"
-                onClick={() => setOpen(false)}
-                className="rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 w-8 h-8 flex items-center justify-center transition-colors text-lg"
-                title={t("closeTitle")}
+                onClick={handleAiSummary}
+                disabled={aiLoading || questions.filter((q) => q.status !== "hidden").length === 0}
+                className="rounded-lg bg-indigo-600/10 border border-indigo-600/20 px-3 py-1 text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:bg-indigo-600/20 disabled:opacity-40 transition-colors shrink-0"
               >
-                ×
+                {aiLoading ? t("aiAnalyzing") : t("aiAnalysisButton")}
               </button>
             </div>
-
-            {/* Search + filters + AI */}
-            <div className="px-5 py-3 border-b border-slate-100 dark:border-slate-800 flex flex-col gap-3 shrink-0">
-              <input
-                type="search"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder={t("searchPlaceholder")}
-                className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-              <div className="flex items-center justify-between gap-2 flex-wrap">
-                <div className="flex gap-1 flex-wrap">
-                  {TABS.map((tab) => (
-                    <button
-                      key={tab.key}
-                      type="button"
-                      onClick={() => setFilter(tab.key)}
-                      className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-                        filter === tab.key
-                          ? "bg-indigo-600 text-white"
-                          : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
-                      }`}
-                    >
-                      {tab.label}
-                      {tab.count > 0 && (
-                        <span className={`ml-1.5 ${filter === tab.key ? "text-indigo-200" : "text-slate-400 dark:text-slate-500"}`}>
-                          {tab.count}
-                        </span>
-                      )}
-                    </button>
-                  ))}
-                </div>
-                <button
-                  type="button"
-                  onClick={handleAiSummary}
-                  disabled={aiLoading || questions.filter((q) => q.status !== "hidden").length === 0}
-                  className="rounded-lg bg-indigo-600/10 border border-indigo-600/20 px-3 py-1 text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:bg-indigo-600/20 disabled:opacity-40 transition-colors shrink-0"
-                >
-                  {aiLoading ? t("aiAnalyzing") : t("aiAnalysisButton")}
-                </button>
-              </div>
-            </div>
-
-            {/* AI summary */}
-            {aiSummary && (
-              <div className="mx-5 mt-4 rounded-xl bg-indigo-600/10 border border-indigo-600/20 p-4 shrink-0">
-                <div className="flex justify-between items-start gap-2 mb-2">
-                  <span className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">{t("aiAnalysisButton")}</span>
-                  <button onClick={() => setAiSummary(null)} className="text-slate-400 hover:text-slate-600 text-lg leading-none">×</button>
-                </div>
-                <p className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-line leading-relaxed">{aiSummary}</p>
-              </div>
-            )}
-
-            {/* Questions list */}
-            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
-              {filtered.length === 0 ? (
-                <div className="py-16 text-center">
-                  <p className="text-slate-400 dark:text-slate-500 text-sm">
-                    {search ? t("noResultsSearch") : t("noResultsEmpty")}
-                  </p>
-                </div>
-              ) : (
-                filtered.map((q) => (
-                  <QuestionCard
-                    key={q.id}
-                    q={q}
-                    pinnedId={pinnedId}
-                    onPin={handlePin}
-                    onStatus={handleStatus}
-                    onDelete={handleDelete}
-                  />
-                ))
-              )}
-            </div>
-
-            {/* Modal footer */}
-            <div className="px-5 py-3 border-t border-slate-100 dark:border-slate-800 shrink-0 flex items-center justify-between text-xs text-slate-400 dark:text-slate-500">
-              <span>
-                {pending.length > 0
-                  ? <span className="text-amber-500 dark:text-amber-400 font-medium">{t("footerPending", { count: pending.length })}</span>
-                  : t("footerAllDone")}
-              </span>
-              <span>{t("escToClose")}</span>
-            </div>
           </div>
-        </div>
-      )}
+
+          {/* AI summary */}
+          {aiSummary && (
+            <div className="mx-5 mt-4 rounded-xl bg-indigo-600/10 border border-indigo-600/20 p-4 shrink-0">
+              <div className="flex justify-between items-start gap-2 mb-2">
+                <span className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">{t("aiAnalysisButton")}</span>
+                <button onClick={() => setAiSummary(null)} className="text-slate-400 hover:text-slate-600 text-lg leading-none">×</button>
+              </div>
+              <p className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-line leading-relaxed">{aiSummary}</p>
+            </div>
+          )}
+
+          {/* Questions list */}
+          <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
+            {filtered.length === 0 ? (
+              <div className="py-16 text-center">
+                <p className="text-slate-400 dark:text-slate-500 text-sm">
+                  {search ? t("noResultsSearch") : t("noResultsEmpty")}
+                </p>
+              </div>
+            ) : (
+              filtered.map((q) => (
+                <QuestionCard
+                  key={q.id}
+                  q={q}
+                  pinnedId={pinnedId}
+                  onPin={handlePin}
+                  onStatus={handleStatus}
+                  onDelete={handleDelete}
+                />
+              ))
+            )}
+          </div>
+
+          {/* Modal footer */}
+          <div className="px-5 py-3 border-t border-slate-100 dark:border-slate-800 shrink-0 flex items-center justify-between text-xs text-slate-400 dark:text-slate-500">
+            <span>
+              {pending.length > 0
+                ? <span className="text-amber-500 dark:text-amber-400 font-medium">{t("footerPending", { count: pending.length })}</span>
+                : t("footerAllDone")}
+            </span>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
