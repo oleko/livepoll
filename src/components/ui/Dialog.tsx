@@ -41,3 +41,17 @@ export function DialogTitle({ children }: { children: ReactNode }) {
     </RadixDialog.Title>
   );
 }
+
+export function DialogRawContent({ children, className = "" }: { children: ReactNode; className?: string }) {
+  return (
+    <RadixDialog.Portal>
+      <RadixDialog.Overlay className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+      <RadixDialog.Content
+        className={`fixed inset-0 z-50 flex items-center justify-center p-4 outline-none ${className}`}
+        style={{ background: "transparent" }}
+      >
+        {children}
+      </RadixDialog.Content>
+    </RadixDialog.Portal>
+  );
+}
