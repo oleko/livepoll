@@ -468,6 +468,7 @@
         "explanationOptional": "(необязательно)",
         "explanationPlaceholder": "Краткое пояснение для аудитории...",
         "questionsPerParticipant": "Вопросов от участника",
+        "advancedSettings": "Дополнительные настройки",
         "submit": "Добавить опрос"
       },
       "pollList": {

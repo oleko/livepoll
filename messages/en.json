@@ -468,6 +468,7 @@
         "explanationOptional": "(optional)",
         "explanationPlaceholder": "Short explanation for the audience...",
         "questionsPerParticipant": "Questions per participant",
+        "advancedSettings": "Advanced settings",
         "submit": "Add poll"
       },
       "pollList": {
