@@ -26,8 +26,9 @@ export type SlideRow = {
 };
 
 async function broadcastRaw(messages: { topic: string; event: string; payload: Record<string, unknown> }[]) {
+  const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/realtime/v1/api/broadcast`;
   try {
-    await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/realtime/v1/api/broadcast`, {
+    const res = await fetch(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -36,7 +37,15 @@ async function broadcastRaw(messages: { topic: string; event: string; payload: R
       },
       body: JSON.stringify({ messages }),
     });
-  } catch {}
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      console.error(`[slides broadcast] HTTP ${res.status}:`, body, "topics:", messages.map(m => m.topic));
+    } else {
+      console.log(`[slides broadcast] OK — ${messages.map(m => `${m.topic}/${m.event}`).join(", ")}`);
+    }
+  } catch (err) {
+    console.error("[slides broadcast] network error:", (err as Error).message);
+  }
 }
 
 async function broadcast(sessionId: string, payload: Record<string, unknown>) {

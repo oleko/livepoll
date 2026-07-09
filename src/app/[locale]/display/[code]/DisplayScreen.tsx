@@ -287,19 +287,45 @@ export function DisplayScreen({
           setAnnouncement({ text: data.text, duration: data.duration ?? 0, started_at: data.started_at });
         }
       })
-      .subscribe((status) => {
+      .subscribe(async (status) => {
         const isConnected = status === "SUBSCRIBED";
         if (isConnected) {
-          hasEverConnected.current = true;
-          if (wasDisconnected.current) {
+          if (!hasEverConnected.current) {
+            // First connect: sync state in case broadcasts arrived before WS was ready
+            const sb = supabase.current;
+            const { data: activePoll } = await sb
+              .from("polls")
+              .select("id, title, type, options, status, settings")
+              .eq("session_id", session.id)
+              .eq("status", "active")
+              .maybeSingle();
+            setPoll(activePoll as PollData ?? null);
+
+            const { data: sessionRow } = await sb
+              .from("sessions")
+              .select("active_slide_id")
+              .eq("id", session.id)
+              .single();
+            const slideId = (sessionRow as unknown as { active_slide_id?: string | null })?.active_slide_id;
+            if (slideId) {
+              const { data: slideData } = await sb
+                .from("session_slides")
+                .select("id, type, content")
+                .eq("id", slideId)
+                .single();
+              setActiveSlide(slideData as ActiveSlide ?? null);
+            } else {
+              setActiveSlide(null);
+            }
+          } else if (wasDisconnected.current) {
             wasDisconnected.current = false;
             router.refresh();
           }
-        } else if (hasEverConnected.current) {
-          wasDisconnected.current = true;
+          hasEverConnected.current = true;
+        } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+          if (hasEverConnected.current) wasDisconnected.current = true;
         }
-        // Only show banner after first successful connect, not during initial setup
-        setConnected(!hasEverConnected.current || isConnected);
+        setConnected(isConnected || !hasEverConnected.current);
       });
 
     const slidesChannel = sb
