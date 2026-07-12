@@ -99,6 +99,7 @@ export type Database = {
           title: string
           join_code: string
           status: "draft" | "active" | "ended"
+          mode: "conference" | "quiz"
           settings: Record<string, unknown>
           total_attendees: number
           active_slide_id: string | null
@@ -112,6 +113,7 @@ export type Database = {
           title: string
           join_code: string
           status?: "draft" | "active" | "ended"
+          mode?: "conference" | "quiz"
           settings?: Record<string, unknown>
           total_attendees?: number
           active_slide_id?: string | null
@@ -121,6 +123,7 @@ export type Database = {
         Update: {
           title?: string
           status?: "draft" | "active" | "ended"
+          mode?: "conference" | "quiz"
           settings?: Record<string, unknown>
           total_attendees?: number
           active_slide_id?: string | null

@@ -13,6 +13,7 @@ export function NewSessionForm({ orgId, orgSlug }: { orgId: string; orgSlug: str
   const t = useTranslations("Org.newSession");
   const [state, action, isPending] = useActionState(createSession, null);
   const [selectedTemplate, setSelectedTemplate] = useState<string>("");
+  const [mode, setMode] = useState<"conference" | "quiz">("conference");
 
   useEffect(() => {
     if (state && "redirectTo" in state) {
@@ -37,6 +38,35 @@ export function NewSessionForm({ orgId, orgSlug }: { orgId: string; orgSlug: str
       <input type="hidden" name="org_id" value={orgId} />
       <input type="hidden" name="org_slug" value={orgSlug} />
       <input type="hidden" name="template_id" value={selectedTemplate} />
+      <input type="hidden" name="mode" value={mode} />
+
+      {/* Mode picker */}
+      <div>
+        <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">Режим</p>
+        <div className="grid grid-cols-2 gap-2">
+          {([
+            { value: "conference", icon: "🎤", label: "Конференция", desc: "Опросы, слайды, Q&A" },
+            { value: "quiz",       icon: "🏆", label: "Викторина",   desc: "Вопросы с ответами, таймер, рейтинг" },
+          ] as const).map((m) => (
+            <button
+              key={m.value}
+              type="button"
+              onClick={() => setMode(m.value)}
+              className={`rounded-xl border p-3 text-left transition-colors ${
+                mode === m.value
+                  ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-500/10"
+                  : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 bg-white dark:bg-slate-900"
+              }`}
+            >
+              <span className="text-xl block mb-1.5">{m.icon}</span>
+              <p className={`text-xs font-semibold ${mode === m.value ? "text-indigo-700 dark:text-indigo-300" : "text-slate-700 dark:text-slate-300"}`}>
+                {m.label}
+              </p>
+              <p className="text-[11px] text-slate-400 mt-0.5">{m.desc}</p>
+            </button>
+          ))}
+        </div>
+      </div>
 
       {state && "error" in state && (
         <div className="rounded-lg bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-red-400">
@@ -44,8 +74,8 @@ export function NewSessionForm({ orgId, orgSlug }: { orgId: string; orgSlug: str
         </div>
       )}
 
-      {/* Template picker */}
-      <div>
+      {/* Template picker — only in conference mode */}
+      {mode === "conference" && <div>
         <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">
           {t("templateLabel")} <span className="text-slate-400 font-normal">{t("templateOptional")}</span>
         </p>
@@ -106,7 +136,7 @@ export function NewSessionForm({ orgId, orgSlug }: { orgId: string; orgSlug: str
             </div>
           );
         })()}
-      </div>
+      </div>}
 
       <Input
         label={t("eventNameLabel")}

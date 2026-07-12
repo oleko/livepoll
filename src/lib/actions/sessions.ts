@@ -31,6 +31,7 @@ export async function createSession(
   const title = (formData.get("title") as string)?.trim();
   const orgId = formData.get("org_id") as string;
   const orgSlug = formData.get("org_slug") as string;
+  const mode = (formData.get("mode") as string) === "quiz" ? "quiz" : "conference";
 
   if (!title) return { error: "Введите название мероприятия" };
 
@@ -71,9 +72,14 @@ export async function createSession(
     .maybeSingle();
   if (existing) join_code = generateJoinCode();
 
+  const sessionSettings: Record<string, unknown> =
+    mode === "quiz"
+      ? { championship: { enabled: true, auto: true, reveal_duration: 10 } }
+      : {};
+
   const { data: session, error } = await admin
     .from("sessions")
-    .insert({ title, organization_id: orgId, created_by: user.id, join_code })
+    .insert({ title, organization_id: orgId, created_by: user.id, join_code, mode, settings: sessionSettings })
     .select("id")
     .single();
 
