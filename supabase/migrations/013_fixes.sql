@@ -47,8 +47,23 @@ $$;
 --    (added in 002/005) do nothing. Harmless to leave, but removing them
 --    documents that CDC is not in use. REST reads via RLS are untouched —
 --    those policies (003) stay, they're actively used by client resync.
-alter publication supabase_realtime drop table if exists public.polls;
-alter publication supabase_realtime drop table if exists public.votes;
-alter publication supabase_realtime drop table if exists public.sessions;
-alter publication supabase_realtime drop table if exists public.questions;
-alter publication supabase_realtime drop table if exists public.session_slides;
+-- ALTER PUBLICATION ... DROP TABLE has no IF EXISTS form in Postgres, so guard
+-- each drop with a catalog check to keep this migration safely re-runnable.
+do $$
+begin
+  if exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'polls') then
+    alter publication supabase_realtime drop table public.polls;
+  end if;
+  if exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'votes') then
+    alter publication supabase_realtime drop table public.votes;
+  end if;
+  if exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'sessions') then
+    alter publication supabase_realtime drop table public.sessions;
+  end if;
+  if exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'questions') then
+    alter publication supabase_realtime drop table public.questions;
+  end if;
+  if exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'session_slides') then
+    alter publication supabase_realtime drop table public.session_slides;
+  end if;
+end $$;
