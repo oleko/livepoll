@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { useChannel } from "@/core/realtime/useChannel";
 
 const SLIDE_LABELS: Record<string, string> = {
   splash: "Заставка", speaker: "Спикер", schedule: "Расписание",
@@ -74,74 +74,53 @@ export function PresenterScreen({
     return () => clearInterval(id);
   }, []);
 
-  useEffect(() => {
-    const supabase = createClient();
+  useChannel("sessionPolls", session.id, {
+    poll_change: (data) => {
+      if (data.type === "activated") {
+        setActivePollId(data.poll.id);
+        currentPollRef.current = data.poll.id;
+        setVoteCounts({});
+      } else if (data.type === "closed" || data.type === "display_hidden") {
+        setActivePollId(null);
+        currentPollRef.current = null;
+        setVoteCounts({});
+      }
+    },
+    voter_count: (payload) => {
+      setJoinedCount(payload.count);
+    },
+  });
 
-    const pollChannel = supabase.channel(`presenter-polls:${session.id}`)
-      .on("broadcast", { event: "poll_change" }, ({ payload }) => {
-        const p = payload as { type?: string; poll?: { id: string }; show_result?: boolean };
-        if (p.type === "activated" && p.poll?.id) {
-          setActivePollId(p.poll.id);
-          currentPollRef.current = p.poll.id;
-          setVoteCounts({});
-        } else if (p.type === "closed" || p.type === "display_hidden") {
-          setActivePollId(null);
-          currentPollRef.current = null;
-          setVoteCounts({});
-        }
-      })
-      .on("broadcast", { event: "voter_count" }, ({ payload }) => {
-        const p = payload as { count?: number };
-        if (typeof p.count === "number") setJoinedCount(p.count);
-      })
-      .on("broadcast", { event: "announcement" }, () => {})
-      .subscribe();
+  useChannel("sessionSlides", session.id, {
+    slide_change: (data) => {
+      if (data.type === "show") setActiveSlideId(data.slide.id);
+      else setActiveSlideId(null);
+    },
+  });
 
-    const slideChannel = supabase.channel(`presenter-slides:${session.id}`)
-      .on("broadcast", { event: "slide_change" }, ({ payload }) => {
-        const p = payload as { type?: string; slide?: { id: string } };
-        if (p.type === "show" && p.slide?.id) setActiveSlideId(p.slide.id);
-        else if (p.type === "hide") setActiveSlideId(null);
-      })
-      .subscribe();
+  useChannel("sessionQuestions", session.id, {
+    question_change: (data) => {
+      if (data.type === "new") {
+        setQuestions(prev => [data.question, ...prev].slice(0, 5));
+      }
+    },
+  });
 
-    const qaChannel = supabase.channel(`presenter-qa:${session.id}`)
-      .on("broadcast", { event: "question_change" }, ({ payload }) => {
-        const p = payload as { question?: Question; type?: string };
-        if (p.type === "new" && p.question) {
-          setQuestions(prev => [p.question!, ...prev].slice(0, 5));
-        }
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(pollChannel);
-      supabase.removeChannel(slideChannel);
-      supabase.removeChannel(qaChannel);
-    };
-  }, [session.id]);
-
-  useEffect(() => {
-    if (!activePollId) return;
-    const supabase = createClient();
-    const ch = supabase.channel(`presenter-votes:${activePollId}`)
-      .on("broadcast", { event: "vote" }, ({ payload }) => {
-        const p = payload as { value?: string };
-        if (!p.value) return;
-        try {
-          const vals: string[] = p.value.startsWith("[") ? (JSON.parse(p.value) as string[]) : [p.value];
-          setVoteCounts(prev => {
-            const next = { ...prev };
-            vals.forEach(v => { next[v] = (next[v] ?? 0) + 1; });
-            return next;
-          });
-        } catch {
-          setVoteCounts(prev => ({ ...prev, [p.value!]: (prev[p.value!] ?? 0) + 1 }));
-        }
-      })
-      .subscribe();
-    return () => { supabase.removeChannel(ch); };
-  }, [activePollId]);
+  useChannel("pollVotes", activePollId, {
+    vote: (payload) => {
+      if (!payload.value) return;
+      try {
+        const vals: string[] = payload.value.startsWith("[") ? (JSON.parse(payload.value) as string[]) : [payload.value];
+        setVoteCounts(prev => {
+          const next = { ...prev };
+          vals.forEach(v => { next[v] = (next[v] ?? 0) + 1; });
+          return next;
+        });
+      } catch {
+        setVoteCounts(prev => ({ ...prev, [payload.value]: (prev[payload.value] ?? 0) + 1 }));
+      }
+    },
+  });
 
   const lineup: LineupItem[] = [
     ...polls.map(p => ({ kind: "poll" as const, data: p })),

@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useTransition, useEffect, useRef } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/Button";
 import { Switch } from "@/components/ui/Switch";
 import {
@@ -11,6 +10,7 @@ import {
   finishChampionship,
 } from "@/lib/actions/quiz";
 import { QuizQuestionForm } from "./QuizQuestionForm";
+import { useChannel } from "@/core/realtime/useChannel";
 
 type QuizPoll = { id: string; title: string; settings?: Record<string, unknown> | null };
 
@@ -31,20 +31,14 @@ export function QuizTab({ sessionId, orgSlug, quizPolls, initial, sessionStatus 
   const [starting, startTransition] = useTransition();
   const [phase, setPhase] = useState<"idle" | "playing" | "finished">("idle");
   const [lobbyCount, setLobbyCount] = useState(0);
-  const supabase = useRef(createClient());
 
-  useEffect(() => {
-    const ch = supabase.current
-      .channel(`champ-lobby-${sessionId}`)
-      .on("broadcast", { event: "participant_join" }, ({ payload }) => {
-        const data = payload as { participants: string[] };
-        setLobbyCount((data.participants ?? []).length);
-      })
-      .on("broadcast", { event: "quiz_start" }, () => setPhase("playing"))
-      .on("broadcast", { event: "quiz_finish" }, () => setPhase("finished"))
-      .subscribe();
-    return () => { supabase.current.removeChannel(ch); };
-  }, [sessionId]);
+  useChannel("sessionPolls", sessionId, {
+    participant_join: (payload) => {
+      setLobbyCount((payload.participants ?? []).length);
+    },
+    quiz_start: () => setPhase("playing"),
+    quiz_finish: () => setPhase("finished"),
+  });
 
   async function handleSave() {
     setSaving(true);

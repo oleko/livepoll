@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 /**
  * One reconnect policy for every realtime surface. Previously DisplayScreen
@@ -21,7 +21,7 @@ export function useSessionSync(opts: {
   const wasDisconnected = useRef(false);
   const [connected, setConnected] = useState(true);
   const optsRef = useRef(opts);
-  optsRef.current = opts;
+  useEffect(() => { optsRef.current = opts; });
 
   const handleStatus = useCallback((status: string) => {
     const isConnected = status === "SUBSCRIBED";

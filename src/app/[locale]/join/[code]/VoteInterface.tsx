@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { submitVote, submitQuestion, upvoteQuestion } from "@/lib/actions/polls";
 import { registerParticipant } from "@/lib/actions/participants";
@@ -8,6 +9,8 @@ import type { LeaderboardEntry } from "@/lib/actions/participants";
 import { Button } from "@/components/ui/Button";
 import type { PollType } from "@/types/database";
 import { useTranslations } from "next-intl";
+import { useChannel } from "@/core/realtime/useChannel";
+import { useSessionSync } from "@/core/realtime/useSessionSync";
 
 type PollData = {
   id: string;
@@ -105,7 +108,6 @@ export function VoteInterface({
   const [pulseFlash, setPulseFlash] = useState(false);
   const [activeSlide, setActiveSlide] = useState<{ type: string; content: Record<string, unknown> } | null>(initialActiveSlide);
   const [buzzed, setBuzzed] = useState(false);
-  const [connected, setConnected] = useState(true);
   const [voterCount, setVoterCount] = useState(0);
   const [registered, setRegistered] = useState(false);
   const [participantName, setParticipantName] = useState("");
@@ -120,10 +122,8 @@ export function VoteInterface({
   );
   const [champFinalLeaderboard, setChampFinalLeaderboard] = useState<LeaderboardEntry[] | null>(null);
 
-  const hasEverConnected = useRef(false);
   const supabase = useRef(createClient());
-  const channelRef = useRef<ReturnType<typeof supabase.current.channel> | null>(null);
-  const buzzChannelRef = useRef<ReturnType<typeof supabase.current.channel> | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
     try {
@@ -138,139 +138,123 @@ export function VoteInterface({
   }, [showLeaderboard]);
 
   function sendPulse() {
-    channelRef.current?.send({ type: "broadcast", event: "pulse", payload: {} });
+    sendPollEvent("pulse", {});
     setPulseFlash(true);
     setTimeout(() => setPulseFlash(false), 200);
   }
 
-  useEffect(() => {
-    const channel = supabase.current
-      .channel(`session-polls:${sessionId}`)
-      .on("broadcast", { event: "poll_change" }, ({ payload }) => {
-        const data = payload as { type: string; poll?: PollData; poll_id?: string };
-        if (data.type === "activated" && data.poll) {
-          setQuizReveal(null);
-          setMyVote(null);
-          setSelectedOptions([]);
-          setPoll(data.poll);
-          setVoted(false);
-          setQuestionsSubmitted(0);
-          setIdeaText("");
-          setError(null);
-          setActiveSlide(null);
-          setQuestions([]);
-          setShowLeaderboard(false);
-        } else if (data.type === "closed") {
-          const reveal = (data as { quiz_reveal?: QuizReveal }).quiz_reveal;
-          if (reveal) setQuizReveal(reveal);
-          setPoll((prev) => (prev?.id === data.poll_id ? null : prev));
-        } else if (data.type === "poll_updated" && data.poll) {
-          setPoll((prev) => prev?.id === data.poll!.id ? { ...prev, title: data.poll!.title, options: data.poll!.options } : prev);
-        }
-      })
-      .on("broadcast", { event: "leaderboard" }, ({ payload }) => {
-        const data = payload as { leaderboard: LeaderboardEntry[] };
-        setLeaderboard(data.leaderboard);
-        setChampFinalLeaderboard(data.leaderboard);
-        setShowLeaderboard(true);
-      })
-      .on("broadcast", { event: "participant_join" }, ({ payload }) => {
-        const data = payload as { participants: string[] };
-        setChampLobbyParticipants(data.participants ?? []);
-      })
-      .on("broadcast", { event: "quiz_start" }, () => {
-        setChampPhase("playing");
-      })
-      .on("broadcast", { event: "quiz_finish" }, ({ payload }) => {
-        const data = payload as { leaderboard?: LeaderboardEntry[] };
-        if (data.leaderboard) setChampFinalLeaderboard(data.leaderboard);
-        setChampPhase("finished");
-      })
-      .on("broadcast", { event: "voter_count" }, ({ payload }) => {
-        setVoterCount((payload as { count: number }).count);
-      })
-      .on("broadcast", { event: "session_ended" }, ({ payload }) => {
-        setSessionEnded(true);
-        setFarewell((payload as { farewell?: string }).farewell ?? null);
-      })
-      .on("broadcast", { event: "announcement" }, ({ payload }) => {
-        const data = payload as { clear?: boolean; text?: string; duration?: number; started_at?: string };
-        if (data.clear) {
-          setAnnouncement(null);
-        } else if (data.text && data.started_at !== undefined) {
-          setAnnouncement({ text: data.text, duration: data.duration ?? 0, started_at: data.started_at });
-        }
-      })
-      .subscribe(async (status) => {
-        const isConnected = status === "SUBSCRIBED";
-        if (isConnected && !hasEverConnected.current) {
-          // First connect: sync active poll in case broadcasts were sent before subscription was ready
-          const { data: activePoll } = await supabase.current
-            .from("polls")
-            .select("id, title, type, options, status, settings")
-            .eq("session_id", sessionId)
-            .eq("status", "active")
-            .maybeSingle();
-          setPoll(activePoll ? (activePoll as unknown as NonNullable<PollData>) : null);
-        }
-        if (isConnected) hasEverConnected.current = true;
-        setConnected(!hasEverConnected.current || isConnected);
-      });
+  const { connected, handleStatus } = useSessionSync({
+    onFirstConnect: async () => {
+      const sb = supabase.current;
+      const { data: activePoll } = await sb
+        .from("polls")
+        .select("id, title, type, options, status, settings")
+        .eq("session_id", sessionId)
+        .eq("status", "active")
+        .maybeSingle();
+      setPoll(activePoll ? (activePoll as unknown as NonNullable<PollData>) : null);
 
-    channelRef.current = channel;
-    return () => { supabase.current.removeChannel(channel); channelRef.current = null; };
-  }, [sessionId]);
-
-  useEffect(() => {
-    const channel = supabase.current
-      .channel(`session-slides:${sessionId}`)
-      .on("broadcast", { event: "slide_change" }, ({ payload }) => {
-        const data = payload as { type: "show" | "hide"; slide?: { type: string; content: Record<string, unknown> } };
-        if (data.type === "show" && data.slide) {
-          setActiveSlide(data.slide);
-          setBuzzed(false);
-        } else if (data.type === "hide") {
-          setActiveSlide(null);
-          setBuzzed(false);
-        }
-      })
-      .subscribe();
-    return () => { supabase.current.removeChannel(channel); };
-  }, [sessionId]);
-
-  useEffect(() => {
-    const channel = supabase.current
-      .channel(`session-questions:${sessionId}`)
-      .on("broadcast", { event: "question_change" }, ({ payload }) => {
-        const data = payload as { type: string; question?: QuestionItem };
-        if (data.type === "new" && data.question && data.question.status !== "hidden") {
-          setQuestions((prev) => [data.question!, ...prev]);
-        } else if (data.type === "updated" && data.question) {
-          const q = data.question;
-          setQuestions((prev) =>
-            q.status === "hidden"
-              ? prev.filter((item) => item.id !== q.id)
-              : prev.map((item) => (item.id === q.id ? q : item))
-          );
-        }
-      })
-      .subscribe();
-    return () => { supabase.current.removeChannel(channel); };
-  }, [sessionId]);
-
-  useEffect(() => {
-    const isBuzz = activeSlide?.type === "reveal" && !!(activeSlide.content as { buzz?: boolean }).buzz;
-    if (!isBuzz) {
-      if (buzzChannelRef.current) {
-        supabase.current.removeChannel(buzzChannelRef.current);
-        buzzChannelRef.current = null;
+      const { data: sessionRow } = await sb
+        .from("sessions")
+        .select("active_slide_id")
+        .eq("id", sessionId)
+        .single();
+      const slideId = (sessionRow as unknown as { active_slide_id?: string | null })?.active_slide_id;
+      if (slideId) {
+        const { data: slideData } = await sb
+          .from("session_slides")
+          .select("id, type, content")
+          .eq("id", slideId)
+          .single();
+        setActiveSlide((slideData as { type: string; content: Record<string, unknown> } | null) ?? null);
+      } else {
+        setActiveSlide(null);
       }
-      return;
-    }
-    const ch = supabase.current.channel(`session-buzz:${sessionId}`).subscribe();
-    buzzChannelRef.current = ch;
-    return () => { supabase.current.removeChannel(ch); buzzChannelRef.current = null; };
-  }, [activeSlide, sessionId]); // eslint-disable-line react-hooks/exhaustive-deps
+    },
+    onReconnect: () => router.refresh(),
+  });
+
+  const { send: sendPollEvent } = useChannel("sessionPolls", sessionId, {
+    poll_change: (data) => {
+      if (data.type === "activated") {
+        setQuizReveal(null);
+        setMyVote(null);
+        setSelectedOptions([]);
+        setPoll(data.poll as unknown as PollData);
+        setVoted(false);
+        setQuestionsSubmitted(0);
+        setIdeaText("");
+        setError(null);
+        setActiveSlide(null);
+        setQuestions([]);
+        setShowLeaderboard(false);
+      } else if (data.type === "closed") {
+        if (data.quiz_reveal) setQuizReveal(data.quiz_reveal);
+        setPoll((prev) => (prev?.id === data.poll_id ? null : prev));
+      } else if (data.type === "poll_updated") {
+        setPoll((prev) => (prev?.id === data.poll.id ? { ...prev, title: data.poll.title, options: data.poll.options } : prev));
+      }
+    },
+    leaderboard: (payload) => {
+      setLeaderboard(payload.leaderboard);
+      setChampFinalLeaderboard(payload.leaderboard);
+      setShowLeaderboard(true);
+    },
+    participant_join: (payload) => {
+      setChampLobbyParticipants(payload.participants ?? []);
+    },
+    quiz_start: () => {
+      setChampPhase("playing");
+    },
+    quiz_finish: (payload) => {
+      if (payload.leaderboard) setChampFinalLeaderboard(payload.leaderboard);
+      setChampPhase("finished");
+    },
+    voter_count: (payload) => {
+      setVoterCount(payload.count);
+    },
+    session_ended: (payload) => {
+      setSessionEnded(true);
+      setFarewell(payload.farewell ?? null);
+    },
+    announcement: (payload) => {
+      if ("clear" in payload && payload.clear) {
+        setAnnouncement(null);
+      } else if ("text" in payload) {
+        setAnnouncement({ text: payload.text, duration: payload.duration ?? 0, started_at: payload.started_at });
+      }
+    },
+  }, { onStatus: handleStatus });
+
+  useChannel("sessionSlides", sessionId, {
+    slide_change: (data) => {
+      if (data.type === "show") {
+        setActiveSlide(data.slide);
+        setBuzzed(false);
+      } else {
+        setActiveSlide(null);
+        setBuzzed(false);
+      }
+    },
+  });
+
+  useChannel("sessionQuestions", sessionId, {
+    question_change: (data) => {
+      if (data.type === "new" && data.question.status !== "hidden") {
+        setQuestions((prev) => [data.question, ...prev]);
+      } else if (data.type === "updated") {
+        const q = data.question;
+        setQuestions((prev) =>
+          q.status === "hidden"
+            ? prev.filter((item) => item.id !== q.id)
+            : prev.map((item) => (item.id === q.id ? q : item))
+        );
+      }
+    },
+  });
+
+  const isBuzzChannelActive = activeSlide?.type === "reveal" && !!(activeSlide.content as { buzz?: boolean }).buzz;
+  const { send: sendBuzzEvent } = useChannel("sessionBuzz", isBuzzChannelActive ? sessionId : null, {});
 
   useEffect(() => {
     if (!announcement) { setAnnouncementTimeLeft(null); return; }
@@ -309,7 +293,7 @@ export function VoteInterface({
   function sendBuzz() {
     if (buzzed) return;
     const voterToken = getVoterToken();
-    buzzChannelRef.current?.send({ type: "broadcast", event: "buzz", payload: { token: voterToken, ts: Date.now() } });
+    sendBuzzEvent("buzz", { token: voterToken, ts: Date.now() });
     setBuzzed(true);
   }
 

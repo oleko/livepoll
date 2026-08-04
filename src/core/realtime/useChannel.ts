@@ -28,10 +28,14 @@ export function useChannel<K extends ChannelKey>(
   options?: { onStatus?: (status: string) => void }
 ): { send: <E extends keyof EventMap[K]>(event: E, payload: EventMap[K][E]) => void } {
   const handlersRef = useRef(handlers);
-  handlersRef.current = handlers;
   const statusRef = useRef(options?.onStatus);
-  statusRef.current = options?.onStatus;
   const chRef = useRef<RealtimeChannel | null>(null);
+
+  // Keep the refs current without mutating them during render.
+  useEffect(() => {
+    handlersRef.current = handlers;
+    statusRef.current = options?.onStatus;
+  });
 
   useEffect(() => {
     if (!id) return;
@@ -50,7 +54,6 @@ export function useChannel<K extends ChannelKey>(
       chRef.current = null;
     };
     // Handler event *set* is static per call site; only channel/id should resubscribe.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [channel, id]);
 
   const send = useCallback(<E extends keyof EventMap[K]>(event: E, payload: EventMap[K][E]) => {

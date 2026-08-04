@@ -3,8 +3,8 @@
 import { useState, useTransition, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { createClient } from "@/lib/supabase/client";
 import { activatePoll, closePoll, clearPollResult, copyPoll, updatePoll, showPollOnDisplay, hidePollFromDisplay, reorderPolls } from "@/lib/actions/polls";
+import { useChannel } from "@/core/realtime/useChannel";
 import { movePollSection, createSection, deleteSection, renameSection, copySection } from "@/lib/actions/sections";
 import { showSlide, hideSlide, deleteSlide, duplicateSlide, updateSlide, reorderSlides, moveSlideToSection, startSpinWheel } from "@/lib/actions/slides";
 import { revealPoker } from "@/lib/actions/sessions";
@@ -955,26 +955,20 @@ export function PollList({
 
   // Realtime: refresh vote counts when active poll receives votes
   const activePollId = optimisticPolls.find(p => p.status === "active")?.id ?? null;
+  const voteRefreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
-    if (!activePollId) return;
-    const sb = createClient();
-    let timer: ReturnType<typeof setTimeout> | null = null;
-    const channel = sb
-      .channel(`poll-votes:${activePollId}`)
-      .on("broadcast", { event: "vote" }, () => {
-        if (timer) clearTimeout(timer);
-        timer = setTimeout(() => router.refresh(), 800);
-      })
-      .on("broadcast", { event: "revote" }, () => {
-        if (timer) clearTimeout(timer);
-        timer = setTimeout(() => router.refresh(), 800);
-      })
-      .subscribe();
-    return () => {
-      if (timer) clearTimeout(timer);
-      sb.removeChannel(channel);
-    };
-  }, [activePollId]); // eslint-disable-line react-hooks/exhaustive-deps
+    return () => { if (voteRefreshTimer.current) clearTimeout(voteRefreshTimer.current); };
+  }, []);
+  useChannel("pollVotes", activePollId, {
+    vote: () => {
+      if (voteRefreshTimer.current) clearTimeout(voteRefreshTimer.current);
+      voteRefreshTimer.current = setTimeout(() => router.refresh(), 800);
+    },
+    revote: () => {
+      if (voteRefreshTimer.current) clearTimeout(voteRefreshTimer.current);
+      voteRefreshTimer.current = setTimeout(() => router.refresh(), 800);
+    },
+  });
 
   function startEdit(poll: PollRow) {
     setEditingId(poll.id);

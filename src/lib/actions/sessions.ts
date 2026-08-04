@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { getLimits } from "@/lib/limits";
 import type { OrgPlan } from "@/types/database";
 import { getAuthUser, assertSessionMember } from "@/lib/actions/guards";
+import { broadcast as realtimeBroadcast } from "@/core/realtime/broadcast.server";
 
 type SessionState = { error: string } | { redirectTo: string } | null;
 
@@ -122,26 +123,13 @@ export async function setAttendees(
     .eq("id", sessionId);
 
   await realtimeBroadcast([{
-    topic: `session-polls:${sessionId}`,
+    channel: "sessionPolls",
+    id: sessionId,
     event: "attendees_update",
     payload: { total: clamped },
   }]);
 
   revalidatePath(`/org/${orgSlug}/sessions/${sessionId}`);
-}
-
-async function realtimeBroadcast(messages: { topic: string; event: string; payload: unknown }[]) {
-  try {
-    await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/realtime/v1/api/broadcast`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
-        "apikey": process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      },
-      body: JSON.stringify({ messages }),
-    });
-  } catch {}
 }
 
 export async function startAnnouncement(
@@ -154,7 +142,8 @@ export async function startAnnouncement(
   await assertSessionMember(user.id, sessionId, admin);
   if (!text.trim() || text.length > 200) return { error: "Введите текст объявления" };
   await realtimeBroadcast([{
-    topic: `session-polls:${sessionId}`,
+    channel: "sessionPolls",
+    id: sessionId,
     event: "announcement",
     payload: { text: text.trim(), duration: durationSec, started_at: new Date().toISOString() },
   }]);
@@ -165,7 +154,8 @@ export async function revealPoker(sessionId: string, orgSlug: string) {
   const { user, admin } = await getAuthUser();
   await assertSessionMember(user.id, sessionId, admin);
   await realtimeBroadcast([{
-    topic: `session-polls:${sessionId}`,
+    channel: "sessionPolls",
+    id: sessionId,
     event: "poker_reveal",
     payload: {},
   }]);
@@ -176,7 +166,8 @@ export async function clearAnnouncement(sessionId: string, orgSlug: string) {
   const { user, admin } = await getAuthUser();
   await assertSessionMember(user.id, sessionId, admin);
   await realtimeBroadcast([{
-    topic: `session-polls:${sessionId}`,
+    channel: "sessionPolls",
+    id: sessionId,
     event: "announcement",
     payload: { clear: true },
   }]);
@@ -228,7 +219,7 @@ export async function duplicateSession(
   // Fetch source session
   const { data: source } = await admin
     .from("sessions")
-    .select("title, organization_id")
+    .select("title, organization_id, mode, settings, total_attendees")
     .eq("id", sessionId)
     .single();
   if (!source) return { error: "Мероприятие не найдено" };
@@ -261,10 +252,19 @@ export async function duplicateSession(
   const { data: codeExists } = await admin.from("sessions").select("id").eq("join_code", join_code).maybeSingle();
   if (codeExists) join_code = generateJoinCode();
 
-  // Create new session
+  // Create new session — carries mode, settings (e.g. championship config) and
+  // planned attendee count from the source; a copy of a quiz event should stay a quiz event.
   const { data: newSession, error: sessionErr } = await admin
     .from("sessions")
-    .insert({ title: `${source.title} (копия)`, organization_id: source.organization_id, created_by: user.id, join_code })
+    .insert({
+      title: `${source.title} (копия)`,
+      organization_id: source.organization_id,
+      created_by: user.id,
+      join_code,
+      mode: source.mode,
+      settings: source.settings,
+      total_attendees: source.total_attendees,
+    })
     .select("id")
     .single();
   if (sessionErr || !newSession) return { error: "Не удалось создать копию" };
@@ -362,7 +362,8 @@ export async function updateSessionStatus(
 
     const farewell = await generateFarewell();
     await realtimeBroadcast([{
-      topic: `session-polls:${sessionId}`,
+      channel: "sessionPolls",
+      id: sessionId,
       event: "session_ended",
       payload: { farewell },
     }]);

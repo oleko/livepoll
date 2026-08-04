@@ -8,34 +8,12 @@ import { getLimits } from "@/lib/limits";
 import { getAuthUser, assertSessionMember } from "@/lib/actions/guards";
 import { headers } from "next/headers";
 import { checkRateLimit } from "@/lib/rateLimit";
+import { isUuid } from "@/core/domain/ids";
+import { toPublicPoll } from "@/core/domain/poll";
+import { broadcast as realtimeBroadcast, type Message } from "@/core/realtime/broadcast.server";
+import type { QuestionRow } from "@/core/domain/question";
 
 type PollState = { error: string } | { success: true } | null;
-
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-function isValidUUID(s: string) { return UUID_RE.test(s); }
-
-async function realtimeBroadcast(messages: { topic: string; event: string; payload: unknown }[]) {
-  const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/realtime/v1/api/broadcast`;
-  try {
-    const res = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
-        "apikey": process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      },
-      body: JSON.stringify({ messages }),
-    });
-    if (!res.ok) {
-      const body = await res.text().catch(() => "");
-      console.error(`[broadcast] HTTP ${res.status} for topics [${messages.map(m => m.topic).join(", ")}]:`, body);
-    } else {
-      console.log(`[broadcast] OK — ${messages.map(m => `${m.topic}/${m.event}`).join(", ")}`);
-    }
-  } catch (err) {
-    console.error("[broadcast] network error:", (err as Error).message, "url:", url);
-  }
-}
 
 export async function createPoll(
   _prev: PollState,
@@ -184,9 +162,10 @@ export async function updatePoll(
 
   if (updated) {
     await realtimeBroadcast([{
-      topic: `session-polls:${sessionId}`,
+      channel: "sessionPolls",
+      id: sessionId,
       event: "poll_change",
-      payload: { type: "poll_updated", poll: updated },
+      payload: { type: "poll_updated", poll: toPublicPoll(updated) },
     }]);
   }
 
@@ -238,33 +217,31 @@ export async function activatePoll(
 
   type QuizSettings = { quiz_mode?: boolean; correct_option?: string; explanation?: string };
 
-  const messages = [];
+  const messages: Message[] = [];
   if (prevActive) {
     const prevSettings = prevActive.settings as QuizSettings | null;
-    const closePayload: Record<string, unknown> = { type: "closed", poll_id: prevActive.id };
-    if (prevSettings?.quiz_mode && prevSettings.correct_option) {
-      closePayload.quiz_reveal = {
-        correct_option: prevSettings.correct_option,
-        ...(prevSettings.explanation ? { explanation: prevSettings.explanation } : {}),
-      };
-    }
-    messages.push({ topic: `session-polls:${sessionId}`, event: "poll_change", payload: closePayload });
+    const quizReveal = prevSettings?.quiz_mode && prevSettings.correct_option
+      ? { correct_option: prevSettings.correct_option, ...(prevSettings.explanation ? { explanation: prevSettings.explanation } : {}) }
+      : undefined;
+    messages.push({
+      channel: "sessionPolls",
+      id: sessionId,
+      event: "poll_change",
+      payload: { type: "closed", poll_id: prevActive.id, quiz_reveal: quizReveal },
+    });
   }
   if (activatedPoll) {
-    // Strip quiz answers from broadcast so participants cannot cheat
-    const broadcastSettings = { ...(activatedPoll.settings as Record<string, unknown> ?? {}) };
-    delete broadcastSettings["correct_option"];
-    delete broadcastSettings["explanation"];
     messages.push({
-      topic: `session-polls:${sessionId}`,
+      channel: "sessionPolls",
+      id: sessionId,
       event: "poll_change",
-      payload: { type: "activated", poll: { ...activatedPoll, settings: broadcastSettings } },
+      payload: { type: "activated", poll: toPublicPoll(activatedPoll) },
     });
   }
   // Clear active slide so display shows poll after refresh too
   await admin.from("sessions").update({ active_slide_id: null } as never).eq("id", sessionId);
   // Also broadcast slide hide so display reacts immediately
-  messages.push({ topic: `session-slides:${sessionId}`, event: "slide_change", payload: { type: "hide" } });
+  messages.push({ channel: "sessionSlides", id: sessionId, event: "slide_change", payload: { type: "hide" } });
   if (messages.length > 0) await realtimeBroadcast(messages);
 
   revalidatePath(`/org/${orgSlug}/sessions/${sessionId}`);
@@ -298,19 +275,15 @@ export async function closePoll(
     .eq("id", pollId)
     .eq("session_id", sessionId);
 
-  const closePayload: Record<string, unknown> = { type: "closed", poll_id: pollId };
-  if (pollSettings?.quiz_mode && pollSettings.correct_option) {
-    closePayload.quiz_reveal = {
-      correct_option: pollSettings.correct_option,
-      ...(pollSettings.explanation ? { explanation: pollSettings.explanation } : {}),
-    };
-  }
-  if (showResult) closePayload.show_result = true;
+  const quizReveal = pollSettings?.quiz_mode && pollSettings.correct_option
+    ? { correct_option: pollSettings.correct_option, ...(pollSettings.explanation ? { explanation: pollSettings.explanation } : {}) }
+    : undefined;
 
   await realtimeBroadcast([{
-    topic: `session-polls:${sessionId}`,
+    channel: "sessionPolls",
+    id: sessionId,
     event: "poll_change",
-    payload: closePayload,
+    payload: { type: "closed", poll_id: pollId, quiz_reveal: quizReveal, show_result: showResult || undefined },
   }]);
 
   revalidatePath(`/org/${orgSlug}/sessions/${sessionId}`);
@@ -338,7 +311,8 @@ export async function clearPollResult(
     .eq("session_id", sessionId);
 
   await realtimeBroadcast([{
-    topic: `session-polls:${sessionId}`,
+    channel: "sessionPolls",
+    id: sessionId,
     event: "poll_change",
     payload: { type: "display_hidden" },
   }]);
@@ -357,7 +331,7 @@ export async function submitVote(formData: FormData) {
   const value = (formData.get("value") as string)?.trim();
 
   if (!pollId || !voterToken || !value) return { error: "Неверные данные" };
-  if (!isValidUUID(voterToken)) return { error: "Неверные данные" };
+  if (!isUuid(voterToken)) return { error: "Неверные данные" };
   if (value.length > 2000) return { error: "Слишком длинный ответ" };
 
   // Parse multi-answer JSON arrays
@@ -460,7 +434,8 @@ export async function submitVote(formData: FormData) {
         .eq("voter_token", voterToken);
 
       await realtimeBroadcast([{
-        topic: `poll-votes:${pollId}`,
+        channel: "pollVotes",
+        id: pollId,
         event: "revote",
         payload: { old_value: existing.value, new_value: value },
       }]);
@@ -468,13 +443,13 @@ export async function submitVote(formData: FormData) {
     } else {
       const { error } = await admin.from("votes").insert({ poll_id: pollId, voter_token: voterToken, value });
       if (error) return { error: error.message };
-      await realtimeBroadcast([{ topic: `poll-votes:${pollId}`, event: "vote", payload: { value, ts: voterToken.slice(0, 6) } }]);
+      await realtimeBroadcast([{ channel: "pollVotes", id: pollId, event: "vote", payload: { value, ts: voterToken.slice(0, 6) } }]);
     }
   } else {
     const { error } = await admin.from("votes").insert({ poll_id: pollId, voter_token: voterToken, value });
     if (error?.code === "23505") return { error: "Вы уже проголосовали" };
     if (error) return { error: error.message };
-    await realtimeBroadcast([{ topic: `poll-votes:${pollId}`, event: "vote", payload: { value, ts: voterToken.slice(0, 6) } }]);
+    await realtimeBroadcast([{ channel: "pollVotes", id: pollId, event: "vote", payload: { value, ts: voterToken.slice(0, 6) } }]);
   }
 
   // Broadcast unique voter count for this session (skip for revotes — count unchanged)
@@ -491,7 +466,8 @@ export async function submitVote(formData: FormData) {
         .in("poll_id", pollIds);
       const uniqueCount = new Set((allVoterTokens ?? []).map((v) => v.voter_token)).size;
       await realtimeBroadcast([{
-        topic: `session-polls:${pollData.session_id}`,
+        channel: "sessionPolls",
+        id: pollData.session_id,
         event: "voter_count",
         payload: { count: uniqueCount },
       }]);
@@ -514,7 +490,8 @@ export async function submitVote(formData: FormData) {
           .eq("id", pollId);
 
         await realtimeBroadcast([{
-          topic: `session-polls:${pollData.session_id}`,
+          channel: "sessionPolls",
+          id: pollData.session_id,
           event: "poll_change",
           payload: { type: "closed", poll_id: pollId },
         }]);
@@ -537,7 +514,7 @@ export async function submitQuestion(formData: FormData) {
   const text = (formData.get("text") as string)?.trim();
 
   if (!sessionId || !voterToken || !text) return { error: "Неверные данные" };
-  if (!isValidUUID(voterToken)) return { error: "Неверные данные" };
+  if (!isUuid(voterToken)) return { error: "Неверные данные" };
   if (text.length > 300) return { error: "Вопрос слишком длинный (максимум 300 символов)" };
 
   // Check per-voter question limit (idea_wall is exempt — unlimited ideas per voter)
@@ -567,7 +544,8 @@ export async function submitQuestion(formData: FormData) {
   if (error) return { error: error.message };
 
   await realtimeBroadcast([{
-    topic: `session-questions:${sessionId}`,
+    channel: "sessionQuestions",
+    id: sessionId,
     event: "question_change",
     payload: { type: "new", question: data },
   }]);
@@ -576,14 +554,15 @@ export async function submitQuestion(formData: FormData) {
 }
 
 export async function pinQuestion(
-  question: { id: string; text: string; status: string; upvotes: number } | null,
+  question: QuestionRow | null,
   sessionId: string
 ) {
   const { user, admin } = await getAuthUser();
   await assertSessionMember(user.id, sessionId, admin);
 
   await realtimeBroadcast([{
-    topic: `session-questions:${sessionId}`,
+    channel: "sessionQuestions",
+    id: sessionId,
     event: "question_change",
     payload: { type: "pinned", pinned: question },
   }]);
@@ -599,28 +578,18 @@ export async function upvoteQuestion(questionId: string, voterToken: string, ses
   if (dupError?.code === "23505") return { error: "already_upvoted" };
   if (dupError) return { error: dupError.message };
 
-  const { data: current } = await admin
-    .from("questions")
-    .select("upvotes")
-    .eq("id", questionId)
-    .single();
+  const { data: updated, error: rpcError } = await admin.rpc("increment_question_upvotes", {
+    p_question_id: questionId,
+  });
 
-  if (!current) return { error: "not_found" };
+  if (rpcError || !updated) return { error: rpcError?.message ?? "not_found" };
 
-  const { data: updated } = await admin
-    .from("questions")
-    .update({ upvotes: current.upvotes + 1 })
-    .eq("id", questionId)
-    .select("id, text, status, upvotes")
-    .single();
-
-  if (updated) {
-    await realtimeBroadcast([{
-      topic: `session-questions:${sessionId}`,
-      event: "question_change",
-      payload: { type: "updated", question: updated },
-    }]);
-  }
+  await realtimeBroadcast([{
+    channel: "sessionQuestions",
+    id: sessionId,
+    event: "question_change",
+    payload: { type: "updated", question: updated },
+  }]);
 
   return { success: true };
 }
@@ -683,9 +652,10 @@ export async function deleteQuestion(
   await admin.from("questions").delete().eq("id", questionId);
 
   await realtimeBroadcast([{
-    topic: `session-questions:${sessionId}`,
+    channel: "sessionQuestions",
+    id: sessionId,
     event: "question_change",
-    payload: { type: "updated", question: { id: questionId, status: "hidden" } },
+    payload: { type: "updated", question: { id: questionId, text: "", status: "hidden", upvotes: 0 } },
   }]);
 
   revalidatePath(`/org/${orgSlug}/sessions/${sessionId}`);
@@ -710,7 +680,8 @@ export async function updateQuestionStatus(
 
   if (updated) {
     await realtimeBroadcast([{
-      topic: `session-questions:${sessionId}`,
+      channel: "sessionQuestions",
+      id: sessionId,
       event: "question_change",
       payload: { type: "updated", question: updated },
     }]);
@@ -736,15 +707,11 @@ export async function showPollOnDisplay(
 
   if (!poll || poll.status !== "active") return;
 
-  const broadcastSettings = { ...(poll.settings as Record<string, unknown> ?? {}) };
-  delete broadcastSettings["correct_option"];
-  delete broadcastSettings["explanation"];
-
   await admin.from("sessions").update({ active_slide_id: null } as never).eq("id", sessionId);
 
   await realtimeBroadcast([
-    { topic: `session-slides:${sessionId}`, event: "slide_change", payload: { type: "hide" } },
-    { topic: `session-polls:${sessionId}`, event: "poll_change", payload: { type: "activated", poll: { ...poll, settings: broadcastSettings } } },
+    { channel: "sessionSlides", id: sessionId, event: "slide_change", payload: { type: "hide" } },
+    { channel: "sessionPolls", id: sessionId, event: "poll_change", payload: { type: "activated", poll: toPublicPoll(poll) } },
   ]);
 
   revalidatePath(`/org/${orgSlug}/sessions/${sessionId}`);
@@ -758,7 +725,8 @@ export async function hidePollFromDisplay(
   await assertSessionMember(user.id, sessionId, admin);
 
   await realtimeBroadcast([{
-    topic: `session-polls:${sessionId}`,
+    channel: "sessionPolls",
+    id: sessionId,
     event: "poll_change",
     payload: { type: "display_hidden" },
   }]);

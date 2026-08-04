@@ -4,28 +4,17 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getAuthUser, assertSessionMember } from "@/lib/actions/guards";
 import { computeAndBroadcastLeaderboard } from "@/lib/actions/participants";
 import { revalidatePath } from "next/cache";
+import { isUuid } from "@/core/domain/ids";
+import { toPublicPoll } from "@/core/domain/poll";
+import { broadcast } from "@/core/realtime/broadcast.server";
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-function isValidUUID(s: string) { return UUID_RE.test(s); }
+function isValidUUID(s: string) { return isUuid(s); }
 
 type ChampionshipSettings = {
   enabled: boolean;
   auto: boolean;
   reveal_duration: number;
 };
-
-async function broadcast(messages: { topic: string; event: string; payload: unknown }[]) {
-  const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/realtime/v1/api/broadcast`;
-  await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
-      "apikey": process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    },
-    body: JSON.stringify({ messages }),
-  }).catch(() => {});
-}
 
 export async function saveChampionshipSettings(
   sessionId: string,
@@ -109,11 +98,14 @@ async function activateNextQuizPollInternal(
     .eq("id", nextPoll.id)
     .single();
 
-  await broadcast([{
-    topic: `session-polls:${sessionId}`,
-    event: "poll_change",
-    payload: { type: "activated", poll: activatedPoll },
-  }]);
+  if (activatedPoll) {
+    await broadcast([{
+      channel: "sessionPolls",
+      id: sessionId,
+      event: "poll_change",
+      payload: { type: "activated", poll: toPublicPoll(activatedPoll) },
+    }]);
+  }
 
   return true;
 }
@@ -127,7 +119,8 @@ export async function startChampionship(
 
   // Broadcast lobby close + championship start
   await broadcast([{
-    topic: `session-polls:${sessionId}`,
+    channel: "sessionPolls",
+    id: sessionId,
     event: "quiz_start",
     payload: {},
   }]);
@@ -162,22 +155,12 @@ async function finishChampionshipInternal(
   await computeAndBroadcastLeaderboard(sessionId, admin);
 
   // Also broadcast quiz_finish so screens show final state
-  const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/realtime/v1/api/broadcast`;
-  await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
-      "apikey": process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    },
-    body: JSON.stringify({
-      messages: [{
-        topic: `session-polls:${sessionId}`,
-        event: "quiz_finish",
-        payload: {},
-      }],
-    }),
-  }).catch(() => {});
+  await broadcast([{
+    channel: "sessionPolls",
+    id: sessionId,
+    event: "quiz_finish",
+    payload: {},
+  }]);
 }
 
 export async function finishChampionship(

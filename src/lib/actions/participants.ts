@@ -2,17 +2,13 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAuthUser, assertSessionMember } from "@/lib/actions/guards";
+import { isUuid } from "@/core/domain/ids";
+import { broadcast } from "@/core/realtime/broadcast.server";
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-function isValidUUID(s: string) { return UUID_RE.test(s); }
+function isValidUUID(s: string) { return isUuid(s); }
 
-export type LeaderboardEntry = {
-  name: string;
-  score: number;
-  correct: number;
-  total: number;
-  rank: number;
-};
+export type { LeaderboardEntry } from "@/core/domain/leaderboard";
+import type { LeaderboardEntry } from "@/core/domain/leaderboard";
 
 export async function registerParticipant(
   sessionId: string,
@@ -43,29 +39,18 @@ export async function registerParticipant(
     .eq("session_id", sessionId);
   const allNames = ((countRow ?? []) as { name: string }[]).map((r) => r.name);
 
-  const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/realtime/v1/api/broadcast`;
-  await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
-      "apikey": process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    },
-    body: JSON.stringify({
-      messages: [{
-        topic: `session-polls:${sessionId}`,
-        event: "participant_join",
-        payload: { name: trimmedName, participants: allNames },
-      }],
-    }),
-  }).catch(() => {});
+  await broadcast([{
+    channel: "sessionPolls",
+    id: sessionId,
+    event: "participant_join",
+    payload: { name: trimmedName, participants: allNames },
+  }]);
 
   return { success: true };
 }
 
 export async function computeAndBroadcastLeaderboard(
   sessionId: string,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   admin: ReturnType<typeof createAdminClient>
 ): Promise<void> {
   type PollRow = {
@@ -156,22 +141,12 @@ export async function computeAndBroadcastLeaderboard(
     .sort((a, b) => b.score - a.score)
     .map((entry, i) => ({ ...entry, rank: i + 1 }));
 
-  const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/realtime/v1/api/broadcast`;
-  await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
-      "apikey": process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    },
-    body: JSON.stringify({
-      messages: [{
-        topic: `session-polls:${sessionId}`,
-        event: "leaderboard",
-        payload: { leaderboard },
-      }],
-    }),
-  }).catch(() => {});
+  await broadcast([{
+    channel: "sessionPolls",
+    id: sessionId,
+    event: "leaderboard",
+    payload: { leaderboard },
+  }]);
 }
 
 export async function broadcastLeaderboard(
