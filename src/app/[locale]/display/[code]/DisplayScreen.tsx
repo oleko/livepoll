@@ -120,8 +120,6 @@ export function DisplayScreen({
   const { announcement, timeLeft: announcementTimeLeft, setAnnouncement } = useAnnouncement();
   const [activeSlide, setActiveSlide] = useState<ActiveSlide>(initialActiveSlide ?? null);
   const [slideShowKey, setSlideShowKey] = useState(0);
-  const [revealedSlideId, setRevealedSlideId] = useState<string | null>(null);
-  const [buzzers, setBuzzers] = useState<{ token: string; ts: number }[]>([]);
   const [votes, setVotes] = useState<{ value: string; ts?: string }[]>(initialVotes);
   const [questions, setQuestions] = useState<QuestionRow[]>(initialQuestions);
   const [totalAttendees, setTotalAttendees] = useState(initialTotalAttendees);
@@ -156,13 +154,6 @@ export function DisplayScreen({
   const [pokerRevealed, setPokerRevealed] = useState(false);
   const [pollEnded, setPollEnded] = useState(false);
   const [sortByPopularity, setSortByPopularity] = useState(false);
-  const [spinPhase, setSpinPhase] = useState<"idle" | "countdown" | "spinning">("idle");
-  const [spinCountdown, setSpinCountdown] = useState(3);
-  const [spinWinner, setSpinWinner] = useState<string | null>(() => {
-    if (typeof window === "undefined") return null;
-    if (!initialActiveSlide || initialActiveSlide.type !== "spin_wheel") return null;
-    try { return sessionStorage.getItem(`spin-winner-${initialActiveSlide.id}`); } catch { return null; }
-  });
   const seenWordsRef = useRef<Set<string>>(new Set());
   const pollRef = useRef(poll);
   useEffect(() => { pollRef.current = poll; }, [poll]);
@@ -289,40 +280,16 @@ export function DisplayScreen({
     },
   }, { onStatus: handleStatus });
 
+  // Reveal and spin_wheel own their live state (reveal/buzz, countdown/winner)
+  // via useDisplayLive inside SlideView's per-type module host.
   useChannel("sessionSlides", session.id, {
     slide_change: (data) => {
       if (data.type === "show") {
         setActiveSlide(data.slide);
         setSlideShowKey(k => k + 1);
-        setRevealedSlideId(null);
-        setBuzzers([]);
-        setSpinPhase("idle");
-        setSpinCountdown(3);
-        setSpinWinner(null);
       } else {
         setActiveSlide(null);
-        setRevealedSlideId(null);
-        setBuzzers([]);
-        setSpinPhase("idle");
-        setSpinCountdown(3);
-        setSpinWinner(null);
       }
-    },
-    slide_reveal: (payload) => {
-      setRevealedSlideId(payload.slide_id);
-    },
-    spin_start: () => {
-      setSpinCountdown(3);
-      setSpinPhase("countdown");
-    },
-  });
-
-  useChannel("sessionBuzz", session.id, {
-    buzz: (payload) => {
-      setBuzzers((prev) => {
-        if (prev.some((b) => b.token === payload.token)) return prev;
-        return [...prev, { token: payload.token, ts: payload.ts }].sort((a, b) => a.ts - b.ts);
-      });
     },
   });
 
@@ -335,17 +302,6 @@ export function DisplayScreen({
     }, 1000);
     return () => clearInterval(id);
   }, []);
-
-  // Spin wheel countdown: 3→2→1→spinning
-  useEffect(() => {
-    if (spinPhase !== "countdown") return;
-    if (spinCountdown <= 0) {
-      setSpinPhase("spinning");
-      return;
-    }
-    const id = setTimeout(() => setSpinCountdown(n => n - 1), 1000);
-    return () => clearTimeout(id);
-  }, [spinPhase, spinCountdown]);
 
   // Countdown timer — auto-close when duration expires
   useEffect(() => {
@@ -466,13 +422,6 @@ export function DisplayScreen({
     votes.forEach(v => seenWordsRef.current.add(v.value.toLowerCase().trim()));
   }, [votes, poll?.type]);
 
-  function handleSpinWinner(winner: string) {
-    if (activeSlide) {
-      try { sessionStorage.setItem(`spin-winner-${activeSlide.id}`, winner); } catch {}
-    }
-    setSpinWinner(winner);
-  }
-
   const totalVotes = votes.length;
   const visibleQuestions = useMemo(
     () => [...questions].filter((q) => q.status !== "hidden").sort((a, b) => b.upvotes - a.upvotes),
@@ -500,13 +449,8 @@ export function DisplayScreen({
         <div className="absolute inset-0 z-20">
           <SlideView
             slide={activeSlide}
-            slideShowKey={slideShowKey}
-            revealed={revealedSlideId === activeSlide.id}
-            buzzers={buzzers}
-            spinPhase={spinPhase}
-            spinCountdown={spinCountdown}
-            spinWinner={spinWinner}
-            onSpinWinner={handleSpinWinner}
+            sessionId={session.id}
+            showKey={slideShowKey}
           />
         </div>
       )}

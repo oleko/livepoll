@@ -18,6 +18,8 @@ import { useAnnouncement } from "@/core/screens/useAnnouncement";
 import { medalFor } from "@/core/screens/medal";
 import { formatClock } from "@/core/format/time";
 import type { PollSettings } from "@/core/settings/pollSettings";
+import { useRevealParticipantLive, RevealParticipant } from "@/modules/slides/reveal";
+import type { SlideType } from "@/core/domain/slide";
 
 type PollData = {
   id: string;
@@ -91,7 +93,6 @@ export function VoteInterface({
   const [farewell, setFarewell] = useState<string | null>(null);
   const [pulseFlash, setPulseFlash] = useState(false);
   const [activeSlide, setActiveSlide] = useState<{ type: string; content: Record<string, unknown> } | null>(initialActiveSlide);
-  const [buzzed, setBuzzed] = useState(false);
   const [voterCount, setVoterCount] = useState(0);
   const [registered, setRegistered] = useState(false);
   const [participantName, setParticipantName] = useState("");
@@ -214,10 +215,8 @@ export function VoteInterface({
     slide_change: (data) => {
       if (data.type === "show") {
         setActiveSlide(data.slide);
-        setBuzzed(false);
       } else {
         setActiveSlide(null);
-        setBuzzed(false);
       }
     },
   });
@@ -237,8 +236,7 @@ export function VoteInterface({
     },
   });
 
-  const isBuzzChannelActive = activeSlide?.type === "reveal" && !!(activeSlide.content as { buzz?: boolean }).buzz;
-  const { send: sendBuzzEvent } = useChannel("sessionBuzz", isBuzzChannelActive ? sessionId : null, {});
+  const revealLive = useRevealParticipantLive({ sessionId, slide: activeSlide as { type: SlideType; content: Record<string, unknown> } | null });
 
   const [pollTimeLeft, setPollTimeLeft] = useState<number | null>(null);
   useEffect(() => {
@@ -259,13 +257,6 @@ export function VoteInterface({
   const isBuzzSlide = !sessionEnded &&
     activeSlide?.type === "reveal" &&
     !!(activeSlide.content as { buzz?: boolean }).buzz;
-
-  function sendBuzz() {
-    if (buzzed) return;
-    const voterToken = getVoterToken();
-    sendBuzzEvent("buzz", { token: voterToken, ts: Date.now() });
-    setBuzzed(true);
-  }
 
   async function handleVote(value: string) {
     const voterToken = getVoterToken();
@@ -533,33 +524,7 @@ export function VoteInterface({
       </div>
     );
   } else if (isBuzzSlide) {
-    const slideContent = activeSlide!.content as { question?: string };
-    content = (
-      <div className="text-center px-6 max-w-sm w-full flex flex-col items-center">
-        {slideContent.question && (
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-3 leading-snug">
-            {slideContent.question}
-          </h2>
-        )}
-        <p className="text-sm text-slate-500 dark:text-slate-400 mb-10">
-          {buzzed ? "Ожидай подтверждения ведущего" : "Знаешь ответ? Нажми быстрее всех!"}
-        </p>
-        {buzzed ? (
-          <div className="flex flex-col items-center gap-3">
-            <span className="text-7xl animate-bounce">🔥</span>
-            <p className="text-xl font-bold text-orange-500 dark:text-orange-400">Ты нажал!</p>
-          </div>
-        ) : (
-          <button
-            onClick={sendBuzz}
-            className="w-44 h-44 rounded-full bg-indigo-600 hover:bg-indigo-500 active:scale-95 transition-transform text-white flex flex-col items-center justify-center gap-3 shadow-xl shadow-indigo-500/30"
-          >
-            <span className="text-5xl">⚡</span>
-            <span className="text-xl font-bold">Я знаю!</span>
-          </button>
-        )}
-      </div>
-    );
+    content = <RevealParticipant content={activeSlide!.content} live={revealLive} />;
   } else if (!poll) {
     content = (
       <div className="text-center px-6">

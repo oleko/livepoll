@@ -490,7 +490,10 @@
           "schedule": "Расписание",
           "quote": "Цитата",
           "finalScreen": "Финальный экран",
-          "slide": "Слайд"
+          "slide": "Слайд",
+          "spinWheel": "Колесо фортуны",
+          "announcement": "Объявление",
+          "reveal": "Вопрос-ответ"
         },
         "slideEdit": {
           "name": "Название *",
@@ -519,6 +522,7 @@
         "editTitle": "Редактировать",
         "duplicateTitle": "Дублировать",
         "launchWheel": "🎡 Запустить",
+        "revealAnswerLabel": "🔓 Открыть ответ",
         "hide": "Убрать",
         "show": "Показать",
         "deleteSlideConfirm": "Удалить «{title}»?",

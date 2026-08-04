@@ -490,7 +490,10 @@
           "schedule": "Schedule",
           "quote": "Quote",
           "finalScreen": "Final screen",
-          "slide": "Slide"
+          "slide": "Slide",
+          "spinWheel": "Prize wheel",
+          "announcement": "Announcement",
+          "reveal": "Q&A reveal"
         },
         "slideEdit": {
           "name": "Name *",
@@ -519,6 +522,7 @@
         "editTitle": "Edit",
         "duplicateTitle": "Duplicate",
         "launchWheel": "🎡 Spin",
+        "revealAnswerLabel": "🔓 Reveal answer",
         "hide": "Hide",
         "show": "Show",
         "deleteSlideConfirm": "Delete \"{title}\"?",

@@ -6,35 +6,19 @@ import { useTranslations } from "next-intl";
 import { activatePoll, closePoll, clearPollResult, copyPoll, updatePoll, showPollOnDisplay, hidePollFromDisplay, reorderPolls } from "@/lib/actions/polls";
 import { useChannel } from "@/core/realtime/useChannel";
 import { movePollSection, createSection, deleteSection, renameSection, copySection } from "@/lib/actions/sections";
-import { showSlide, hideSlide, deleteSlide, duplicateSlide, updateSlide, reorderSlides, moveSlideToSection, startSpinWheel } from "@/lib/actions/slides";
+import { showSlide, hideSlide, deleteSlide, duplicateSlide, updateSlide, reorderSlides, moveSlideToSection } from "@/lib/actions/slides";
 import { revealPoker } from "@/lib/actions/sessions";
 import { Button } from "@/components/ui/Button";
 import { EditIcon } from "@/components/icons";
 import { Dialog, DialogRawContent } from "@/components/ui/Dialog";
 import { SlideView } from "@/app/[locale]/display/[code]/SlideView";
+import { slideRegistry } from "@/core/registry/slides";
+import { ConfigForm } from "@/core/screens/ConfigForm";
+import type { Translator } from "@/core/settings/field";
 import type { Poll, SessionStatus } from "@/types/database";
-import type { SlideRow, SlideType } from "@/lib/actions/slides";
+import type { SlideRow } from "@/lib/actions/slides";
 import { buildCsvRows } from "@/lib/csv";
 import { bucketTimestamps } from "@/lib/timeline";
-
-const SLIDE_TYPE_ICON: Record<SlideType, string> = {
-  splash: "🎯", speaker: "🎤", schedule: "🗓", quote: "💬", final: "🎉",
-  spin_wheel: "🎡", announcement: "📢", reveal: "❓",
-};
-
-function slidePreview(slide: SlideRow, t: (key: string) => string): string {
-  const c = slide.content as Record<string, string>;
-  switch (slide.type) {
-    case "splash":   return c.title || t("slidePreview.untitled");
-    case "speaker":  return c.name  || t("slidePreview.unnamed");
-    case "schedule": return t("slidePreview.schedule");
-    case "quote":    return c.text ? `"${c.text.slice(0, 50)}${c.text.length > 50 ? "…" : ""}"` : t("slidePreview.quote");
-    case "final":    return c.title || t("slidePreview.finalScreen");
-    default:         return t("slidePreview.slide");
-  }
-}
-
-type ScheduleItem = { time: string; title: string; active?: boolean };
 
 function downloadPollCSV(poll: PollRow, valueCounts: Record<string, number>, voteCount: number) {
   const rows = buildCsvRows(poll, valueCounts, voteCount);
@@ -50,95 +34,48 @@ function downloadPollCSV(poll: PollRow, valueCounts: Record<string, number>, vot
   URL.revokeObjectURL(url);
 }
 
-function SlideEditForm({ slide, onDone, onCancel }: {
+function SlideEditor({ slide, orgSlug, onDone, onCancel }: {
   slide: SlideRow;
+  orgSlug: string;
   onDone: (content: Record<string, unknown>) => void;
   onCancel: () => void;
 }) {
-  const t = useTranslations("Org.session.pollList.slideEdit");
+  const t = useTranslations() as unknown as Translator;
+  const m = slideRegistry[slide.type];
   const [content, setContent] = useState<Record<string, unknown>>(slide.content);
   const [saving, setSaving] = useState(false);
   const router = useRouter();
 
   async function save() {
     setSaving(true);
-    await updateSlide(slide.id, content, slide.session_id, "");
+    await updateSlide(slide.id, content, slide.session_id, orgSlug);
     router.refresh();
     onDone(content);
     setSaving(false);
   }
 
-  const inp = (k: string) => ({
-    value: (content as Record<string, string>)[k] ?? "",
-    onChange: (e: React.ChangeEvent<HTMLInputElement>) => setContent({ ...content, [k]: e.target.value }),
-    className: "w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500",
-  });
+  const Editor = m.content.Editor;
 
   return (
     <div className="space-y-2 pt-3 border-t border-indigo-100 dark:border-indigo-900/40">
-      {slide.type === "splash" && <>
-        <input placeholder={t("name")} {...inp("title")} />
-        <input placeholder={t("subtitle")} {...inp("subtitle")} />
-        <input placeholder={t("date")} {...inp("date")} />
-        <input placeholder={t("location")} {...inp("location")} />
-      </>}
-      {slide.type === "speaker" && <>
-        <input placeholder={t("fullName")} {...inp("name")} />
-        <input placeholder={t("role")} {...inp("role")} />
-        <input placeholder={t("company")} {...inp("company")} />
-        <input placeholder={t("topic")} {...inp("topic")} />
-        <input placeholder={t("photoUrl")} {...inp("photo_url")} />
-      </>}
-      {slide.type === "quote" && <>
-        <textarea
-          value={(content as Record<string, string>).text ?? ""}
-          onChange={e => setContent({ ...content, text: e.target.value })}
-          placeholder={t("quoteText")} rows={2}
-          className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
-        />
-        <input placeholder={t("author")} {...inp("author")} />
-      </>}
-      {slide.type === "schedule" && (
-        <div className="space-y-1.5">
-          {((content as { items?: ScheduleItem[] }).items ?? []).map((item, idx) => {
-            const items = (content as { items: ScheduleItem[] }).items;
-            return (
-              <div key={idx} className="flex items-center gap-1.5">
-                <input value={item.time} onChange={e => setContent({ ...content, items: items.map((it, i) => i === idx ? { ...it, time: e.target.value } : it) })}
-                  placeholder={t("time")} className="w-16 shrink-0 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-900 dark:text-white" />
-                <input value={item.title} onChange={e => setContent({ ...content, items: items.map((it, i) => i === idx ? { ...it, title: e.target.value } : it) })}
-                  placeholder={t("block")} className="flex-1 min-w-0 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-900 dark:text-white" />
-                <button type="button" onClick={() => setContent({ ...content, items: items.map((it, i) => ({ ...it, active: i === idx })) })}
-                  className={`text-sm px-1 ${item.active ? "text-indigo-500" : "text-slate-300 hover:text-indigo-400"}`}>▶</button>
-                <button type="button" onClick={() => setContent({ ...content, items: items.filter((_, i) => i !== idx) })}
-                  className="text-slate-300 hover:text-red-400 text-xs px-0.5">✕</button>
-              </div>
-            );
-          })}
-          <button type="button" onClick={() => setContent({ ...content, items: [...((content as { items?: ScheduleItem[] }).items ?? []), { time: "", title: "" }] })}
-            className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline">{t("addItem")}</button>
-        </div>
-      )}
-      {slide.type === "final" && <>
-        <input placeholder={t("finalTitle")} {...inp("title")} />
-        <input placeholder={t("subtitle")} {...inp("subtitle")} />
-        <input placeholder={t("finalUrl")} {...inp("url")} />
-      </>}
+      {Editor
+        ? <Editor value={content} onChange={setContent} t={t} />
+        : <ConfigForm fields={m.content.fields ?? []} value={content} onChange={setContent} t={t} />}
       <div className="flex gap-2">
         <button type="button" onClick={save} disabled={saving}
           className="rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white px-3 py-1.5 text-xs font-medium transition-colors"
-        >{saving ? t("saving") : t("save")}</button>
+        >{saving ? t("Org.session.pollList.slideEdit.saving") : t("Org.session.pollList.slideEdit.save")}</button>
         <button type="button" onClick={onCancel}
           className="rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-1.5 text-xs text-slate-500 hover:text-slate-700 transition-colors"
-        >{t("cancel")}</button>
+        >{t("Org.session.pollList.slideEdit.cancel")}</button>
       </div>
     </div>
   );
 }
 
 function SlidePreviewModal({ slide, onClose }: { slide: SlideRow; onClose: () => void }) {
-  const t = useTranslations("Org.session.pollList");
-  const tShared = useTranslations("Org.shared");
+  const t = useTranslations() as unknown as Translator;
+  const m = slideRegistry[slide.type];
   return (
     <Dialog open onOpenChange={(v) => { if (!v) onClose(); }}>
       <DialogRawContent>
@@ -153,7 +90,7 @@ function SlidePreviewModal({ slide, onClose }: { slide: SlideRow; onClose: () =>
             className="absolute -top-3 -right-3 h-7 w-7 rounded-full bg-slate-700 text-white text-xs flex items-center justify-center hover:bg-slate-600 transition-colors"
           >✕</button>
           <p className="mt-2 text-center text-xs text-slate-400">
-            {tShared(`slideTypeLabel.${slide.type}`)} — {slidePreview(slide, t)}
+            {t(m.meta.labelKey)} — {m.content.preview(slide.content, t)}
           </p>
         </div>
       </DialogRawContent>
@@ -175,6 +112,8 @@ function SlideLineupCard({
 }) {
   const t = useTranslations("Org.session.pollList");
   const tShared = useTranslations("Org.shared");
+  const tRoot = useTranslations() as unknown as Translator;
+  const m = slideRegistry[slide.type];
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [pending, setPending] = useState(false);
@@ -197,7 +136,7 @@ function SlideLineupCard({
   }
 
   async function handleDelete() {
-    if (!confirm(t("deleteSlideConfirm", { title: slidePreview(slide, t) }))) return;
+    if (!confirm(t("deleteSlideConfirm", { title: m.content.preview(slide.content, tRoot) }))) return;
     setPending(true);
     await deleteSlide(slide.id, sessionId, orgSlug);
     router.refresh();
@@ -219,9 +158,9 @@ function SlideLineupCard({
         {/* info row */}
         <div className="flex items-center gap-3 flex-1 min-w-0">
           <span className="text-slate-300 dark:text-slate-600 text-base leading-none shrink-0 select-none">⠿</span>
-          <span className="text-xl shrink-0">{SLIDE_TYPE_ICON[slide.type]}</span>
+          <span className="text-xl shrink-0">{m.meta.icon}</span>
           <div className="flex-1 min-w-0">
-            <p className="font-medium text-sm truncate text-slate-900 dark:text-white">{slidePreview(slide, t)}</p>
+            <p className="font-medium text-sm truncate text-slate-900 dark:text-white">{m.content.preview(slide.content, tRoot)}</p>
             <p className="text-xs text-indigo-500 dark:text-indigo-400 mt-0.5">{tShared(`slideTypeLabel.${slide.type}`)}</p>
           </div>
           {isActive && (
@@ -260,13 +199,13 @@ function SlideLineupCard({
             router.refresh();
             setPending(false);
           }}>⎘</Button>
-          {isActive && slide.type === "spin_wheel" && (
-            <Button size="sm" className="bg-indigo-600 hover:bg-indigo-500" onClick={async () => {
+          {m.hostActions?.filter(a => !a.whenActive || isActive).map((action) => (
+            <Button key={action.id} size="sm" className="bg-indigo-600 hover:bg-indigo-500" disabled={pending} onClick={async () => {
               setPending(true);
-              await startSpinWheel(slide.id, sessionId, orgSlug);
+              await action.run({ slideId: slide.id, sessionId, orgSlug });
               setPending(false);
-            }} disabled={pending}>{t("launchWheel")}</Button>
-          )}
+            }}>{tRoot(action.labelKey)}</Button>
+          ))}
           {isActive ? (
             <Button variant="secondary" size="sm" onClick={handleHide} disabled={pending}>{t("hide")}</Button>
           ) : (
@@ -279,7 +218,7 @@ function SlideLineupCard({
       </div>
 
       {editing && (
-        <SlideEditForm slide={slide} onDone={() => setEditing(false)} onCancel={() => setEditing(false)} />
+        <SlideEditor slide={slide} orgSlug={orgSlug} onDone={() => setEditing(false)} onCancel={() => setEditing(false)} />
       )}
       {previewOpen && <SlidePreviewModal slide={slide} onClose={() => setPreviewOpen(false)} />}
     </div>
