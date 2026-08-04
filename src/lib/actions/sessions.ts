@@ -3,8 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
-import { getLimits } from "@/lib/limits";
-import type { OrgPlan } from "@/types/database";
+import { getLimits, getPlanLimits } from "@/core/access/limits";
 import { getAuthUser, assertSessionMember } from "@/lib/actions/guards";
 import { broadcast as realtimeBroadcast } from "@/core/realtime/broadcast.server";
 
@@ -37,14 +36,9 @@ export async function createSession(
   if (!title) return { error: "Введите название мероприятия" };
 
   // Проверяем лимит мероприятий по тарифу
-  const { data: org } = await admin
-    .from("organizations")
-    .select("plan")
-    .eq("id", orgId)
-    .single();
+  const limits = await getPlanLimits(admin, orgId);
 
-  if (org) {
-    const limits = getLimits(org.plan as OrgPlan);
+  if (limits) {
     if (isFinite(limits.sessionsPerMonth)) {
       const monthStart = new Date();
       monthStart.setDate(1);
@@ -225,13 +219,9 @@ export async function duplicateSession(
   if (!source) return { error: "Мероприятие не найдено" };
 
   // Check sessions/month limit
-  const { data: org } = await admin
-    .from("organizations")
-    .select("plan")
-    .eq("id", source.organization_id)
-    .single();
-  if (org) {
-    const limits = getLimits(org.plan as OrgPlan);
+  const orgLimits = await getPlanLimits(admin, source.organization_id);
+  if (orgLimits) {
+    const limits = orgLimits;
     if (isFinite(limits.sessionsPerMonth)) {
       const monthStart = new Date();
       monthStart.setDate(1);
@@ -298,7 +288,7 @@ export async function duplicateSession(
     .eq("session_id", sessionId)
     .order("sort_order");
   if (polls && polls.length > 0) {
-    const limits = getLimits((org?.plan ?? "free") as OrgPlan);
+    const limits = orgLimits ?? getLimits("free");
     const allowed = isFinite(limits.pollsPerSession) ? limits.pollsPerSession : polls.length;
     const pollsToInsert = polls.slice(0, allowed).map((p) => {
       const s = (p.settings ?? {}) as Record<string, unknown>;

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useChannel } from "@/core/realtime/useChannel";
+import { parseVoteValue } from "@/core/votes/parse";
 
 const SLIDE_LABELS: Record<string, string> = {
   splash: "Заставка", speaker: "Спикер", schedule: "Расписание",
@@ -109,16 +110,12 @@ export function PresenterScreen({
   useChannel("pollVotes", activePollId, {
     vote: (payload) => {
       if (!payload.value) return;
-      try {
-        const vals: string[] = payload.value.startsWith("[") ? (JSON.parse(payload.value) as string[]) : [payload.value];
-        setVoteCounts(prev => {
-          const next = { ...prev };
-          vals.forEach(v => { next[v] = (next[v] ?? 0) + 1; });
-          return next;
-        });
-      } catch {
-        setVoteCounts(prev => ({ ...prev, [payload.value]: (prev[payload.value] ?? 0) + 1 }));
-      }
+      const vals = parseVoteValue(payload.value);
+      setVoteCounts(prev => {
+        const next = { ...prev };
+        vals.forEach(v => { next[v] = (next[v] ?? 0) + 1; });
+        return next;
+      });
     },
   });
 

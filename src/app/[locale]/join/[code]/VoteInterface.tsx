@@ -11,6 +11,13 @@ import type { PollType } from "@/types/database";
 import { useTranslations } from "next-intl";
 import { useChannel } from "@/core/realtime/useChannel";
 import { useSessionSync } from "@/core/realtime/useSessionSync";
+import { getVoterToken } from "@/core/identity/voterToken";
+import { ConnectionBanner } from "@/core/screens/ConnectionBanner";
+import { AnnouncementOverlay } from "@/core/screens/AnnouncementOverlay";
+import { useAnnouncement } from "@/core/screens/useAnnouncement";
+import { medalFor } from "@/core/screens/medal";
+import { formatClock } from "@/core/format/time";
+import type { PollSettings } from "@/core/settings/pollSettings";
 
 type PollData = {
   id: string;
@@ -18,11 +25,10 @@ type PollData = {
   type: PollType;
   options: unknown[];
   status: string;
-  settings?: { allow_revote?: boolean; max_questions?: number; quiz_mode?: boolean; max_answers?: number; duration?: number; activated_at?: string };
+  settings?: PollSettings;
 } | null;
 
 type QuizReveal = { correct_option: string; explanation?: string };
-type AnnouncementData = { text: string; duration: number; started_at: string };
 
 type QuestionItem = {
   id: string;
@@ -33,27 +39,6 @@ type QuestionItem = {
 
 const PLANNING_POKER_VALUES = ["1", "2", "3", "5", "8", "13", "21", "?", "☕"];
 const EMOJI_OPTIONS = ["😊", "🔥", "👍", "❤️", "🎉", "😮", "🤔", "👎"];
-
-function generateUUID(): string {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-    return crypto.randomUUID();
-  }
-  // Fallback for HTTP (non-secure) contexts where crypto.randomUUID is unavailable
-  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
-  });
-}
-
-function getVoterToken(): string {
-  if (typeof window === "undefined") return "";
-  let token = localStorage.getItem("voter_token");
-  if (!token) {
-    token = generateUUID();
-    localStorage.setItem("voter_token", token);
-  }
-  return token;
-}
 
 export function VoteInterface({
   sessionId,
@@ -81,7 +66,7 @@ export function VoteInterface({
   const [myVote, setMyVote] = useState<string | null>(null);
   const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
   const [quizReveal, setQuizReveal] = useState<QuizReveal | null>(null);
-  const [announcement, setAnnouncement] = useState<AnnouncementData | null>(
+  const { announcement, timeLeft: announcementTimeLeft, setAnnouncement } = useAnnouncement(
     initialActiveSlide?.type === "announcement"
       ? {
           text: (initialActiveSlide.content as { text?: string }).text ?? "",
@@ -90,7 +75,6 @@ export function VoteInterface({
         }
       : null
   );
-  const [announcementTimeLeft, setAnnouncementTimeLeft] = useState<number | null>(null);
   const [questionsSubmitted, setQuestionsSubmitted] = useState(0);
   const [questions, setQuestions] = useState<QuestionItem[]>(initialQuestions);
   const [upvotedIds, setUpvotedIds] = useState<Set<string>>(() => {
@@ -255,20 +239,6 @@ export function VoteInterface({
 
   const isBuzzChannelActive = activeSlide?.type === "reveal" && !!(activeSlide.content as { buzz?: boolean }).buzz;
   const { send: sendBuzzEvent } = useChannel("sessionBuzz", isBuzzChannelActive ? sessionId : null, {});
-
-  useEffect(() => {
-    if (!announcement) { setAnnouncementTimeLeft(null); return; }
-    if (announcement.duration <= 0) { setAnnouncementTimeLeft(null); return; }
-    const update = () => {
-      const elapsed = (Date.now() - new Date(announcement.started_at).getTime()) / 1000;
-      const left = Math.ceil(Math.max(0, announcement.duration - elapsed));
-      setAnnouncementTimeLeft(left);
-      if (left <= 0) setAnnouncement(null);
-    };
-    update();
-    const id = setInterval(update, 500);
-    return () => clearInterval(id);
-  }, [announcement]);
 
   const [pollTimeLeft, setPollTimeLeft] = useState<number | null>(null);
   useEffect(() => {
@@ -436,7 +406,7 @@ export function VoteInterface({
             <div className="flex flex-col gap-1.5">
               {lb.slice(0, 10).map((entry, i) => {
                 const isMe = entry.name === myName;
-                const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}.`;
+                const medal = medalFor(i);
                 return (
                   <div key={entry.name} className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm ${isMe ? "bg-indigo-500/10 border border-indigo-500/20 font-semibold" : ""}`}>
                     <span className="w-6 text-center shrink-0">{medal}</span>
@@ -528,7 +498,7 @@ export function VoteInterface({
               <div className="flex flex-col gap-1">
                 {leaderboard.slice(0, 5).map((entry, i) => {
                   const isMe = entry.name === myName;
-                  const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}.`;
+                  const medal = medalFor(i);
                   return (
                     <div key={entry.name} className={`flex items-center justify-between rounded-lg px-3 py-1.5 text-sm ${isMe ? "bg-indigo-600/25 font-semibold" : ""}`}>
                       <span className="text-slate-900 dark:text-white">{medal} {entry.name}</span>
@@ -912,33 +882,17 @@ export function VoteInterface({
         </button>
       )}
       {!connected && (
-        <div className="fixed top-0 inset-x-0 z-40 bg-amber-500 text-amber-950 text-center text-xs font-medium py-1.5 px-4">
-          Нет соединения — пытаемся переподключиться…
-        </div>
+        <ConnectionBanner variant="compact" message="Нет соединения — пытаемся переподключиться…" />
       )}
       {pollTimeLeft !== null && pollTimeLeft > 0 && !voted && (
         <div className={`fixed top-0 inset-x-0 z-30 text-center text-sm font-semibold py-1.5 px-4 tabular-nums ${
           pollTimeLeft <= 10 ? "bg-red-500 text-white" : "bg-indigo-600 text-white"
         }`}>
-          {pollTimeLeft >= 60
-            ? `${Math.floor(pollTimeLeft / 60)}:${String(pollTimeLeft % 60).padStart(2, "0")}`
-            : `${pollTimeLeft} сек`}
+          {formatClock(pollTimeLeft)}{pollTimeLeft < 60 ? " сек" : ""}
         </div>
       )}
       {announcement && (
-        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-slate-950/95 px-6">
-          <div className="text-center max-w-sm w-full">
-            <div className="text-5xl mb-5">📢</div>
-            <p className="text-2xl font-bold text-white leading-snug mb-6">{announcement.text}</p>
-            {announcementTimeLeft !== null && announcementTimeLeft > 0 && (
-              <p className="text-6xl font-mono font-bold text-indigo-400 tabular-nums">
-                {announcementTimeLeft >= 60
-                  ? `${Math.floor(announcementTimeLeft / 60)}:${String(announcementTimeLeft % 60).padStart(2, "0")}`
-                  : `${announcementTimeLeft}`}
-              </p>
-            )}
-          </div>
-        </div>
+        <AnnouncementOverlay variant="participant" text={announcement.text} timeLeft={announcementTimeLeft} />
       )}
       {showLeaderboard && leaderboard && leaderboard.length > 0 && !quizReveal && (
         <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-40 w-full max-w-xs px-4 pointer-events-none">
@@ -952,7 +906,7 @@ export function VoteInterface({
                   ? localStorage.getItem(`quiz_participant_${sessionId}`) ?? ""
                   : "";
                 const isMe = entry.name === myName;
-                const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}.`;
+                const medal = medalFor(i);
                 return (
                   <div key={entry.name} className={`flex items-center justify-between rounded-lg px-3 py-1.5 text-sm ${isMe ? "bg-indigo-600/25 font-semibold" : ""}`}>
                     <span className="text-white">{medal} {entry.name}</span>

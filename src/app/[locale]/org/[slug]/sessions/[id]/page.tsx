@@ -10,6 +10,7 @@ import { AttendeesInput } from "./AttendeesInput";
 import { ExportButton } from "./ExportButton";
 import { SessionSummaryButton } from "./SessionSummaryButton";
 import type { Session } from "@/types/database";
+import { parseVoteValue } from "@/core/votes/parse";
 
 const STATUS_COLOR: Record<Session["status"], string> = {
   draft:  "text-slate-500 bg-slate-100 dark:text-slate-400 dark:bg-slate-800",
@@ -80,10 +81,7 @@ export default async function SessionPage({
   const votesDataByPoll = (voteRows ?? []).reduce<Record<string, Record<string, number>>>(
     (acc, v) => {
       if (!acc[v.poll_id]) acc[v.poll_id] = {};
-      let vals: string[];
-      try { vals = v.value.startsWith("[") ? (JSON.parse(v.value) as string[]) : [v.value]; }
-      catch { vals = [v.value]; }
-      vals.forEach((val) => { acc[v.poll_id][val] = (acc[v.poll_id][val] ?? 0) + 1; });
+      parseVoteValue(v.value).forEach((val) => { acc[v.poll_id][val] = (acc[v.poll_id][val] ?? 0) + 1; });
       return acc;
     },
     {}

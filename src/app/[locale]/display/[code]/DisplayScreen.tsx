@@ -15,6 +15,13 @@ import type { BrandingSettings } from "@/lib/actions/branding";
 import type { SlideType } from "@/lib/actions/slides";
 import { useChannel } from "@/core/realtime/useChannel";
 import { useSessionSync } from "@/core/realtime/useSessionSync";
+import { aggregate } from "@/core/votes/aggregate";
+import { formatClock } from "@/core/format/time";
+import { medalFor } from "@/core/screens/medal";
+import { ConnectionBanner } from "@/core/screens/ConnectionBanner";
+import { AnnouncementOverlay } from "@/core/screens/AnnouncementOverlay";
+import { useAnnouncement } from "@/core/screens/useAnnouncement";
+import type { PollSettings } from "@/core/settings/pollSettings";
 
 function QrImage({ src, joinUrl, style, className }: {
   src: string; joinUrl: string;
@@ -43,16 +50,7 @@ function QrImage({ src, joinUrl, style, className }: {
   );
 }
 
-type PollSettings = {
-  duration?: number;
-  activated_at?: string;
-  vote_limit?: number;
-  allow_revote?: boolean;
-  quiz_mode?: boolean;
-};
-
 type QuizReveal = { correct_option: string; explanation?: string };
-type AnnouncementData = { text: string; duration: number; started_at: string };
 
 type PollData = {
   id: string;
@@ -80,23 +78,6 @@ type QuestionRow = {
 
 const TEMP_LABELS = ["❄️", "🥶", "😐", "🌡️", "🔥"];
 const PLANNING_POKER_VALUES = ["1", "2", "3", "5", "8", "13", "21", "?", "☕"];
-
-function aggregateVotes(votes: { value: string }[], type: PollType, options: string[]) {
-  const counts: Record<string, number> = {};
-  if (type === "multiple_choice" || type === "planning_poker") {
-    const keys = type === "multiple_choice" ? options : PLANNING_POKER_VALUES;
-    keys.forEach((k) => (counts[k] = 0));
-  }
-  votes.forEach(({ value }) => {
-    let vals: string[];
-    try { vals = value.startsWith("[") ? (JSON.parse(value) as string[]) : [value]; }
-    catch { vals = [value]; }
-    vals.forEach((v) => { counts[v] = (counts[v] ?? 0) + 1; });
-  });
-  return Object.entries(counts)
-    .map(([name, count]) => ({ name, count }))
-    .filter((e) => e.count > 0 || type === "multiple_choice");
-}
 
 type ActiveSlide = { id: string; type: SlideType; content: Record<string, unknown> } | null;
 
@@ -136,12 +117,11 @@ export function DisplayScreen({
   const fontFamily = displayFontFamily[branding?.display_font ?? "sans"] ?? displayFontFamily.sans;
   const [poll, setPoll] = useState<PollData>(initialPoll);
   const [quizReveal, setQuizReveal] = useState<QuizReveal | null>(null);
-  const [announcement, setAnnouncement] = useState<AnnouncementData | null>(null);
+  const { announcement, timeLeft: announcementTimeLeft, setAnnouncement } = useAnnouncement();
   const [activeSlide, setActiveSlide] = useState<ActiveSlide>(initialActiveSlide ?? null);
   const [slideShowKey, setSlideShowKey] = useState(0);
   const [revealedSlideId, setRevealedSlideId] = useState<string | null>(null);
   const [buzzers, setBuzzers] = useState<{ token: string; ts: number }[]>([]);
-  const [announcementTimeLeft, setAnnouncementTimeLeft] = useState<number | null>(null);
   const [votes, setVotes] = useState<{ value: string; ts?: string }[]>(initialVotes);
   const [questions, setQuestions] = useState<QuestionRow[]>(initialQuestions);
   const [totalAttendees, setTotalAttendees] = useState(initialTotalAttendees);
@@ -356,21 +336,6 @@ export function DisplayScreen({
     return () => clearInterval(id);
   }, []);
 
-  // Announcement countdown timer
-  useEffect(() => {
-    if (!announcement) { setAnnouncementTimeLeft(null); return; }
-    if (announcement.duration <= 0) { setAnnouncementTimeLeft(null); return; }
-    const update = () => {
-      const elapsed = (Date.now() - new Date(announcement.started_at).getTime()) / 1000;
-      const left = Math.ceil(Math.max(0, announcement.duration - elapsed));
-      setAnnouncementTimeLeft(left);
-      if (left <= 0) setAnnouncement(null);
-    };
-    update();
-    const id = setInterval(update, 500);
-    return () => clearInterval(id);
-  }, [announcement]);
-
   // Spin wheel countdown: 3→2→1→spinning
   useEffect(() => {
     if (spinPhase !== "countdown") return;
@@ -484,8 +449,15 @@ export function DisplayScreen({
 
   const chartData = useMemo(() => {
     if (!poll) return [];
-    const data = aggregateVotes(votes, poll.type, poll.options as string[]);
-    return (sortByPopularity || pollEnded) ? [...data].sort((a, b) => b.count - a.count) : data;
+    let buckets: { name: string; count: number }[];
+    if (poll.type === "multiple_choice") {
+      buckets = aggregate(votes, { seedKeys: poll.options as string[], keepZero: true }).buckets;
+    } else if (poll.type === "planning_poker") {
+      buckets = aggregate(votes, { seedKeys: PLANNING_POKER_VALUES }).buckets;
+    } else {
+      buckets = [];
+    }
+    return (sortByPopularity || pollEnded) ? [...buckets].sort((a, b) => b.count - a.count) : buckets;
   }, [votes, poll, sortByPopularity, pollEnded]);
 
   // Track seen words for fade-in animation
@@ -520,9 +492,7 @@ export function DisplayScreen({
     >
 
       {!connected && (
-        <div className="absolute top-0 inset-x-0 z-50 bg-amber-500/90 text-amber-950 text-center text-sm font-medium py-2 px-4">
-          Соединение потеряно — переподключение…
-        </div>
+        <ConnectionBanner variant="prominent" message="Соединение потеряно — переподключение…" />
       )}
 
       {/* Slide — full screen, below announcement */}
@@ -543,19 +513,7 @@ export function DisplayScreen({
 
       {/* Announcement overlay */}
       {announcement && activeSlide?.type !== "announcement" && (
-        <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-slate-950/92">
-          <div className="text-center px-12 max-w-3xl">
-            <div className="text-5xl mb-6">📢</div>
-            <p className="text-5xl font-bold text-white leading-tight mb-8">{announcement.text}</p>
-            {announcementTimeLeft !== null && announcementTimeLeft > 0 && (
-              <p className="text-8xl font-mono font-bold text-indigo-400 tabular-nums">
-                {announcementTimeLeft >= 60
-                  ? `${Math.floor(announcementTimeLeft / 60)}:${String(announcementTimeLeft % 60).padStart(2, "0")}`
-                  : `${announcementTimeLeft}`}
-              </p>
-            )}
-          </div>
-        </div>
+        <AnnouncementOverlay variant="display" text={announcement.text} timeLeft={announcementTimeLeft} />
       )}
       {/* Championship: auto-advance countdown overlay */}
       {isChampionship && champAutoCountdown !== null && (
@@ -637,7 +595,7 @@ export function DisplayScreen({
                 </p>
                 <div className="flex flex-col gap-3">
                   {champLeaderboard.slice(0, 10).map((entry, i) => {
-                    const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}.`;
+                    const medal = medalFor(i);
                     return (
                       <div key={entry.name} className={`flex items-center gap-4 rounded-xl px-4 py-3 ${i === 0 ? "bg-yellow-500/15 border border-yellow-500/30" : "bg-slate-800/60"}`}>
                         <span className="text-xl w-8 shrink-0 text-center">{medal}</span>
@@ -687,9 +645,7 @@ export function DisplayScreen({
         <div className="flex items-center gap-4">
           {timeLeft !== null && (
             <span className={`text-sm font-mono font-bold tabular-nums ${timeLeft <= 10 ? "text-red-400 animate-pulse" : "text-slate-700 dark:text-slate-300"}`}>
-              {timeLeft >= 60
-                ? `${Math.floor(timeLeft / 60)}:${String(timeLeft % 60).padStart(2, "0")}`
-                : `${timeLeft}с`}
+              {formatClock(timeLeft)}{timeLeft < 60 ? "с" : ""}
             </span>
           )}
           {pulseCount > 0 && (

@@ -2,8 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getAuthUser, assertSessionMember } from "@/lib/actions/guards";
-import { getLimits } from "@/lib/limits";
-import type { OrgPlan } from "@/types/database";
+import { getPlanLimits } from "@/core/access/limits";
 
 export async function createSection(
   sessionId: string,
@@ -106,24 +105,17 @@ export async function copySection(
       .eq("id", targetSessionId)
       .single();
     if (targetSession) {
-      const { data: org } = await admin
-        .from("organizations")
-        .select("plan")
-        .eq("id", targetSession.organization_id)
-        .single();
-      if (org) {
-        const limits = getLimits(org.plan as OrgPlan);
-        if (isFinite(limits.pollsPerSession)) {
-          const { count } = await admin
-            .from("polls")
-            .select("id", { count: "exact", head: true })
-            .eq("session_id", targetSessionId);
-          const free = limits.pollsPerSession - (count ?? 0);
-          if (free <= 0) {
-            return { error: `Лимит опросов в мероприятии исчерпан (${limits.pollsPerSession}). Перейдите на более высокий тариф.` };
-          }
-          polls.splice(free);
+      const limits = await getPlanLimits(admin, targetSession.organization_id);
+      if (limits && isFinite(limits.pollsPerSession)) {
+        const { count } = await admin
+          .from("polls")
+          .select("id", { count: "exact", head: true })
+          .eq("session_id", targetSessionId);
+        const free = limits.pollsPerSession - (count ?? 0);
+        if (free <= 0) {
+          return { error: `Лимит опросов в мероприятии исчерпан (${limits.pollsPerSession}). Перейдите на более высокий тариф.` };
         }
+        polls.splice(free);
       }
     }
   }

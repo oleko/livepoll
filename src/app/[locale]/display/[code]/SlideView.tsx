@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import type { SlideType } from "@/lib/actions/slides";
+import { formatClock } from "@/core/format/time";
 
 type ScheduleItem = { time: string; title: string; active?: boolean };
 
@@ -153,9 +154,7 @@ function AnnouncementSlide({ c }: { c: Record<string, unknown> }) {
       </p>
       {timeLeft !== null && timeLeft > 0 && (
         <p className={`text-8xl font-mono font-bold tabular-nums ${timeLeft <= 5 ? "text-red-400 animate-pulse" : "text-indigo-400"}`}>
-          {timeLeft >= 60
-            ? `${Math.floor(timeLeft / 60)}:${String(timeLeft % 60).padStart(2, "0")}`
-            : timeLeft}
+          {formatClock(timeLeft)}
         </p>
       )}
     </div>

@@ -3,8 +3,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
-import type { PollType, OrgPlan } from "@/types/database";
-import { getLimits } from "@/lib/limits";
+import type { PollType } from "@/types/database";
+import { getPlanLimits } from "@/core/access/limits";
 import { getAuthUser, assertSessionMember } from "@/lib/actions/guards";
 import { headers } from "next/headers";
 import { checkRateLimit } from "@/lib/rateLimit";
@@ -52,22 +52,23 @@ export async function createPoll(
   // Проверяем лимит опросов по тарифу
   const { data: session } = await admin
     .from("sessions")
-    .select("organization_id, organizations(plan)")
+    .select("organization_id")
     .eq("id", sessionId)
     .single();
 
   if (session) {
-    const plan = (session.organizations as { plan: OrgPlan } | null)?.plan ?? "free";
-    const limits = getLimits(plan);
-    const { count } = await admin
-      .from("polls")
-      .select("id", { count: "exact", head: true })
-      .eq("session_id", sessionId);
+    const limits = await getPlanLimits(admin, session.organization_id);
+    if (limits) {
+      const { count } = await admin
+        .from("polls")
+        .select("id", { count: "exact", head: true })
+        .eq("session_id", sessionId);
 
-    if ((count ?? 0) >= limits.pollsPerSession) {
-      return {
-        error: `Лимит опросов в мероприятии исчерпан (${limits.pollsPerSession}). Перейдите на более высокий тариф.`,
-      };
+      if ((count ?? 0) >= limits.pollsPerSession) {
+        return {
+          error: `Лимит опросов в мероприятии исчерпан (${limits.pollsPerSession}). Перейдите на более высокий тариф.`,
+        };
+      }
     }
   }
 
@@ -393,22 +394,15 @@ export async function submitVote(formData: FormData) {
           .eq("id", pollData.session_id)
           .single();
         if (sess) {
-          const { data: org } = await admin
-            .from("organizations")
-            .select("plan")
-            .eq("id", sess.organization_id)
-            .single();
-          if (org) {
-            const limits = getLimits(org.plan as OrgPlan);
-            if (isFinite(limits.maxParticipants)) {
-              const { data: tokens } = await admin
-                .from("votes")
-                .select("voter_token")
-                .in("poll_id", sessionPollIds);
-              const uniqueCount = new Set((tokens ?? []).map((v) => v.voter_token)).size;
-              if (uniqueCount >= limits.maxParticipants) {
-                return { error: `Достигнут лимит участников для текущего тарифа (${limits.maxParticipants})` };
-              }
+          const limits = await getPlanLimits(admin, sess.organization_id);
+          if (limits && isFinite(limits.maxParticipants)) {
+            const { data: tokens } = await admin
+              .from("votes")
+              .select("voter_token")
+              .in("poll_id", sessionPollIds);
+            const uniqueCount = new Set((tokens ?? []).map((v) => v.voter_token)).size;
+            if (uniqueCount >= limits.maxParticipants) {
+              return { error: `Достигнут лимит участников для текущего тарифа (${limits.maxParticipants})` };
             }
           }
         }
