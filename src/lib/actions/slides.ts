@@ -2,54 +2,15 @@
 
 import { revalidatePath } from "next/cache";
 import { getAuthUser, assertSessionMember } from "@/lib/actions/guards";
+import { broadcast as realtimeBroadcast, type Message } from "@/core/realtime/broadcast.server";
 
-export type SlideType = "splash" | "speaker" | "schedule" | "quote" | "final" | "spin_wheel" | "announcement" | "reveal";
+export type { SlideType, SlideContent, SlideRow, SlideRef } from "@/core/domain/slide";
+import type { SlideRef, SlideType } from "@/core/domain/slide";
 
-export type SlideContent =
-  | { type: "splash";       title: string; subtitle?: string; date?: string; location?: string }
-  | { type: "speaker";      name: string; role?: string; company?: string; topic?: string; photo_url?: string }
-  | { type: "schedule";     items: { time: string; title: string; active?: boolean }[] }
-  | { type: "quote";        text: string; author?: string }
-  | { type: "final";        title: string; subtitle?: string; url?: string }
-  | { type: "spin_wheel";   title?: string; options: string[] }
-  | { type: "announcement"; text: string; duration?: number }
-  | { type: "reveal"; question: string; answer: string; buzz?: boolean };
-
-export type SlideRow = {
-  id: string;
-  session_id: string;
-  type: SlideType;
-  content: Record<string, unknown>;
-  sort_order: number;
-  section_id: string | null;
-  created_at: string;
-};
-
-async function broadcastRaw(messages: { topic: string; event: string; payload: Record<string, unknown> }[]) {
-  const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/realtime/v1/api/broadcast`;
-  try {
-    const res = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
-        "apikey": process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      },
-      body: JSON.stringify({ messages }),
-    });
-    if (!res.ok) {
-      const body = await res.text().catch(() => "");
-      console.error(`[slides broadcast] HTTP ${res.status}:`, body, "topics:", messages.map(m => m.topic));
-    } else {
-      console.log(`[slides broadcast] OK — ${messages.map(m => `${m.topic}/${m.event}`).join(", ")}`);
-    }
-  } catch (err) {
-    console.error("[slides broadcast] network error:", (err as Error).message);
-  }
-}
-
-async function broadcast(sessionId: string, payload: Record<string, unknown>) {
-  await broadcastRaw([{ topic: `session-slides:${sessionId}`, event: "slide_change", payload }]);
+async function broadcastShow(sessionId: string, slide: SlideRef) {
+  await realtimeBroadcast([
+    { channel: "sessionSlides", id: sessionId, event: "slide_change", payload: { type: "show", slide } },
+  ]);
 }
 
 export async function createSlide(
@@ -108,7 +69,7 @@ export async function updateSlide(
       .select("id, type, content")
       .eq("id", slideId)
       .single();
-    if (slide) await broadcast(sessionId, { type: "show", slide });
+    if (slide) await broadcastShow(sessionId, slide as SlideRef);
   }
 
   revalidatePath(`/org/${orgSlug}/sessions/${sessionId}`);
@@ -132,7 +93,9 @@ export async function deleteSlide(
 
   if ((sess as unknown as { active_slide_id?: string })?.active_slide_id === slideId) {
     await admin.from("sessions").update({ active_slide_id: null } as never).eq("id", sessionId);
-    await broadcast(sessionId, { type: "hide" });
+    await realtimeBroadcast([
+      { channel: "sessionSlides", id: sessionId, event: "slide_change", payload: { type: "hide" } },
+    ]);
   }
 
   await admin.from("session_slides").delete()
@@ -160,21 +123,23 @@ export async function showSlide(
 
   await admin.from("sessions").update({ active_slide_id: slideId } as never).eq("id", sessionId);
 
-  const messages: { topic: string; event: string; payload: Record<string, unknown> }[] = [
-    { topic: `session-slides:${sessionId}`, event: "slide_change", payload: { type: "show", slide } },
+  const slideRef = slide as SlideRef;
+  const messages: Message[] = [
+    { channel: "sessionSlides", id: sessionId, event: "slide_change", payload: { type: "show", slide: slideRef } },
   ];
 
   // For announcement slides, also broadcast to participants so they see the overlay on their phones
-  if ((slide as { type: string }).type === "announcement") {
-    const c = (slide as { content: { text?: string; duration?: number } }).content;
+  if (slideRef.type === "announcement") {
+    const c = slideRef.content as { text?: string; duration?: number };
     messages.push({
-      topic: `session-polls:${sessionId}`,
+      channel: "sessionPolls",
+      id: sessionId,
       event: "announcement",
       payload: { text: c.text ?? "", duration: c.duration ?? 0, started_at: new Date().toISOString() },
     });
   }
 
-  await broadcastRaw(messages);
+  await realtimeBroadcast(messages);
   revalidatePath(`/org/${orgSlug}/sessions/${sessionId}`);
   return { success: true };
 }
@@ -206,11 +171,9 @@ export async function revealAnswer(
   const { user, admin } = await getAuthUser();
   await assertSessionMember(user.id, sessionId, admin);
 
-  await broadcastRaw([{
-    topic: `session-slides:${sessionId}`,
-    event: "slide_reveal",
-    payload: { slide_id: slideId },
-  }]);
+  await realtimeBroadcast([
+    { channel: "sessionSlides", id: sessionId, event: "slide_reveal", payload: { slide_id: slideId } },
+  ]);
 }
 
 export async function hideSlide(
@@ -227,8 +190,8 @@ export async function hideSlide(
     .eq("id", sessionId)
     .single();
 
-  const messages: { topic: string; event: string; payload: Record<string, unknown> }[] = [
-    { topic: `session-slides:${sessionId}`, event: "slide_change", payload: { type: "hide" } },
+  const messages: Message[] = [
+    { channel: "sessionSlides", id: sessionId, event: "slide_change", payload: { type: "hide" } },
   ];
 
   if ((sess as unknown as { active_slide_id?: string })?.active_slide_id) {
@@ -239,7 +202,8 @@ export async function hideSlide(
       .single();
     if ((activeSlide as unknown as { type?: string })?.type === "announcement") {
       messages.push({
-        topic: `session-polls:${sessionId}`,
+        channel: "sessionPolls",
+        id: sessionId,
         event: "announcement",
         payload: { clear: true },
       });
@@ -247,7 +211,7 @@ export async function hideSlide(
   }
 
   await admin.from("sessions").update({ active_slide_id: null } as never).eq("id", sessionId);
-  await broadcastRaw(messages);
+  await realtimeBroadcast(messages);
   revalidatePath(`/org/${orgSlug}/sessions/${sessionId}`);
 }
 
@@ -305,11 +269,9 @@ export async function startSpinWheel(
 
   if ((sess as unknown as { active_slide_id?: string })?.active_slide_id !== slideId) return;
 
-  await broadcastRaw([{
-    topic: `session-slides:${sessionId}`,
-    event: "spin_start",
-    payload: { slide_id: slideId },
-  }]);
+  await realtimeBroadcast([
+    { channel: "sessionSlides", id: sessionId, event: "spin_start", payload: { slide_id: slideId } },
+  ]);
 }
 
 export async function moveSlideToSection(

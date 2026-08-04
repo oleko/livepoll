@@ -321,7 +321,7 @@ export type Database = {
           created_at?: string
         }
         Update: {
-          type?: "splash" | "speaker" | "schedule" | "quote" | "final"
+          type?: "splash" | "speaker" | "schedule" | "quote" | "final" | "spin_wheel" | "announcement" | "reveal"
           content?: Record<string, unknown>
           sort_order?: number
           section_id?: string | null
@@ -404,12 +404,66 @@ export type Database = {
           }
         ]
       }
+      participants: {
+        Row: {
+          id: string
+          session_id: string
+          voter_token: string
+          name: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          session_id: string
+          voter_token: string
+          name: string
+          created_at?: string
+        }
+        Update: {
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "participants_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      feedback: {
+        Row: {
+          id: string
+          user_id: string | null
+          user_email: string | null
+          type: "bug" | "idea" | "question"
+          text: string
+          page_url: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id?: string | null
+          user_email?: string | null
+          type: "bug" | "idea" | "question"
+          text: string
+          page_url?: string | null
+          created_at?: string
+        }
+        Update: Record<string, never>
+        Relationships: []
+      }
     }
     Views: Record<string, never>
     Functions: {
       generate_join_code: {
         Args: Record<string, never>
         Returns: string
+      }
+      increment_question_upvotes: {
+        Args: { p_question_id: string }
+        Returns: Database["public"]["Tables"]["questions"]["Row"]
       }
     }
     Enums: Record<string, never>
@@ -428,6 +482,8 @@ export type Question = Database["public"]["Tables"]["questions"]["Row"]
 export type QuestionUpvote = Database["public"]["Tables"]["question_upvotes"]["Row"]
 
 export type SessionSection = Database["public"]["Tables"]["session_sections"]["Row"]
+export type Participant = Database["public"]["Tables"]["participants"]["Row"]
+export type Feedback = Database["public"]["Tables"]["feedback"]["Row"]
 
 export type PollType = Poll["type"]
 export type PollStatus = Poll["status"]
