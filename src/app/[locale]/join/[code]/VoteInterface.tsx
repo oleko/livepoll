@@ -237,11 +237,11 @@ export function VoteInterface({
 
   const revealLive = useRevealParticipantLive({ sessionId, slide: activeSlide as { type: SlideType; content: Record<string, unknown> } | null });
 
-  // Poll-type module dispatch (Phase 3 core+modules) — multiple_choice is the
-  // first migrated type; others still render via the inline branches below.
-  const mcModule = poll ? pollModule(poll.type) : undefined;
-  const mcConfig: Record<string, unknown> | null = poll && mcModule
-    ? (mcModule.config.fromSettings({ options: poll.options, settings: poll.settings ?? {} }) as Record<string, unknown>)
+  // Poll-type module dispatch (Phase 3 core+modules) — generic once a type
+  // is registered; unmigrated types keep rendering via inline branches below.
+  const activePollModule = poll ? pollModule(poll.type) : undefined;
+  const activePollConfig: Record<string, unknown> | null = poll && activePollModule
+    ? (activePollModule.config.fromSettings({ options: poll.options, settings: poll.settings ?? {} }) as Record<string, unknown>)
     : null;
 
   const [pollTimeLeft, setPollTimeLeft] = useState<number | null>(null);
@@ -715,8 +715,8 @@ export function VoteInterface({
           </div>
         )}
 
-        {poll.type === "multiple_choice" && mcModule && mcConfig && (
-          <mcModule.render.participant key={poll.id} config={mcConfig} disabled={isPending} onVote={handleVote} t={t} />
+        {activePollModule && activePollConfig && (
+          <activePollModule.render.participant key={poll.id} config={activePollConfig} disabled={isPending} onVote={handleVote} t={t} />
         )}
 
         {poll.type === "temperature" && (
@@ -743,19 +743,6 @@ export function VoteInterface({
                 <span className="text-7xl hover:scale-110 transition-transform duration-150 active:scale-110 inline-block">{emoji}</span>
               </button>
             ))}
-          </div>
-        )}
-
-        {poll.type === "word_cloud" && (
-          <div className="flex flex-col gap-3">
-            <input type="text" maxLength={30} placeholder="Введите слово или фразу..."
-              className="rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-5 py-4 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-center text-lg"
-              onKeyDown={(e) => { if (e.key === "Enter") handleVote((e.target as HTMLInputElement).value.trim()); }}
-              id="word-input" />
-            <Button className="w-full py-4 text-base" loading={isPending}
-              onClick={() => { const i = document.getElementById("word-input") as HTMLInputElement; if (i.value.trim()) handleVote(i.value.trim()); }}>
-              Отправить
-            </Button>
           </div>
         )}
 

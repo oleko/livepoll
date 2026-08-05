@@ -15,6 +15,8 @@ export type PollLiveCtx = {
   sessionId: string | null;
   pollId: string;
   quizReveal: QuizReveal | null;
+  /** Raw votes for the active poll, for modules whose live state depends on vote history (e.g. word_cloud's "seen before" fade-in). */
+  votes: { value: string }[];
 };
 
 export type PollParticipantProps<Config> = {

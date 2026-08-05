@@ -378,18 +378,6 @@ function PollResults({ poll, valueCounts, total }: { poll: PollRow; valueCounts:
     );
   }
 
-  if (poll.type === "word_cloud") {
-    return (
-      <div className="mt-2 flex flex-wrap gap-1.5">
-        {Object.entries(valueCounts).sort((a, b) => b[1] - a[1]).slice(0, 12).map(([word, count]) => (
-          <span key={word} className="inline-flex items-center gap-1 rounded-full bg-indigo-50 dark:bg-indigo-950/40 px-2.5 py-0.5 text-xs text-indigo-700 dark:text-indigo-300">
-            {word}<span className="font-semibold">{count}</span>
-          </span>
-        ))}
-      </div>
-    );
-  }
-
   if (poll.type === "emoji_cloud") {
     return (
       <div className="mt-2 flex flex-wrap gap-2">

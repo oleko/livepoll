@@ -411,21 +411,22 @@ export function DisplayScreen({
     return (sortByPopularity || pollEnded) ? [...buckets].sort((a, b) => b.count - a.count) : buckets;
   }, [votes, poll, sortByPopularity, pollEnded]);
 
-  // Poll-type module dispatch (Phase 3 core+modules) — multiple_choice is the
-  // first migrated type; others still render via the inline branches below.
-  const mcModule = poll ? pollModule(poll.type) : undefined;
-  const mcConfig: Record<string, unknown> | null = useMemo(() => {
-    if (!poll || !mcModule) return null;
-    return mcModule.config.fromSettings({ options: poll.options, settings: poll.settings ?? {} }) as Record<string, unknown>;
-  }, [poll, mcModule]);
-  const mcAgg: Record<string, unknown> | null = useMemo(() => {
-    if (!poll || !mcModule || !mcConfig) return null;
-    return mcModule.aggregate(votes, mcConfig, { sortByPopularity: sortByPopularity || pollEnded }) as Record<string, unknown>;
-  }, [votes, poll, mcModule, mcConfig, sortByPopularity, pollEnded]);
+  // Poll-type module dispatch (Phase 3 core+modules) — generic once a type
+  // is registered; unmigrated types keep rendering via inline branches below.
+  const activePollModule = poll ? pollModule(poll.type) : undefined;
+  const activePollConfig: Record<string, unknown> | null = useMemo(() => {
+    if (!poll || !activePollModule) return null;
+    return activePollModule.config.fromSettings({ options: poll.options, settings: poll.settings ?? {} }) as Record<string, unknown>;
+  }, [poll, activePollModule]);
+  const activePollAgg: Record<string, unknown> | null = useMemo(() => {
+    if (!poll || !activePollModule || !activePollConfig) return null;
+    return activePollModule.aggregate(votes, activePollConfig, { sortByPopularity: sortByPopularity || pollEnded }) as Record<string, unknown>;
+  }, [votes, poll, activePollModule, activePollConfig, sortByPopularity, pollEnded]);
 
-  // Track seen words for fade-in animation
+  // Track seen words for fade-in animation (emoji_cloud only — word_cloud
+  // owns this itself now via its module's useDisplayLive).
   useEffect(() => {
-    if (poll?.type !== "word_cloud" && poll?.type !== "emoji_cloud") return;
+    if (poll?.type !== "emoji_cloud") return;
     votes.forEach(v => seenWordsRef.current.add(v.value.toLowerCase().trim()));
   }, [votes, poll?.type]);
 
@@ -727,13 +728,13 @@ export function DisplayScreen({
                   <p className="text-base text-slate-400 dark:text-slate-500">Ведущий раскроет результаты</p>
                 </div>
               )}
-              {poll.type === "multiple_choice" && mcModule && mcConfig && mcAgg && (
+              {activePollModule && activePollConfig && activePollAgg && (
                 <PollDisplayHost
                   type={poll.type}
-                  module={mcModule}
-                  config={mcConfig}
-                  agg={mcAgg}
-                  ctx={{ sessionId: session.id, pollId: poll.id, quizReveal }}
+                  module={activePollModule}
+                  config={activePollConfig}
+                  agg={activePollAgg}
+                  ctx={{ sessionId: session.id, pollId: poll.id, quizReveal, votes }}
                   accent={accent}
                   isDark={isDark}
                 />
@@ -839,39 +840,6 @@ export function DisplayScreen({
                   ))}
                 </div>
               )}
-
-              {poll.type === "word_cloud" && (() => {
-                const freq: Record<string, number> = {};
-                votes.forEach(v => {
-                  const key = v.value.toLowerCase().trim();
-                  if (key) freq[key] = (freq[key] ?? 0) + 1;
-                });
-                if (Object.keys(freq).length === 0) {
-                  return <p className="text-slate-500 text-xl text-center">Ожидаем ответы...</p>;
-                }
-                const vals = Object.values(freq);
-                const max = Math.max(...vals);
-                const min = Math.min(...vals);
-                return (
-                  <div className="flex flex-wrap gap-x-6 gap-y-3 justify-center items-center max-h-80 overflow-y-auto p-4">
-                    {Object.entries(freq)
-                      .sort((a, b) => b[1] - a[1])
-                      .map(([word, count]) => {
-                        const scale = max === min ? 0.5 : (count - min) / (max - min);
-                        const isNew = !seenWordsRef.current.has(word);
-                        return (
-                          <span
-                            key={word}
-                            style={{ fontSize: `${(1.5 + scale * 3.5).toFixed(2)}rem`, opacity: 0.55 + scale * 0.45, color: accent }}
-                            className={`font-bold leading-tight ${isNew ? "animate-fade-in" : ""}`}
-                          >
-                            {word}
-                          </span>
-                        );
-                      })}
-                  </div>
-                );
-              })()}
 
               {poll.type === "emoji_cloud" && (() => {
                 const freq: Record<string, number> = {};

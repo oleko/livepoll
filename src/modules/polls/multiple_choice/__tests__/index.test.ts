@@ -67,12 +67,12 @@ describe("multiple_choice module", () => {
   describe("useDisplayLive", () => {
     it("passes quizReveal from ctx straight through as live.reveal", () => {
       const reveal = { correct_option: "Red", explanation: "because" };
-      const live = multiple_choice.useDisplayLive!({ sessionId: "s1", pollId: "p1", quizReveal: reveal });
+      const live = multiple_choice.useDisplayLive!({ sessionId: "s1", pollId: "p1", quizReveal: reveal, votes: [] });
       expect(live).toEqual({ reveal });
     });
 
     it("is null when ctx carries no reveal", () => {
-      const live = multiple_choice.useDisplayLive!({ sessionId: "s1", pollId: "p1", quizReveal: null });
+      const live = multiple_choice.useDisplayLive!({ sessionId: "s1", pollId: "p1", quizReveal: null, votes: [] });
       expect(live.reveal).toBeNull();
     });
   });

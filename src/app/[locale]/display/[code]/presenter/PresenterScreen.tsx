@@ -184,10 +184,10 @@ export function PresenterScreen({
                 </div>
               </div>
 
-              {activePoll.type === "multiple_choice" && (() => {
+              {(() => {
                 const m = pollModule(activePoll.type as PollType);
                 if (!m || !m.render.presenter) {
-                  return sortedVotes.length > 0 ? (
+                  return activePoll.type === "multiple_choice" && sortedVotes.length > 0 ? (
                     <div className="flex flex-col gap-2">
                       {sortedVotes.map(([opt, count]) => (
                         <PollBar key={opt} label={opt} count={count} total={totalVotes} />
@@ -204,16 +204,6 @@ export function PresenterScreen({
                 <div className="flex gap-6 text-2xl font-bold">
                   <span className="text-green-400">👍 {voteCounts["like"] ?? 0}</span>
                   <span className="text-red-400">👎 {voteCounts["dislike"] ?? 0}</span>
-                </div>
-              )}
-
-              {activePoll.type === "word_cloud" && sortedVotes.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {sortedVotes.map(([word, count]) => (
-                    <span key={word} className="rounded-full bg-indigo-900/50 border border-indigo-700/40 px-3 py-1 text-sm text-indigo-300">
-                      {word} <span className="font-semibold">{count}</span>
-                    </span>
-                  ))}
                 </div>
               )}
 
