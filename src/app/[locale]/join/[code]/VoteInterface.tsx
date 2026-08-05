@@ -20,6 +20,7 @@ import { formatClock } from "@/core/format/time";
 import type { PollSettings } from "@/core/settings/pollSettings";
 import { useRevealParticipantLive, RevealParticipant } from "@/modules/slides/reveal";
 import type { SlideType } from "@/core/domain/slide";
+import { pollModule } from "@/core/registry/polls";
 
 type PollData = {
   id: string;
@@ -66,7 +67,6 @@ export function VoteInterface({
     try { return localStorage.getItem(`voted_${initialPoll.id}`) === "1"; } catch { return false; }
   });
   const [myVote, setMyVote] = useState<string | null>(null);
-  const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
   const [quizReveal, setQuizReveal] = useState<QuizReveal | null>(null);
   const { announcement, timeLeft: announcementTimeLeft, setAnnouncement } = useAnnouncement(
     initialActiveSlide?.type === "announcement"
@@ -164,7 +164,6 @@ export function VoteInterface({
       if (data.type === "activated") {
         setQuizReveal(null);
         setMyVote(null);
-        setSelectedOptions([]);
         setPoll(data.poll as unknown as PollData);
         setVoted(false);
         setQuestionsSubmitted(0);
@@ -237,6 +236,13 @@ export function VoteInterface({
   });
 
   const revealLive = useRevealParticipantLive({ sessionId, slide: activeSlide as { type: SlideType; content: Record<string, unknown> } | null });
+
+  // Poll-type module dispatch (Phase 3 core+modules) — multiple_choice is the
+  // first migrated type; others still render via the inline branches below.
+  const mcModule = poll ? pollModule(poll.type) : undefined;
+  const mcConfig: Record<string, unknown> | null = poll && mcModule
+    ? (mcModule.config.fromSettings({ options: poll.options, settings: poll.settings ?? {} }) as Record<string, unknown>)
+    : null;
 
   const [pollTimeLeft, setPollTimeLeft] = useState<number | null>(null);
   useEffect(() => {
@@ -698,7 +704,6 @@ export function VoteInterface({
       </div>
     );
   } else {
-    const options = poll.options as string[];
     content = (
       <div className="w-full max-w-sm">
         <h2 className="text-2xl font-bold text-slate-900 dark:text-white text-center mb-8 leading-snug px-2">
@@ -710,64 +715,9 @@ export function VoteInterface({
           </div>
         )}
 
-        {poll.type === "multiple_choice" && (() => {
-          const maxAnswers = poll.settings?.max_answers ?? 1;
-          if (maxAnswers === 1) {
-            return (
-              <div className="flex flex-col gap-3">
-                {options.map((opt) => (
-                  <button key={opt} onClick={() => handleVote(opt)} disabled={isPending}
-                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-600/10 text-slate-900 dark:text-white text-left px-5 py-4 text-base font-medium transition-colors disabled:opacity-50 active:scale-[0.98]">
-                    {opt}
-                  </button>
-                ))}
-              </div>
-            );
-          }
-          const toggle = (opt: string) =>
-            setSelectedOptions((prev) =>
-              prev.includes(opt)
-                ? prev.filter((o) => o !== opt)
-                : prev.length < maxAnswers
-                  ? [...prev, opt]
-                  : prev
-            );
-          return (
-            <div className="flex flex-col gap-3">
-              <p className="text-center text-xs text-slate-400 dark:text-slate-500">
-                Выберите до {maxAnswers} вариантов
-                {selectedOptions.length > 0 && (
-                  <span className="ml-1 font-semibold text-indigo-500 dark:text-indigo-400">
-                    · выбрано {selectedOptions.length}
-                  </span>
-                )}
-              </p>
-              {options.map((opt) => {
-                const isSelected = selectedOptions.includes(opt);
-                const isDisabled = isPending || (!isSelected && selectedOptions.length >= maxAnswers);
-                return (
-                  <button key={opt} onClick={() => toggle(opt)} disabled={isDisabled}
-                    className={`w-full rounded-xl border px-5 py-4 text-base font-medium text-left flex items-center justify-between transition-colors active:scale-[0.98] disabled:opacity-40 ${
-                      isSelected
-                        ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-600/15 text-indigo-700 dark:text-indigo-300"
-                        : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white hover:border-indigo-400 hover:bg-indigo-50/50 dark:hover:bg-indigo-600/5"
-                    }`}>
-                    <span>{opt}</span>
-                    {isSelected && <span className="text-indigo-500 dark:text-indigo-400 shrink-0 ml-2">✓</span>}
-                  </button>
-                );
-              })}
-              <Button
-                className="w-full py-4 text-base mt-1"
-                disabled={selectedOptions.length === 0}
-                loading={isPending}
-                onClick={() => handleVote(JSON.stringify(selectedOptions))}
-              >
-                Подтвердить ({selectedOptions.length}/{maxAnswers})
-              </Button>
-            </div>
-          );
-        })()}
+        {poll.type === "multiple_choice" && mcModule && mcConfig && (
+          <mcModule.render.participant key={poll.id} config={mcConfig} disabled={isPending} onVote={handleVote} t={t} />
+        )}
 
         {poll.type === "temperature" && (
           <div className="flex flex-col items-center gap-6">

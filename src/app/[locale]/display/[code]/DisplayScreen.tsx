@@ -16,6 +16,8 @@ import type { SlideType } from "@/lib/actions/slides";
 import { useChannel } from "@/core/realtime/useChannel";
 import { useSessionSync } from "@/core/realtime/useSessionSync";
 import { aggregate } from "@/core/votes/aggregate";
+import { pollModule } from "@/core/registry/polls";
+import { PollDisplayHost } from "@/core/screens/PollDisplayHost";
 import { formatClock } from "@/core/format/time";
 import { medalFor } from "@/core/screens/medal";
 import { ConnectionBanner } from "@/core/screens/ConnectionBanner";
@@ -404,17 +406,22 @@ export function DisplayScreen({
   });
 
   const chartData = useMemo(() => {
-    if (!poll) return [];
-    let buckets: { name: string; count: number }[];
-    if (poll.type === "multiple_choice") {
-      buckets = aggregate(votes, { seedKeys: poll.options as string[], keepZero: true }).buckets;
-    } else if (poll.type === "planning_poker") {
-      buckets = aggregate(votes, { seedKeys: PLANNING_POKER_VALUES }).buckets;
-    } else {
-      buckets = [];
-    }
+    if (!poll || poll.type !== "planning_poker") return [];
+    const buckets = aggregate(votes, { seedKeys: PLANNING_POKER_VALUES }).buckets;
     return (sortByPopularity || pollEnded) ? [...buckets].sort((a, b) => b.count - a.count) : buckets;
   }, [votes, poll, sortByPopularity, pollEnded]);
+
+  // Poll-type module dispatch (Phase 3 core+modules) — multiple_choice is the
+  // first migrated type; others still render via the inline branches below.
+  const mcModule = poll ? pollModule(poll.type) : undefined;
+  const mcConfig: Record<string, unknown> | null = useMemo(() => {
+    if (!poll || !mcModule) return null;
+    return mcModule.config.fromSettings({ options: poll.options, settings: poll.settings ?? {} }) as Record<string, unknown>;
+  }, [poll, mcModule]);
+  const mcAgg: Record<string, unknown> | null = useMemo(() => {
+    if (!poll || !mcModule || !mcConfig) return null;
+    return mcModule.aggregate(votes, mcConfig, { sortByPopularity: sortByPopularity || pollEnded }) as Record<string, unknown>;
+  }, [votes, poll, mcModule, mcConfig, sortByPopularity, pollEnded]);
 
   // Track seen words for fade-in animation
   useEffect(() => {
@@ -720,7 +727,19 @@ export function DisplayScreen({
                   <p className="text-base text-slate-400 dark:text-slate-500">Ведущий раскроет результаты</p>
                 </div>
               )}
-              {(poll.type === "multiple_choice" || (poll.type === "planning_poker" && pokerRevealed)) && chartData.length > 0 && (
+              {poll.type === "multiple_choice" && mcModule && mcConfig && mcAgg && (
+                <PollDisplayHost
+                  type={poll.type}
+                  module={mcModule}
+                  config={mcConfig}
+                  agg={mcAgg}
+                  ctx={{ sessionId: session.id, pollId: poll.id, quizReveal }}
+                  accent={accent}
+                  isDark={isDark}
+                />
+              )}
+
+              {poll.type === "planning_poker" && pokerRevealed && chartData.length > 0 && (
                 <ResponsiveContainer width="100%" height={320}>
                   <BarChart data={chartData} margin={{ top: 36, right: 0, left: 0, bottom: 0 }}>
                     <XAxis dataKey="name" tick={{ fill: isDark ? "#94a3b8" : "#475569", fontSize: 15 }} axisLine={false} tickLine={false} />
@@ -731,12 +750,8 @@ export function DisplayScreen({
                       itemStyle={{ color: "#818cf8" }}
                     />
                     <Bar dataKey="count" radius={[8, 8, 0, 0]}>
-                      {chartData.map((entry, i) => (
-                        <Cell key={i} fill={
-                          quizReveal
-                            ? (entry.name === quizReveal.correct_option ? "#22c55e" : "#94a3b8")
-                            : accent
-                        } />
+                      {chartData.map((_entry, i) => (
+                        <Cell key={i} fill={accent} />
                       ))}
                       <LabelList
                         dataKey="count"
@@ -763,7 +778,7 @@ export function DisplayScreen({
                 </ResponsiveContainer>
               )}
 
-              {quizReveal && (poll.type === "multiple_choice" || poll.type === "planning_poker") && (
+              {quizReveal && poll.type === "multiple_choice" && (
                 <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-6">
                   <div className="inline-flex flex-col items-center gap-2 rounded-2xl border border-green-500/30 bg-green-500/10 px-8 py-4">
                     <p className="text-lg font-bold text-green-500 dark:text-green-400">

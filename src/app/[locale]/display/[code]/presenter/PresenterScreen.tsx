@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef } from "react";
 import { useChannel } from "@/core/realtime/useChannel";
 import { parseVoteValue } from "@/core/votes/parse";
+import { pollModule } from "@/core/registry/polls";
+import type { PollType } from "@/types/database";
 
 const SLIDE_LABELS: Record<string, string> = {
   splash: "Заставка", speaker: "Спикер", schedule: "Расписание",
@@ -182,13 +184,21 @@ export function PresenterScreen({
                 </div>
               </div>
 
-              {activePoll.type === "multiple_choice" && sortedVotes.length > 0 && (
-                <div className="flex flex-col gap-2">
-                  {sortedVotes.map(([opt, count]) => (
-                    <PollBar key={opt} label={opt} count={count} total={totalVotes} />
-                  ))}
-                </div>
-              )}
+              {activePoll.type === "multiple_choice" && (() => {
+                const m = pollModule(activePoll.type as PollType);
+                if (!m || !m.render.presenter) {
+                  return sortedVotes.length > 0 ? (
+                    <div className="flex flex-col gap-2">
+                      {sortedVotes.map(([opt, count]) => (
+                        <PollBar key={opt} label={opt} count={count} total={totalVotes} />
+                      ))}
+                    </div>
+                  ) : null;
+                }
+                const config = m.config.fromSettings({ options: activePoll.options, settings: {} });
+                const agg = { total: totalVotes, counts: voteCounts, buckets: Object.entries(voteCounts).map(([name, count]) => ({ name, count })) };
+                return <m.render.presenter config={config} agg={agg} total={totalVotes} />;
+              })()}
 
               {activePoll.type === "like_dislike" && (
                 <div className="flex gap-6 text-2xl font-bold">

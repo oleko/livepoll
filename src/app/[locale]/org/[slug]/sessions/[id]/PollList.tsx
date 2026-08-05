@@ -13,6 +13,7 @@ import { EditIcon } from "@/components/icons";
 import { Dialog, DialogRawContent } from "@/components/ui/Dialog";
 import { SlideView } from "@/app/[locale]/display/[code]/SlideView";
 import { slideRegistry } from "@/core/registry/slides";
+import { pollModule } from "@/core/registry/polls";
 import { ConfigForm } from "@/core/screens/ConfigForm";
 import type { Translator } from "@/core/settings/field";
 import type { Poll, SessionStatus } from "@/types/database";
@@ -353,9 +354,17 @@ const EDIT_WINDOW_MS = 10 * 60 * 1000;
 
 function PollResults({ poll, valueCounts, total }: { poll: PollRow; valueCounts: Record<string, number>; total: number }) {
   const t = useTranslations("Org.session.pollList");
+  const tRoot = useTranslations() as unknown as Translator;
   if (total === 0) return <p className="text-xs text-slate-400 dark:text-slate-600 mt-2">{t("noVotes")}</p>;
 
   if (poll.type === "qa") return <p className="text-xs text-slate-400 dark:text-slate-600 mt-2">{t("questionsReceived", { count: total })}</p>;
+
+  const m = pollModule(poll.type);
+  if (m) {
+    const config = m.config.fromSettings({ options: poll.options, settings: poll.settings ?? {} });
+    const agg = { total, counts: valueCounts, buckets: Object.entries(valueCounts).map(([name, count]) => ({ name, count })) };
+    return <m.render.hostResult config={config} agg={agg} total={total} t={tRoot} />;
+  }
 
   if (poll.type === "temperature") {
     const avg = (Object.entries(valueCounts).reduce((s, [v, c]) => s + parseFloat(v) * c, 0) / total).toFixed(1);
