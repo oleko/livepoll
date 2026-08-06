@@ -44,43 +44,24 @@ export async function saveChampionshipSettings(
 type AdvanceResult = "activated" | "finished" | "raced";
 
 // Finds and activates the next draft quiz poll in the session.
-// "raced" means a concurrent call already claimed this advance (see
-// requireActiveToClose) — the caller must NOT treat that as "finished".
+// "raced" means a concurrent call already claimed the SAME next poll (see
+// the compare-and-set below) — the caller must NOT treat that as "finished".
 async function activateNextQuizPollInternal(
   sessionId: string,
-  admin: ReturnType<typeof createAdminClient>,
-  opts: { requireActiveToClose?: boolean } = {}
+  admin: ReturnType<typeof createAdminClient>
 ): Promise<AdvanceResult> {
   type PollRow = { id: string; settings: Record<string, unknown> | null; sort_order: number };
 
-  // Close currently active poll if any
-  const { data: activePoll } = await admin
+  // Close whatever's still active, if anything. Not race-sensitive: by the
+  // time this runs the poll has usually already been closed by its own
+  // duration timer (DisplayScreen closes any poll — quiz or not — when its
+  // countdown hits zero), so finding nothing "active" here is the normal
+  // case, not a race. A plain unconditional close is correct either way.
+  await admin
     .from("polls")
-    .select("id, settings")
+    .update({ status: "closed", closed_at: new Date().toISOString() } as never)
     .eq("session_id", sessionId)
-    .eq("status", "active")
-    .maybeSingle();
-
-  if (activePoll) {
-    const existingSettings = (activePoll.settings ?? {}) as Record<string, unknown>;
-    // Compare-and-set: the `.eq("status", "active")` is re-checked atomically
-    // by Postgres at update time, not just at the SELECT above. If two open
-    // display screens both auto-advance off the same reveal, only one of
-    // these UPDATEs actually matches a row — the other gets an empty
-    // `closedRows` back and knows it lost the race.
-    const { data: closedRows } = await admin
-      .from("polls")
-      .update({ status: "closed", closed_at: new Date().toISOString(), settings: existingSettings } as never)
-      .eq("id", activePoll.id)
-      .eq("status", "active")
-      .select("id");
-    if ((closedRows ?? []).length === 0) {
-      return "raced";
-    }
-  } else if (opts.requireActiveToClose) {
-    // Nothing to advance from — a concurrent call already handled it.
-    return "raced";
-  }
+    .eq("status", "active");
 
   // Find next draft quiz poll by sort_order
   const { data: nextPoll } = await admin
@@ -103,11 +84,22 @@ async function activateNextQuizPollInternal(
     return activateNextQuizPollInternal(sessionId, admin);
   }
 
+  // Compare-and-set: this is the actual race — two open display screens
+  // can both select the same "next draft" poll before either commits. The
+  // `.eq("status", "draft")` is re-checked atomically by Postgres at
+  // UPDATE time; only the first caller's write matches, the second gets
+  // zero affected rows back and knows it lost.
   const updatedSettings = { ...settings, activated_at: new Date().toISOString() };
-  await admin
+  const { data: activatedRows } = await admin
     .from("polls")
     .update({ status: "active", settings: updatedSettings } as never)
-    .eq("id", nextPoll.id);
+    .eq("id", nextPoll.id)
+    .eq("status", "draft")
+    .select("id");
+
+  if ((activatedRows ?? []).length === 0) {
+    return "raced";
+  }
 
   const { data: activatedPoll } = await admin
     .from("polls")
@@ -156,7 +148,7 @@ export async function activateNextChampionshipPoll(
   const { user, admin } = await getAuthUser();
   await assertSessionMember(user.id, sessionId, admin);
 
-  const result = await activateNextQuizPollInternal(sessionId, admin, { requireActiveToClose: true });
+  const result = await activateNextQuizPollInternal(sessionId, admin);
   if (result === "raced") {
     // A concurrent call (e.g. a second open display screen) already
     // claimed this advance — nothing more for this call to do.
