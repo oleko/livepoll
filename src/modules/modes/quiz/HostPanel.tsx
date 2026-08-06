@@ -9,7 +9,7 @@ import {
   activateNextChampionshipPoll,
   finishChampionship,
 } from "@/lib/actions/quiz";
-import { QuizQuestionForm } from "./QuizQuestionForm";
+import { QuizQuestionForm } from "@/modules/modes/quiz/QuestionForm";
 import { useChannel } from "@/core/realtime/useChannel";
 
 type QuizPoll = { id: string; title: string; settings?: Record<string, unknown> | null };
@@ -22,7 +22,7 @@ type Props = {
   sessionStatus: "draft" | "active" | "ended";
 };
 
-export function QuizTab({ sessionId, orgSlug, quizPolls, initial, sessionStatus }: Props) {
+export function QuizHostPanel({ sessionId, orgSlug, quizPolls, initial, sessionStatus }: Props) {
   const [enabled, setEnabled] = useState(initial.enabled);
   const [auto, setAuto] = useState(initial.auto);
   const [revealDuration, setRevealDuration] = useState(initial.reveal_duration);

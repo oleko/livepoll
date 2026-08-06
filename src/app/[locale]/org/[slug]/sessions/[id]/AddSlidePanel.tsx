@@ -9,13 +9,18 @@ import { slideRegistry, slideTypesInOrder } from "@/core/registry/slides";
 import { ConfigForm } from "@/core/screens/ConfigForm";
 import type { Translator } from "@/core/settings/field";
 
-export function AddSlidePanel({ sessionId, orgSlug, bare = false }: { sessionId: string; orgSlug: string; bare?: boolean }) {
+export function AddSlidePanel({ sessionId, orgSlug, bare = false, allowedTypes }: {
+  sessionId: string; orgSlug: string; bare?: boolean;
+  /** Restricts the type picker (e.g. quiz mode: only reveal/splash/announcement). Defaults to all 8 types. */
+  allowedTypes?: readonly SlideType[];
+}) {
   const t = useTranslations("Org.session.addSlidePanel");
   const tShared = useTranslations("Org.shared");
   const tRoot = useTranslations() as unknown as Translator;
   const router = useRouter();
-  const [type, setType] = useState<SlideType>("splash");
-  const [content, setContent] = useState<Record<string, unknown>>(() => slideRegistry.splash.content.defaults());
+  const availableTypes = allowedTypes ? slideTypesInOrder.filter((st) => allowedTypes.includes(st)) : slideTypesInOrder;
+  const [type, setType] = useState<SlideType>(availableTypes[0] ?? "splash");
+  const [content, setContent] = useState<Record<string, unknown>>(() => slideRegistry[availableTypes[0] ?? "splash"].content.defaults());
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -40,7 +45,7 @@ export function AddSlidePanel({ sessionId, orgSlug, bare = false }: { sessionId:
     <div className="space-y-4">
       {/* Type picker */}
       <div className="grid grid-cols-2 gap-1.5">
-        {slideTypesInOrder.map((st) => (
+        {availableTypes.map((st) => (
           <button key={st} type="button" onClick={() => { setType(st); setContent(slideRegistry[st].content.defaults()); setError(null); }}
             className={`flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors ${
               type === st

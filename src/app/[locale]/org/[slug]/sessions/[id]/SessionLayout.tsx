@@ -71,13 +71,15 @@ export function SessionLayout({
 
   const pendingCount = questions.filter(q => q.status === "pending").length;
   const totalVotes = Object.values(votesByPoll).reduce((a, b) => a + b, 0);
+  // Championship has no Q&A concept — the flow is lobby → round → leaderboard.
+  const showQaTab = !championship.enabled;
 
   const tabs: { id: "lineup" | "qa" | "settings"; label: string }[] = [
     { id: "lineup", label: t("lineupTab") },
-    {
-      id: "qa",
+    ...(showQaTab ? [{
+      id: "qa" as const,
       label: pendingCount > 0 ? `${t("qaTab")} · ${pendingCount}` : t("qaTab"),
-    },
+    }] : []),
     { id: "settings", label: t("settingsTab") },
   ];
 
