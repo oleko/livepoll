@@ -5,8 +5,6 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { closePoll } from "@/lib/actions/polls";
-import { activateNextChampionshipPoll } from "@/lib/actions/quiz";
-import type { LeaderboardEntry } from "@/lib/actions/participants";
 import { useTheme } from "@/components/ThemeProvider";
 import { SlideView } from "./SlideView";
 import type { PollType } from "@/types/database";
@@ -17,39 +15,15 @@ import { useSessionSync } from "@/core/realtime/useSessionSync";
 import { pollModule } from "@/core/registry/polls";
 import { PollDisplayHost } from "@/core/screens/PollDisplayHost";
 import type { QuestionRow } from "@/core/domain/question";
+import type { LeaderboardEntry } from "@/core/domain/leaderboard";
 import { formatClock } from "@/core/format/time";
-import { medalFor } from "@/core/screens/medal";
 import { ConnectionBanner } from "@/core/screens/ConnectionBanner";
 import { AnnouncementOverlay } from "@/core/screens/AnnouncementOverlay";
 import { useAnnouncement } from "@/core/screens/useAnnouncement";
+import { QrImage } from "@/core/screens/QrImage";
+import { useQuizDisplayPhase } from "@/modules/modes/quiz/useDisplayPhase";
+import { QuizDisplayOverlay } from "@/modules/modes/quiz/DisplayOverlay";
 import type { PollSettings } from "@/core/settings/pollSettings";
-
-function QrImage({ src, joinUrl, style, className }: {
-  src: string; joinUrl: string;
-  style?: React.CSSProperties; className?: string;
-}) {
-  const [error, setError] = useState(false);
-  if (error) {
-    return (
-      <div
-        className={`flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-center ${className ?? ""}`}
-        style={style}
-      >
-        <p className="text-slate-500 dark:text-slate-400 text-xs font-medium px-4">Перейдите по ссылке:</p>
-        <p className="text-slate-700 dark:text-slate-200 text-xs font-mono mt-1 px-2 break-all">{joinUrl.replace(/^https?:\/\//, "")}</p>
-      </div>
-    );
-  }
-  return (
-    <img
-      src={src}
-      alt="QR-код для участия"
-      className={`rounded-2xl block ${className ?? ""}`}
-      style={style}
-      onError={() => setError(true)}
-    />
-  );
-}
 
 type QuizReveal = { correct_option: string; explanation?: string };
 
@@ -118,25 +92,25 @@ export function DisplayScreen({
   const [pulseCount, setPulseCount] = useState(0);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  // Quiz leaderboard (local, token-based for regular quiz mode)
-  const [quizScores, setQuizScores] = useState<Map<string, number>>(new Map());
-  const [quizTotal, setQuizTotal] = useState(0);
+  // Quiz leaderboard — server-computed (computeAndBroadcastLeaderboard),
+  // weighted by answer speed, works the same for a lone quiz_mode poll in a
+  // conference session or a full championship.
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[] | null>(null);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   // Championship mode
   const isChampionship = championship?.enabled === true;
-  const champAuto = championship?.auto !== false;
-  const champRevealDuration = championship?.reveal_duration ?? 10;
-  const [champPhase, setChampPhase] = useState<"lobby" | "playing" | "finished">("lobby");
-  const [champParticipants, setChampParticipants] = useState<string[]>(initialChampParticipants ?? []);
-  const [champLeaderboard, setChampLeaderboard] = useState<LeaderboardEntry[] | null>(null);
-  const [champAutoCountdown, setChampAutoCountdown] = useState<number | null>(null);
-  const champAutoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const champAutoIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const quizPhase = useQuizDisplayPhase({
+    sessionId: session.id,
+    enabled: isChampionship,
+    auto: championship?.auto !== false,
+    revealDuration: championship?.reveal_duration ?? 10,
+    quizRevealed: quizReveal !== null,
+    initialParticipants: initialChampParticipants,
+  });
   const [pollEnded, setPollEnded] = useState(false);
   const [sortByPopularity, setSortByPopularity] = useState(false);
   const pollRef = useRef(poll);
   useEffect(() => { pollRef.current = poll; }, [poll]);
-  const currentVotesRef = useRef<{ value: string; ts: string }[]>([]);
   const router = useRouter();
   const supabase = useRef(createClient());
   const { connected, handleStatus } = useSessionSync({
@@ -194,22 +168,6 @@ export function DisplayScreen({
         const reveal = data.quiz_reveal;
         if (reveal) {
           setQuizReveal(reveal);
-          const buf = currentVotesRef.current;
-          if (buf.length > 0) {
-            setQuizScores((prev) => {
-              const next = new Map(prev);
-              buf.forEach(({ ts, value }) => {
-                if (value === reveal.correct_option) {
-                  next.set(ts, (next.get(ts) ?? 0) + 1);
-                } else if (!next.has(ts)) {
-                  next.set(ts, 0);
-                }
-              });
-              return next;
-            });
-            setQuizTotal((n) => n + 1);
-          }
-          currentVotesRef.current = [];
           setShowLeaderboard(true);
           setTimeout(() => setShowLeaderboard(false), 7000);
         } else if (data.show_result) {
@@ -225,19 +183,11 @@ export function DisplayScreen({
     voter_count: (payload) => {
       setJoinedCount(payload.count);
     },
-    participant_join: (payload) => {
-      setChampParticipants(payload.participants ?? []);
-    },
-    quiz_start: () => {
-      setChampPhase("playing");
-    },
     leaderboard: (payload) => {
-      setChampLeaderboard(payload.leaderboard);
+      setLeaderboard(payload.leaderboard);
     },
-    quiz_finish: (payload) => {
-      if (payload.leaderboard) setChampLeaderboard(payload.leaderboard);
-      setChampPhase("finished");
-    },
+    // participant_join / quiz_start / quiz_finish are owned by
+    // useQuizDisplayPhase's own subscription now (championship-only phase).
     attendees_update: (payload) => {
       setTotalAttendees(payload.total);
     },
@@ -303,34 +253,6 @@ export function DisplayScreen({
     return () => { if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; } };
   }, [poll?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Championship auto-advance: after quiz reveal, wait reveal_duration then countdown → next poll
-  useEffect(() => {
-    if (!isChampionship || !champAuto || champPhase !== "playing" || !quizReveal) return;
-    if (champAutoTimerRef.current) clearTimeout(champAutoTimerRef.current);
-    if (champAutoIntervalRef.current) clearInterval(champAutoIntervalRef.current);
-    const revealTimer = setTimeout(() => {
-      let count = 3;
-      setChampAutoCountdown(count);
-      champAutoIntervalRef.current = setInterval(() => {
-        count -= 1;
-        if (count <= 0) {
-          clearInterval(champAutoIntervalRef.current!);
-          champAutoIntervalRef.current = null;
-          setChampAutoCountdown(null);
-          void activateNextChampionshipPoll(session.id);
-        } else {
-          setChampAutoCountdown(count);
-        }
-      }, 1000);
-    }, champRevealDuration * 1000);
-    champAutoTimerRef.current = revealTimer;
-    return () => {
-      if (champAutoTimerRef.current) clearTimeout(champAutoTimerRef.current);
-      if (champAutoIntervalRef.current) clearInterval(champAutoIntervalRef.current);
-      setChampAutoCountdown(null);
-    };
-  }, [quizReveal, isChampionship, champAuto, champPhase]); // eslint-disable-line react-hooks/exhaustive-deps
-
   // Broadcast: new / updated questions (used by idea_wall's live wall).
   // "pinned" is qa's own concern — its module owns that subscription itself.
   useChannel("sessionQuestions", session.id, {
@@ -356,7 +278,6 @@ export function DisplayScreen({
   useChannel("pollVotes", poll?.id, {
     vote: (payload) => {
       setVotes((prev) => [...prev, { value: payload.value, ts: payload.ts }]);
-      if (payload.ts) currentVotesRef.current.push({ value: payload.value, ts: payload.ts });
     },
     revote: (payload) => {
       setVotes((prev) => {
@@ -415,103 +336,8 @@ export function DisplayScreen({
       {announcement && activeSlide?.type !== "announcement" && (
         <AnnouncementOverlay variant="display" text={announcement.text} timeLeft={announcementTimeLeft} />
       )}
-      {/* Championship: auto-advance countdown overlay */}
-      {isChampionship && champAutoCountdown !== null && (
-        <div className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-slate-950/80">
-          <p className="text-2xl font-semibold text-slate-300 mb-4">Следующий вопрос через</p>
-          <p className="text-9xl font-bold text-white tabular-nums">{champAutoCountdown}</p>
-        </div>
-      )}
-
-      {/* Championship: lobby overlay (before quiz_start) */}
-      {isChampionship && champPhase === "lobby" && !poll && (
-        <div className="absolute inset-0 z-[25] flex flex-col items-center justify-center bg-slate-950">
-          <div className="text-6xl mb-4">🏆</div>
-          <h1 className="text-5xl font-bold text-white mb-2">Чемпионат</h1>
-          <p className="text-xl text-slate-400 mb-10">Ожидаем участников</p>
-          <div className="rounded-3xl border-2 border-slate-700 bg-slate-900 p-8"
-               style={{ padding: "clamp(16px, 2.5vh, 32px)" }}>
-            <QrImage src={qrUrlLarge} joinUrl={joinUrl}
-              style={{ width: "clamp(140px, 36vh, 360px)", height: "clamp(140px, 36vh, 360px)" }} />
-          </div>
-          <div className="mt-6 rounded-2xl border border-slate-700 bg-slate-900/60 px-8 py-3">
-            <span className="font-mono text-white font-bold tracking-[0.25em]"
-                  style={{ fontSize: "clamp(1.5rem, 6vh, 3.5rem)" }}>
-              {session.join_code}
-            </span>
-          </div>
-          {champParticipants.length > 0 && (
-            <div className="mt-6 flex flex-col items-center gap-3">
-              <p className="text-slate-400 text-sm font-medium uppercase tracking-wider">
-                В лобби: {champParticipants.length}
-              </p>
-              <div className="flex flex-wrap gap-2 justify-center max-w-2xl">
-                {champParticipants.map((name) => (
-                  <span key={name} className="rounded-full bg-indigo-500/20 border border-indigo-500/30 text-indigo-200 px-3 py-1 text-sm font-medium">
-                    {name}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Championship: final leaderboard + confetti */}
-      {isChampionship && champPhase === "finished" && (
-        <div className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-slate-950 overflow-hidden">
-          {/* Confetti particles */}
-          {Array.from({ length: 40 }).map((_, i) => {
-            const colors = ["#6366f1", "#22c55e", "#f59e0b", "#ec4899", "#06b6d4", "#f97316"];
-            const color = colors[i % colors.length];
-            const left = (i * 2.5) % 100;
-            const delay = (i * 0.15) % 3;
-            const fast = i % 3 !== 0;
-            return (
-              <div
-                key={i}
-                className={fast ? "animate-[confetti-fall_3s_ease-in_infinite]" : "animate-[confetti-fall-slow_4s_ease-in_infinite]"}
-                style={{
-                  position: "absolute",
-                  left: `${left}%`,
-                  top: 0,
-                  width: i % 2 === 0 ? 10 : 8,
-                  height: i % 2 === 0 ? 10 : 16,
-                  borderRadius: i % 3 === 0 ? "50%" : 2,
-                  backgroundColor: color,
-                  animationDelay: `${delay}s`,
-                  animationDuration: fast ? `${2 + (i % 3) * 0.5}s` : `${3 + (i % 3) * 0.5}s`,
-                }}
-              />
-            );
-          })}
-          <div className="relative z-10 flex flex-col items-center gap-6 animate-podium-rise">
-            <div className="text-7xl">🏆</div>
-            <h1 className="text-5xl font-bold text-white">Чемпионат завершён!</h1>
-            {champLeaderboard && champLeaderboard.length > 0 && (
-              <div className="mt-4 rounded-3xl border border-slate-700 bg-slate-900/90 px-8 py-6 min-w-[360px]">
-                <p className="text-center text-xs font-semibold uppercase tracking-widest text-slate-400 mb-5">
-                  Итоговая таблица
-                </p>
-                <div className="flex flex-col gap-3">
-                  {champLeaderboard.slice(0, 10).map((entry, i) => {
-                    const medal = medalFor(i);
-                    return (
-                      <div key={entry.name} className={`flex items-center gap-4 rounded-xl px-4 py-3 ${i === 0 ? "bg-yellow-500/15 border border-yellow-500/30" : "bg-slate-800/60"}`}>
-                        <span className="text-xl w-8 shrink-0 text-center">{medal}</span>
-                        <span className={`flex-1 font-semibold ${i === 0 ? "text-yellow-300 text-xl" : "text-white text-base"}`}>
-                          {entry.name}
-                        </span>
-                        <span className="tabular-nums font-bold text-slate-300">{entry.score}</span>
-                        <span className="text-xs text-slate-500">{entry.correct}/{entry.total}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
+      {isChampionship && (
+        <QuizDisplayOverlay phase={quizPhase} hasActivePoll={!!poll} joinUrl={joinUrl} joinCode={session.join_code} />
       )}
 
       {/* Timer progress bar */}
@@ -692,24 +518,21 @@ export function DisplayScreen({
                     )}
                   </div>
 
-                  {showLeaderboard && quizScores.size > 0 && (
+                  {showLeaderboard && leaderboard && leaderboard.length > 0 && (
                     <div className="rounded-2xl border border-slate-700 bg-slate-900/90 px-6 py-4 min-w-[220px]">
                       <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">🏆 Лидерборд</p>
                       <div className="flex flex-col gap-1.5">
-                        {[...quizScores.entries()]
-                          .sort((a, b) => b[1] - a[1])
-                          .slice(0, 5)
-                          .map(([ts, correct], i) => (
-                            <div key={ts} className="flex items-center gap-3">
-                              <span className={`text-sm font-bold w-5 tabular-nums ${i === 0 ? "text-yellow-400" : i === 1 ? "text-slate-300" : i === 2 ? "text-amber-600" : "text-slate-500"}`}>
-                                #{i + 1}
-                              </span>
-                              <span className="text-xs font-mono text-slate-400 w-16">{ts.slice(0, 6).toUpperCase()}</span>
-                              <span className={`text-sm font-semibold ml-auto ${correct > 0 ? "text-green-400" : "text-slate-500"}`}>
-                                {correct}/{quizTotal}
-                              </span>
-                            </div>
-                          ))}
+                        {leaderboard.slice(0, 5).map((entry, i) => (
+                          <div key={entry.name} className="flex items-center gap-3">
+                            <span className={`text-sm font-bold w-5 tabular-nums ${i === 0 ? "text-yellow-400" : i === 1 ? "text-slate-300" : i === 2 ? "text-amber-600" : "text-slate-500"}`}>
+                              #{i + 1}
+                            </span>
+                            <span className="text-xs font-mono text-slate-400 w-16 truncate">{entry.name}</span>
+                            <span className={`text-sm font-semibold ml-auto ${entry.correct > 0 ? "text-green-400" : "text-slate-500"}`}>
+                              {entry.correct}/{entry.total}
+                            </span>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   )}

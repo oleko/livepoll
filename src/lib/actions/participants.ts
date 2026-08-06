@@ -84,6 +84,9 @@ export async function computeAndBroadcastLeaderboard(
     .select("poll_id, voter_token, value, created_at")
     .in("poll_id", pollIds);
 
+  type VoteRow = { poll_id: string; voter_token: string; value: string; created_at: string };
+  const voteList: VoteRow[] = (votes ?? []) as VoteRow[];
+
   // Fetch participants for this session
   type ParticipantRow = { voter_token: string; name: string };
   const { data: participantsRaw } = await admin
@@ -92,16 +95,22 @@ export async function computeAndBroadcastLeaderboard(
     .eq("session_id", sessionId);
   const participants = (participantsRaw ?? []) as ParticipantRow[];
 
-  if (participants.length === 0) return;
-
-  type VoteRow = { poll_id: string; voter_token: string; value: string; created_at: string };
-  const voteList: VoteRow[] = (votes ?? []) as VoteRow[];
-
-  // Map voter_token → name
+  // Map voter_token → name. Registered participants (championship) get their
+  // chosen name; anyone else who answered a quiz poll without registering
+  // (a regular quiz_mode poll running in a plain conference session) gets a
+  // synthesized label — same truncated-token format the display screen used
+  // to show for its own now-removed client-side leaderboard.
   const nameMap = new Map<string, string>();
   for (const p of participants) {
     nameMap.set(p.voter_token, p.name);
   }
+  for (const v of voteList) {
+    if (!nameMap.has(v.voter_token)) {
+      nameMap.set(v.voter_token, v.voter_token.slice(0, 6).toUpperCase());
+    }
+  }
+
+  if (nameMap.size === 0) return;
 
   // Compute per-participant scores
   const scores = new Map<string, { score: number; correct: number }>();

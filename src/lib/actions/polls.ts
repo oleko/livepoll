@@ -12,6 +12,7 @@ import { isUuid } from "@/core/domain/ids";
 import { toPublicPoll } from "@/core/domain/poll";
 import { broadcast as realtimeBroadcast, type Message } from "@/core/realtime/broadcast.server";
 import type { QuestionRow } from "@/core/domain/question";
+import { computeAndBroadcastLeaderboard } from "@/lib/actions/participants";
 
 type PollState = { error: string } | { success: true } | null;
 
@@ -219,16 +220,17 @@ export async function activatePoll(
   type QuizSettings = { quiz_mode?: boolean; correct_option?: string; explanation?: string };
 
   const messages: Message[] = [];
+  let prevQuizReveal: { correct_option: string; explanation?: string } | undefined;
   if (prevActive) {
     const prevSettings = prevActive.settings as QuizSettings | null;
-    const quizReveal = prevSettings?.quiz_mode && prevSettings.correct_option
+    prevQuizReveal = prevSettings?.quiz_mode && prevSettings.correct_option
       ? { correct_option: prevSettings.correct_option, ...(prevSettings.explanation ? { explanation: prevSettings.explanation } : {}) }
       : undefined;
     messages.push({
       channel: "sessionPolls",
       id: sessionId,
       event: "poll_change",
-      payload: { type: "closed", poll_id: prevActive.id, quiz_reveal: quizReveal },
+      payload: { type: "closed", poll_id: prevActive.id, quiz_reveal: prevQuizReveal },
     });
   }
   if (activatedPoll) {
@@ -244,6 +246,10 @@ export async function activatePoll(
   // Also broadcast slide hide so display reacts immediately
   messages.push({ channel: "sessionSlides", id: sessionId, event: "slide_change", payload: { type: "hide" } });
   if (messages.length > 0) await realtimeBroadcast(messages);
+
+  if (prevQuizReveal) {
+    await computeAndBroadcastLeaderboard(sessionId, admin);
+  }
 
   revalidatePath(`/org/${orgSlug}/sessions/${sessionId}`);
 }
@@ -286,6 +292,10 @@ export async function closePoll(
     event: "poll_change",
     payload: { type: "closed", poll_id: pollId, quiz_reveal: quizReveal, show_result: showResult || undefined },
   }]);
+
+  if (quizReveal) {
+    await computeAndBroadcastLeaderboard(sessionId, admin);
+  }
 
   revalidatePath(`/org/${orgSlug}/sessions/${sessionId}`);
 }
