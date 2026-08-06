@@ -2,28 +2,7 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAuthUser, assertSessionMember } from "@/lib/actions/guards";
-
-const YANDEX_API_URL = "https://llm.api.cloud.yandex.net/foundationModels/v1/completion";
-
-async function callYandex(systemText: string, userText: string, maxTokens = "800"): Promise<string | null> {
-  const apiKey = process.env.YANDEX_API_KEY;
-  const folderId = process.env.YANDEX_FOLDER_ID;
-  if (!apiKey || !folderId) return null;
-  try {
-    const res = await fetch(YANDEX_API_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": `Api-Key ${apiKey}` },
-      body: JSON.stringify({
-        modelUri: `gpt://${folderId}/yandexgpt-lite/latest`,
-        completionOptions: { stream: false, temperature: 0.4, maxTokens },
-        messages: [{ role: "system", text: systemText }, { role: "user", text: userText }],
-      }),
-    });
-    if (!res.ok) return null;
-    const data = await res.json() as { result?: { alternatives?: { message?: { text?: string } }[] } };
-    return data.result?.alternatives?.[0]?.message?.text?.trim() ?? null;
-  } catch { return null; }
-}
+import { callYandex, yandexConfigured } from "@/server/ai/yandex";
 
 const TYPE_LABEL: Record<string, string> = {
   multiple_choice: "Множественный выбор",
@@ -42,9 +21,7 @@ export async function generateSessionSummary(
   const { user, admin } = await getAuthUser();
   await assertSessionMember(user.id, sessionId, admin);
 
-  const apiKey = process.env.YANDEX_API_KEY;
-  const folderId = process.env.YANDEX_FOLDER_ID;
-  if (!apiKey || !folderId) return { error: "AI не настроен" };
+  if (!yandexConfigured()) return { error: "AI не настроен" };
 
   // Load session
   const { data: session } = await admin
@@ -122,7 +99,7 @@ export async function generateSessionSummary(
   const summary = await callYandex(
     "Ты аналитик мероприятия. Составь краткое резюме итогов на русском языке. Пиши профессионально, без воды, без повторений данных дословно.",
     `${promptText}\n\nСоставь краткое резюме мероприятия в 3–5 предложениях: что обсуждалось, какие ключевые результаты, что показали голосования и вопросы аудитории. Выдели самое важное.`,
-    "600"
+    { maxTokens: "600" }
   );
 
   if (!summary) return { error: "Не удалось получить ответ от AI" };
@@ -130,64 +107,20 @@ export async function generateSessionSummary(
 }
 
 export async function summarizeQuestions(texts: string[]): Promise<{ summary?: string; error?: string }> {
-  const apiKey = process.env.YANDEX_API_KEY;
-  const folderId = process.env.YANDEX_FOLDER_ID;
-
-  if (!apiKey || !folderId) {
+  if (!yandexConfigured()) {
     return { error: "AI не настроен (отсутствуют YANDEX_API_KEY / YANDEX_FOLDER_ID)" };
   }
-
   if (texts.length === 0) {
     return { error: "Нет вопросов для анализа" };
   }
 
   const questionList = texts.map((t, i) => `${i + 1}. ${t}`).join("\n");
+  const summary = await callYandex(
+    "Ты аналитик мероприятия. Твоя задача — кратко проанализировать вопросы аудитории и выделить ключевые темы. Отвечай строго на русском языке.",
+    `Вот вопросы от аудитории:\n\n${questionList}\n\nВыдели 3 ключевых тренда или темы. Формат: пронумерованный список, каждый пункт — короткое название темы (жирным) и одно предложение объяснения.`,
+    { temperature: 0.3 }
+  );
 
-  const body = {
-    modelUri: `gpt://${folderId}/yandexgpt-lite/latest`,
-    completionOptions: {
-      stream: false,
-      temperature: 0.3,
-      maxTokens: "800",
-    },
-    messages: [
-      {
-        role: "system",
-        text: "Ты аналитик мероприятия. Твоя задача — кратко проанализировать вопросы аудитории и выделить ключевые темы. Отвечай строго на русском языке.",
-      },
-      {
-        role: "user",
-        text: `Вот вопросы от аудитории:\n\n${questionList}\n\nВыдели 3 ключевых тренда или темы. Формат: пронумерованный список, каждый пункт — короткое название темы (жирным) и одно предложение объяснения.`,
-      },
-    ],
-  };
-
-  try {
-    const res = await fetch(YANDEX_API_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Api-Key ${apiKey}`,
-      },
-      body: JSON.stringify(body),
-    });
-
-    if (!res.ok) {
-      const err = await res.text();
-      console.error("Yandex AI error:", res.status, err);
-      return { error: "Ошибка AI-сервиса. Попробуйте позже." };
-    }
-
-    const data = await res.json() as {
-      result?: { alternatives?: { message?: { text?: string } }[] };
-    };
-
-    const summary = data.result?.alternatives?.[0]?.message?.text;
-    if (!summary) return { error: "Пустой ответ от AI" };
-
-    return { summary };
-  } catch (e) {
-    console.error("Yandex AI fetch error:", e);
-    return { error: "Не удалось подключиться к AI" };
-  }
+  if (!summary) return { error: "Ошибка AI-сервиса. Попробуйте позже." };
+  return { summary };
 }

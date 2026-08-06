@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { getLimits, getPlanLimits } from "@/core/access/limits";
 import { getAuthUser, assertSessionMember } from "@/lib/actions/guards";
 import { broadcast as realtimeBroadcast } from "@/core/realtime/broadcast.server";
+import { callYandex } from "@/server/ai/yandex";
 
 type SessionState = { error: string } | { redirectTo: string } | null;
 
@@ -169,38 +170,13 @@ export async function clearAnnouncement(sessionId: string, orgSlug: string) {
 }
 
 async function generateFarewell(): Promise<string> {
-  const apiKey = process.env.YANDEX_API_KEY;
-  const folderId = process.env.YANDEX_FOLDER_ID;
-  if (!apiKey || !folderId) return "Спасибо за участие! До встречи!";
-
-  try {
-    const res = await fetch("https://llm.api.cloud.yandex.net/foundationModels/v1/completion", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Api-Key ${apiKey}`,
-      },
-      body: JSON.stringify({
-        modelUri: `gpt://${folderId}/yandexgpt-lite/latest`,
-        completionOptions: { stream: false, temperature: 0.8, maxTokens: "80" },
-        messages: [
-          {
-            role: "system",
-            text: "Ты ведущий мероприятия. Пиши кратко, тепло и по-русски.",
-          },
-          {
-            role: "user",
-            text: "Мероприятие завершилось. Напиши одно короткое прощальное пожелание участникам — 1-2 предложения, тепло и с энергией. Без кавычек, без предисловий.",
-          },
-        ],
-      }),
-    });
-    if (!res.ok) return "Спасибо за участие! До встречи!";
-    const data = await res.json() as { result?: { alternatives?: { message?: { text?: string } }[] } };
-    return data.result?.alternatives?.[0]?.message?.text?.trim() || "Спасибо за участие! До встречи!";
-  } catch {
-    return "Спасибо за участие! До встречи!";
-  }
+  const fallback = "Спасибо за участие! До встречи!";
+  const summary = await callYandex(
+    "Ты ведущий мероприятия. Пиши кратко, тепло и по-русски.",
+    "Мероприятие завершилось. Напиши одно короткое прощальное пожелание участникам — 1-2 предложения, тепло и с энергией. Без кавычек, без предисловий.",
+    { temperature: 0.8, maxTokens: "80" }
+  );
+  return summary || fallback;
 }
 
 export async function duplicateSession(

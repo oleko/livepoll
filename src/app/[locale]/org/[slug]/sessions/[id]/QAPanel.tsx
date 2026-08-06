@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { createClient } from "@/lib/supabase/client";
-import { updateQuestionStatus, pinQuestion, deleteQuestion } from "@/lib/actions/polls";
+import { updateQuestionStatus, pinQuestion, deleteQuestion } from "@/server/questions";
 import { summarizeQuestions } from "@/lib/actions/ai";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/Dialog";
 

@@ -3,7 +3,8 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { submitVote, submitQuestion, upvoteQuestion } from "@/lib/actions/polls";
+import { submitVote } from "@/lib/actions/polls";
+import { submitQuestion, upvoteQuestion } from "@/server/questions";
 import type { LeaderboardEntry } from "@/lib/actions/participants";
 import type { PollType } from "@/types/database";
 import { useTranslations } from "next-intl";
