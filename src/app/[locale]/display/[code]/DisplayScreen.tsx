@@ -156,7 +156,6 @@ export function DisplayScreen({
   const [pokerRevealed, setPokerRevealed] = useState(false);
   const [pollEnded, setPollEnded] = useState(false);
   const [sortByPopularity, setSortByPopularity] = useState(false);
-  const seenWordsRef = useRef<Set<string>>(new Set());
   const pollRef = useRef(poll);
   useEffect(() => { pollRef.current = poll; }, [poll]);
   const currentVotesRef = useRef<{ value: string; ts: string }[]>([]);
@@ -207,7 +206,6 @@ export function DisplayScreen({
         setPokerRevealed(false);
         setPollEnded(false);
         setSortByPopularity(false);
-        seenWordsRef.current = new Set();
         setPoll(data.poll as unknown as PollData);
         setVotes([]);
         setQuestions([]);
@@ -422,13 +420,6 @@ export function DisplayScreen({
     if (!poll || !activePollModule || !activePollConfig) return null;
     return activePollModule.aggregate(votes, activePollConfig, { sortByPopularity: sortByPopularity || pollEnded }) as Record<string, unknown>;
   }, [votes, poll, activePollModule, activePollConfig, sortByPopularity, pollEnded]);
-
-  // Track seen words for fade-in animation (emoji_cloud only — word_cloud
-  // owns this itself now via its module's useDisplayLive).
-  useEffect(() => {
-    if (poll?.type !== "emoji_cloud") return;
-    votes.forEach(v => seenWordsRef.current.add(v.value.toLowerCase().trim()));
-  }, [votes, poll?.type]);
 
   const totalVotes = votes.length;
   const visibleQuestions = useMemo(
@@ -840,41 +831,6 @@ export function DisplayScreen({
                   ))}
                 </div>
               )}
-
-              {poll.type === "emoji_cloud" && (() => {
-                const freq: Record<string, number> = {};
-                votes.forEach(v => { if (v.value) freq[v.value] = (freq[v.value] ?? 0) + 1; });
-                if (Object.keys(freq).length === 0) {
-                  return <p className="text-slate-500 text-xl text-center">Ожидаем ответы...</p>;
-                }
-                const max = Math.max(...Object.values(freq));
-                const sorted = Object.entries(freq).sort((a, b) => b[1] - a[1]).slice(0, 12);
-                return (
-                  <>
-                    <style>{`@keyframes emojiFloat{0%,100%{transform:translateY(0) rotate(-4deg)}50%{transform:translateY(-14px) rotate(4deg)}}`}</style>
-                    <div className="flex flex-wrap gap-6 justify-center items-center min-h-40 py-4">
-                      {sorted.map(([emoji, count], i) => {
-                        const scale = max <= 1 ? 0.4 : (count - 1) / (max - 1);
-                        return (
-                          <span
-                            key={emoji}
-                            title={`${count}`}
-                            style={{
-                              fontSize: `${(3 + scale * 5).toFixed(2)}rem`,
-                              animation: `emojiFloat ${(2.2 + (i % 5) * 0.4).toFixed(1)}s ease-in-out infinite`,
-                              animationDelay: `${((i * 0.25) % 1.5).toFixed(2)}s`,
-                              display: "inline-block",
-                              lineHeight: 1,
-                            }}
-                          >
-                            {emoji}
-                          </span>
-                        );
-                      })}
-                    </div>
-                  </>
-                );
-              })()}
 
               {poll.type === "idea_wall" && (
                 visibleQuestions.length === 0 ? (

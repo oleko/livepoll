@@ -378,18 +378,6 @@ function PollResults({ poll, valueCounts, total }: { poll: PollRow; valueCounts:
     );
   }
 
-  if (poll.type === "emoji_cloud") {
-    return (
-      <div className="mt-2 flex flex-wrap gap-2">
-        {Object.entries(valueCounts).sort((a, b) => b[1] - a[1]).map(([emoji, count]) => (
-          <span key={emoji} className="flex items-center gap-1 text-sm">
-            {emoji}<span className="text-xs text-slate-500 dark:text-slate-400 font-medium">{count}</span>
-          </span>
-        ))}
-      </div>
-    );
-  }
-
   if (poll.type === "like_dislike") {
     const likes = valueCounts["like"] ?? 0;
     const dislikes = valueCounts["dislike"] ?? 0;

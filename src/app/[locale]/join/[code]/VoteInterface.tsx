@@ -41,7 +41,6 @@ type QuestionItem = {
 };
 
 const PLANNING_POKER_VALUES = ["1", "2", "3", "5", "8", "13", "21", "?", "☕"];
-const EMOJI_OPTIONS = ["😊", "🔥", "👍", "❤️", "🎉", "😮", "🤔", "👎"];
 
 export function VoteInterface({
   sessionId,
@@ -741,17 +740,6 @@ export function VoteInterface({
               <button key={val} onClick={() => handleVote(val)} disabled={isPending}
                 className="flex flex-col items-center gap-2 disabled:opacity-50">
                 <span className="text-7xl hover:scale-110 transition-transform duration-150 active:scale-110 inline-block">{emoji}</span>
-              </button>
-            ))}
-          </div>
-        )}
-
-        {poll.type === "emoji_cloud" && (
-          <div className="grid grid-cols-4 gap-3">
-            {EMOJI_OPTIONS.map((emoji) => (
-              <button key={emoji} onClick={() => handleVote(emoji)} disabled={isPending}
-                className="text-4xl aspect-square flex items-center justify-center rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-600/10 transition-colors disabled:opacity-50 active:scale-95">
-                {emoji}
               </button>
             ))}
           </div>
