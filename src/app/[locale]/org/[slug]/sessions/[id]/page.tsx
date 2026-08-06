@@ -33,7 +33,7 @@ export default async function SessionPage({
 
   const { data: session } = await admin
     .from("sessions")
-    .select("id, title, join_code, status, organization_id, total_attendees")
+    .select("id, title, join_code, status, organization_id, total_attendees, mode")
     .eq("id", id)
     .single();
   const totalAttendees = (session as unknown as { total_attendees?: number })?.total_attendees ?? 0;
@@ -46,7 +46,9 @@ export default async function SessionPage({
     .eq("session_id", id)
     .order("sort_order");
 
-  // Championship mode settings
+  // Championship settings: session.mode is the source of truth for whether
+  // quiz mode is on (backfilled from settings.championship.enabled by
+  // migration 014); auto/reveal_duration remain settings-only.
   type SessionSettings = { championship?: { enabled?: boolean; auto?: boolean; reveal_duration?: number } };
   const { data: sessionFull } = await admin
     .from("sessions")
@@ -54,7 +56,11 @@ export default async function SessionPage({
     .eq("id", id)
     .single();
   const sessionSettings = (sessionFull?.settings as SessionSettings | null) ?? {};
-  const championship = sessionSettings.championship ?? { enabled: false, auto: true, reveal_duration: 10 };
+  const championship = {
+    enabled: (session as unknown as { mode?: string })?.mode === "quiz",
+    auto: sessionSettings.championship?.auto ?? true,
+    reveal_duration: sessionSettings.championship?.reveal_duration ?? 10,
+  };
 
   // Count quiz polls (multiple_choice with quiz_mode) for championship
   type PollSettings = { quiz_mode?: boolean };

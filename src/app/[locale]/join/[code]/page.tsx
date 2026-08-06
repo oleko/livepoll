@@ -16,7 +16,7 @@ export default async function JoinPage({
 
   const { data: session } = await admin
     .from("sessions")
-    .select("id, title, status, organization_id, active_slide_id")
+    .select("id, title, status, organization_id, active_slide_id, mode")
     .eq("join_code", code.toUpperCase())
     .single();
 
@@ -68,15 +68,9 @@ export default async function JoinPage({
     .eq("status", "active")
     .maybeSingle();
 
-  // Championship mode: check session settings
-  type SessionSettings = { championship?: { enabled?: boolean; auto?: boolean; reveal_duration?: number } };
-  const { data: sessionFull } = await admin
-    .from("sessions")
-    .select("settings")
-    .eq("id", session.id)
-    .single();
-  const sessionSettings = (sessionFull?.settings as SessionSettings | null) ?? {};
-  const championshipMode = sessionSettings.championship?.enabled === true;
+  // Quiz/championship mode: session.mode is the source of truth (backfilled
+  // from settings.championship.enabled by migration 014).
+  const championshipMode = (session as unknown as { mode?: string }).mode === "quiz";
 
   // Championship: load registered participant name (pass initial count for lobby)
   let initialParticipants: { name: string }[] = [];

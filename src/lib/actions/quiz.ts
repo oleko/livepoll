@@ -35,7 +35,12 @@ export async function saveChampionshipSettings(
   const existing = (sessionRow?.settings ?? {}) as Record<string, unknown>;
   await admin
     .from("sessions")
-    .update({ settings: { ...existing, championship: settings } } as never)
+    .update({
+      settings: { ...existing, championship: settings },
+      // session.mode is the read-side source of truth (see migration 014)
+      // — keep it in lockstep with the toggle so it never drifts again.
+      mode: settings.enabled ? "quiz" : "conference",
+    } as never)
     .eq("id", sessionId);
 
   revalidatePath(`/org/${orgSlug}/sessions/${sessionId}`);

@@ -12,13 +12,19 @@ export default async function DisplayPage({
 
   const { data: session } = await admin
     .from("sessions")
-    .select("id, title, status, join_code, organization_id, total_attendees, settings")
+    .select("id, title, status, join_code, organization_id, total_attendees, settings, mode")
     .eq("join_code", code.toUpperCase())
     .single();
   const totalAttendees = (session as unknown as { total_attendees?: number })?.total_attendees ?? 0;
+  // session.mode is the source of truth for whether this is a quiz session
+  // (backfilled from settings.championship.enabled by migration 014);
+  // auto/reveal_duration remain settings-only, mode doesn't carry them.
   type SessionSettings = { championship?: { enabled?: boolean; auto?: boolean; reveal_duration?: number } };
   const sessionSettings = (session as unknown as { settings?: SessionSettings })?.settings ?? {};
-  const championship = sessionSettings.championship ?? {};
+  const championship = {
+    ...sessionSettings.championship,
+    enabled: (session as unknown as { mode?: string })?.mode === "quiz",
+  };
 
   if (!session) {
     return (
