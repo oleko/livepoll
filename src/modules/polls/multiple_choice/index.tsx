@@ -182,6 +182,7 @@ function Presenter({ agg, total }: PollPresenterProps<Config, Aggregate>) {
 export const multiple_choice: PollTypeModule<Config, Aggregate, Live> = {
   id: "multiple_choice",
   meta: { icon: "📊", labelKey: "Org.shared.pollTypeLabel.multiple_choice", order: 0 },
+  storage: "votes",
   config: { fromSettings },
   aggregate: aggregateVotes,
   useDisplayLive,

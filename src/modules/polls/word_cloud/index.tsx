@@ -107,6 +107,7 @@ function Presenter({ agg }: PollPresenterProps<Config, Aggregate>) {
 export const word_cloud: PollTypeModule<Config, Aggregate, Live> = {
   id: "word_cloud",
   meta: { icon: "☁️", labelKey: "Org.shared.pollTypeLabel.word_cloud", order: 1 },
+  storage: "votes",
   config: { fromSettings },
   aggregate: aggregateVotes,
   useDisplayLive,

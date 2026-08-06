@@ -6,6 +6,7 @@ import { emoji_cloud } from "@/modules/polls/emoji_cloud";
 import { temperature } from "@/modules/polls/temperature";
 import { like_dislike } from "@/modules/polls/like_dislike";
 import { planning_poker } from "@/modules/polls/planning_poker";
+import { qa } from "@/modules/polls/qa";
 
 /**
  * Poll type modules, keyed by type — same discipline as `registry/slides.ts`.
@@ -28,6 +29,7 @@ export const pollRegistry: Partial<Record<PollType, PollTypeModule<unknown, unkn
   temperature: erase(temperature),
   like_dislike: erase(like_dislike),
   planning_poker: erase(planning_poker),
+  qa: erase(qa),
 };
 
 export function pollModule(type: PollType): PollTypeModule<unknown, unknown, unknown> | undefined {

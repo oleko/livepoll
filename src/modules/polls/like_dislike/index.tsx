@@ -68,6 +68,7 @@ function Presenter({ agg }: PollPresenterProps<Config, Aggregate>) {
 export const like_dislike: PollTypeModule<Config, Aggregate, void> = {
   id: "like_dislike",
   meta: { icon: "👍", labelKey: "Org.shared.pollTypeLabel.like_dislike", order: 4 },
+  storage: "votes",
   config: { fromSettings },
   aggregate: aggregateVotes,
   render: { participant: Participant, display: Display, hostResult: HostResult, presenter: Presenter },

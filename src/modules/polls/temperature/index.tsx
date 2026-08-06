@@ -81,6 +81,7 @@ function Presenter({ agg, total }: PollPresenterProps<Config, Aggregate>) {
 export const temperature: PollTypeModule<Config, Aggregate, void> = {
   id: "temperature",
   meta: { icon: "🌡", labelKey: "Org.shared.pollTypeLabel.temperature", order: 3 },
+  storage: "votes",
   config: { fromSettings },
   aggregate: aggregateVotes,
   render: { participant: Participant, display: Display, hostResult: HostResult, presenter: Presenter },

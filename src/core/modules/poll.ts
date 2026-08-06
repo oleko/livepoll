@@ -1,5 +1,6 @@
 import type { PollType } from "@/types/database";
 import type { QuizReveal } from "@/core/domain/poll";
+import type { QuestionRow } from "@/core/domain/question";
 import type { Translator } from "@/core/settings/field";
 import type { Aggregate } from "@/core/votes/aggregate";
 
@@ -17,6 +18,8 @@ export type PollLiveCtx = {
   quizReveal: QuizReveal | null;
   /** Raw votes for the active poll, for modules whose live state depends on vote history (e.g. word_cloud's "seen before" fade-in). */
   votes: { value: string }[];
+  /** Session-wide questions, for storage:"questions" modules whose live state derives from them (e.g. qa's pinned question). */
+  questions: QuestionRow[];
 };
 
 export type PollParticipantProps<Config> = {
@@ -24,6 +27,12 @@ export type PollParticipantProps<Config> = {
   disabled: boolean;
   onVote: (value: string) => void;
   t: Translator;
+  /** Only meaningful for storage:"questions" modules (qa, idea_wall) — those render their own title and don't get the shared one VoteInterface wraps around vote-based types. */
+  title?: string;
+  questions?: QuestionRow[];
+  upvotedIds?: Set<string>;
+  onUpvote?: (id: string) => void;
+  submittedCount?: number;
 };
 
 export type PollDisplayProps<Config, Agg, Live> = {
@@ -59,6 +68,8 @@ export type PollPresenterProps<Config, Agg> = {
 export interface PollTypeModule<Config = unknown, Agg = unknown, Live = void> {
   readonly id: PollType;
   readonly meta: { icon: string; labelKey: string; order: number };
+  /** Where a participant's response lands. qa and idea_wall write to `questions`, everything else to `votes`. */
+  readonly storage: "votes" | "questions";
 
   readonly config: {
     fromSettings(poll: { options: unknown; settings: unknown }): Config;

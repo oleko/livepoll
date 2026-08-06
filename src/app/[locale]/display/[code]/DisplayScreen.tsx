@@ -16,6 +16,7 @@ import { useChannel } from "@/core/realtime/useChannel";
 import { useSessionSync } from "@/core/realtime/useSessionSync";
 import { pollModule } from "@/core/registry/polls";
 import { PollDisplayHost } from "@/core/screens/PollDisplayHost";
+import type { QuestionRow } from "@/core/domain/question";
 import { formatClock } from "@/core/format/time";
 import { medalFor } from "@/core/screens/medal";
 import { ConnectionBanner } from "@/core/screens/ConnectionBanner";
@@ -68,15 +69,6 @@ type SessionData = {
   join_code: string;
 };
 
-type QuestionRow = {
-  id: string;
-  text: string;
-  status: string;
-  upvotes: number;
-  poll_id?: string | null;
-};
-
-
 type ActiveSlide = { id: string; type: SlideType; content: Record<string, unknown> } | null;
 
 export function DisplayScreen({
@@ -124,15 +116,6 @@ export function DisplayScreen({
   const [joinedCount, setJoinedCount] = useState(initialJoinedCount);
   const pulseTimestamps = useRef<number[]>([]);
   const [pulseCount, setPulseCount] = useState(0);
-  const [pinnedQuestion, setPinnedQuestion] = useState<QuestionRow | null>(() => {
-    if (typeof window === "undefined") return null;
-    try {
-      const saved = sessionStorage.getItem(`pinned-q-${session.id}`);
-      if (!saved) return null;
-      const id = JSON.parse(saved) as string;
-      return initialQuestions.find((q) => q.id === id) ?? null;
-    } catch { return null; }
-  });
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   // Quiz leaderboard (local, token-based for regular quiz mode)
@@ -348,7 +331,8 @@ export function DisplayScreen({
     };
   }, [quizReveal, isChampionship, champAuto, champPhase]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Broadcast: new / updated questions + pinned question for display
+  // Broadcast: new / updated questions (used by idea_wall's live wall).
+  // "pinned" is qa's own concern — its module owns that subscription itself.
   useChannel("sessionQuestions", session.id, {
     question_change: (data) => {
       if (data.type === "new") {
@@ -364,14 +348,6 @@ export function DisplayScreen({
             ? prev.filter((item) => item.id !== q.id)
             : prev.map((item) => (item.id === q.id ? q : item))
         );
-        setPinnedQuestion((prev) => (prev?.id === q.id ? q : prev));
-      } else if (data.type === "pinned") {
-        const q = data.pinned;
-        setPinnedQuestion(q);
-        try {
-          if (q) sessionStorage.setItem(`pinned-q-${session.id}`, JSON.stringify(q.id));
-          else sessionStorage.removeItem(`pinned-q-${session.id}`);
-        } catch {}
       }
     },
   });
@@ -703,7 +679,7 @@ export function DisplayScreen({
                   module={activePollModule}
                   config={activePollConfig}
                   agg={activePollAgg}
-                  ctx={{ sessionId: session.id, pollId: poll.id, quizReveal, votes }}
+                  ctx={{ sessionId: session.id, pollId: poll.id, quizReveal, votes, questions }}
                   accent={accent}
                   isDark={isDark}
                 />
@@ -773,31 +749,6 @@ export function DisplayScreen({
                 )
               )}
 
-              {poll.type === "qa" && (
-                <div className="flex items-center justify-center min-h-40">
-                  {!pinnedQuestion ? (
-                    <p className="text-slate-500 text-xl text-center">Ведущий выберет вопрос для отображения</p>
-                  ) : (
-                    <div className="w-full max-w-2xl">
-                      <div className={`rounded-2xl border px-10 py-8 text-center ${
-                        pinnedQuestion.status === "answered"
-                          ? "border-green-500/40 bg-green-500/5"
-                          : "border-indigo-500/40 bg-indigo-500/5"
-                      }`}>
-                        <p className="text-slate-900 dark:text-white text-3xl font-medium leading-relaxed">{pinnedQuestion.text}</p>
-                        <div className="flex items-center justify-center gap-4 mt-5">
-                          {pinnedQuestion.upvotes > 0 && (
-                            <span className="text-indigo-400 text-base">▲ {pinnedQuestion.upvotes}</span>
-                          )}
-                          {pinnedQuestion.status === "answered" && (
-                            <span className="text-green-400 text-base">✓ Отвечен</span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
           )}
         </div>

@@ -357,8 +357,6 @@ function PollResults({ poll, valueCounts, total }: { poll: PollRow; valueCounts:
   const tRoot = useTranslations() as unknown as Translator;
   if (total === 0) return <p className="text-xs text-slate-400 dark:text-slate-600 mt-2">{t("noVotes")}</p>;
 
-  if (poll.type === "qa") return <p className="text-xs text-slate-400 dark:text-slate-600 mt-2">{t("questionsReceived", { count: total })}</p>;
-
   const m = pollModule(poll.type);
   if (m) {
     const config = m.config.fromSettings({ options: poll.options, settings: poll.settings ?? {} });

@@ -21,6 +21,7 @@ import type { PollSettings } from "@/core/settings/pollSettings";
 import { useRevealParticipantLive, RevealParticipant } from "@/modules/slides/reveal";
 import type { SlideType } from "@/core/domain/slide";
 import { pollModule } from "@/core/registry/polls";
+import type { QuestionRow } from "@/core/domain/question";
 
 type PollData = {
   id: string;
@@ -33,12 +34,7 @@ type PollData = {
 
 type QuizReveal = { correct_option: string; explanation?: string };
 
-type QuestionItem = {
-  id: string;
-  text: string;
-  status: string;
-  upvotes: number;
-};
+type QuestionItem = QuestionRow;
 
 
 export function VoteInterface({
@@ -589,87 +585,27 @@ export function VoteInterface({
         )}
       </div>
     );
-  } else if (poll.type === "qa") {
-    const maxQ = poll.settings?.max_questions ?? 1;
-    const remaining = maxQ - questionsSubmitted;
-
-    if (remaining <= 0) {
-      content = (
-        <div className="text-center px-6">
-          <div className="text-6xl mb-5">📩</div>
-          <p className="text-2xl font-semibold text-slate-900 dark:text-white mb-2">
-            {questionsSubmitted === 1 ? "Вопрос отправлен!" : `Отправлено ${questionsSubmitted} вопроса`}
-          </p>
-          <p className="text-slate-500 text-sm">Ожидайте ответа ведущего</p>
-        </div>
-      );
-    } else {
-      content = (
-        <div className="w-full max-w-sm">
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white text-center mb-2 leading-snug px-2">
-            {poll.title}
-          </h2>
-          {questionsSubmitted > 0 && (
-            <p className="text-center text-sm text-green-600 dark:text-green-400 mb-4">
-              ✓ Вопрос отправлен. Можно задать ещё {remaining}.
-            </p>
-          )}
-          {error && (
-            <div className="mb-4 rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-red-500 dark:text-red-400 text-center">
-              {error}
-            </div>
-          )}
-          <div className="flex flex-col gap-3 mt-4">
-            <textarea
-              key={questionsSubmitted}
-              rows={4}
-              maxLength={300}
-              placeholder="Введите ваш вопрос..."
-              className="rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-5 py-4 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none text-base"
-              id="qa-input"
-            />
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-slate-400 dark:text-slate-500">макс. 300 символов</span>
-              {maxQ > 1 && (
-                <span className="text-xs text-slate-400 dark:text-slate-500">{questionsSubmitted}/{maxQ} вопросов</span>
-              )}
-            </div>
-            <Button
-              className="w-full py-4 text-base"
-              onClick={() => {
-                const input = document.getElementById("qa-input") as HTMLTextAreaElement;
-                if (input.value.trim()) handleSubmitQuestion(input.value.trim());
-              }}
-              loading={isPending}
-            >
-              Задать вопрос
-            </Button>
+  } else if (poll.type === "qa" && activePollModule && activePollConfig) {
+    content = (
+      <>
+        {error && (
+          <div className="mb-4 rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-red-500 dark:text-red-400 text-center">
+            {error}
           </div>
-          {questions.length > 0 && (
-            <div className="mt-6 flex flex-col gap-2">
-              <p className="text-xs text-slate-400 dark:text-slate-500 uppercase tracking-wider font-medium mb-1">Вопросы аудитории</p>
-              {[...questions].sort((a, b) => b.upvotes - a.upvotes).map((q) => (
-                <div key={q.id} className="flex items-start gap-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3">
-                  <button
-                    onClick={() => handleUpvote(q.id)}
-                    disabled={upvotedIds.has(q.id)}
-                    className={`flex flex-col items-center gap-0.5 shrink-0 rounded-lg px-2 py-1 text-sm font-semibold transition-colors ${
-                      upvotedIds.has(q.id)
-                        ? "text-indigo-500 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10"
-                        : "text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-500/10"
-                    }`}
-                  >
-                    <span className="text-base leading-none">▲</span>
-                    <span className="text-xs">{q.upvotes}</span>
-                  </button>
-                  <p className="text-sm text-slate-700 dark:text-slate-300 leading-snug pt-1">{q.text}</p>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      );
-    }
+        )}
+        <activePollModule.render.participant
+          config={activePollConfig}
+          disabled={isPending}
+          onVote={(text) => handleSubmitQuestion(text)}
+          title={poll.title}
+          questions={questions}
+          upvotedIds={upvotedIds}
+          onUpvote={handleUpvote}
+          submittedCount={questionsSubmitted}
+          t={t}
+        />
+      </>
+    );
   } else if (voted) {
     const isPoker = poll?.type === "planning_poker";
     content = (

@@ -123,6 +123,7 @@ function Presenter({ agg }: PollPresenterProps<Config, Aggregate>) {
 export const planning_poker: PollTypeModule<Config, Aggregate, Live> = {
   id: "planning_poker",
   meta: { icon: "🃏", labelKey: "Org.shared.pollTypeLabel.planning_poker", order: 5 },
+  storage: "votes",
   config: { fromSettings },
   aggregate: aggregateVotes,
   useDisplayLive,
