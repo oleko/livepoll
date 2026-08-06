@@ -12,6 +12,7 @@ import { isUuid } from "@/core/domain/ids";
 import { toPublicPoll } from "@/core/domain/poll";
 import { broadcast as realtimeBroadcast, type Message } from "@/core/realtime/broadcast.server";
 import { computeAndBroadcastLeaderboard } from "@/lib/actions/participants";
+import { closeActivePoll, activateTargetPoll } from "@/server/polls/lifecycle";
 
 type PollState = { error: string } | { success: true } | null;
 
@@ -182,39 +183,11 @@ export async function activatePoll(
   const { user, admin } = await getAuthUser();
   await assertSessionMember(user.id, sessionId, admin);
 
-  const { data: prevActive } = await admin
-    .from("polls")
-    .select("id, settings")
-    .eq("session_id", sessionId)
-    .eq("status", "active")
-    .maybeSingle();
+  const prevActive = await closeActivePoll(admin, sessionId);
 
-  await admin
-    .from("polls")
-    .update({ status: "closed", closed_at: new Date().toISOString() })
-    .eq("session_id", sessionId)
-    .eq("status", "active");
-
-  const { data: pollForActivation } = await admin
-    .from("polls")
-    .select("settings")
-    .eq("id", pollId)
-    .eq("session_id", sessionId)
-    .single();
-
-  if (!pollForActivation) return;
-
-  const existingSettings = (pollForActivation?.settings ?? {}) as Record<string, unknown>;
-  await admin
-    .from("polls")
-    .update({ status: "active", settings: { ...existingSettings, activated_at: new Date().toISOString() } })
-    .eq("id", pollId);
-
-  const { data: activatedPoll } = await admin
-    .from("polls")
-    .select("id, title, type, options, status, settings")
-    .eq("id", pollId)
-    .single();
+  const outcome = await activateTargetPoll(admin, sessionId, { kind: "id", pollId });
+  if (outcome.status !== "activated") return;
+  const activatedPoll = outcome.poll;
 
   type QuizSettings = { quiz_mode?: boolean; correct_option?: string; explanation?: string };
 
@@ -232,14 +205,12 @@ export async function activatePoll(
       payload: { type: "closed", poll_id: prevActive.id, quiz_reveal: prevQuizReveal },
     });
   }
-  if (activatedPoll) {
-    messages.push({
-      channel: "sessionPolls",
-      id: sessionId,
-      event: "poll_change",
-      payload: { type: "activated", poll: toPublicPoll(activatedPoll) },
-    });
-  }
+  messages.push({
+    channel: "sessionPolls",
+    id: sessionId,
+    event: "poll_change",
+    payload: { type: "activated", poll: toPublicPoll(activatedPoll) },
+  });
   // Clear active slide so display shows poll after refresh too
   await admin.from("sessions").update({ active_slide_id: null } as never).eq("id", sessionId);
   // Also broadcast slide hide so display reacts immediately
@@ -330,12 +301,9 @@ export async function clearPollResult(
   revalidatePath(`/org/${orgSlug}/sessions/${sessionId}`);
 }
 
-export async function submitVote(formData: FormData) {
-  const ip = ((await headers()).get("x-forwarded-for") ?? "").split(",")[0].trim() || "unknown";
-  if (!checkRateLimit(`vote:${ip}`, 30, 60_000)) return { error: "Слишком много запросов. Подождите немного." };
+type VoteInput = { pollId: string; voterToken: string; value: string; parsedValues: string[] };
 
-  const admin = createAdminClient();
-
+function parseVoteInput(formData: FormData): { error: string } | VoteInput {
   const pollId = formData.get("poll_id") as string;
   const voterToken = formData.get("voter_token") as string;
   const value = (formData.get("value") as string)?.trim();
@@ -344,32 +312,39 @@ export async function submitVote(formData: FormData) {
   if (!isUuid(voterToken)) return { error: "Неверные данные" };
   if (value.length > 2000) return { error: "Слишком длинный ответ" };
 
-  // Parse multi-answer JSON arrays
-  let parsedValues: string[];
+  // Multi-answer submissions are a JSON array; anything else is a single value.
   if (value.startsWith("[")) {
+    let parsedValues: unknown;
     try {
-      parsedValues = JSON.parse(value) as string[];
-      if (!Array.isArray(parsedValues) || parsedValues.length === 0 || parsedValues.some((v) => typeof v !== "string" || v.length > 200)) {
-        return { error: "Неверные данные" };
-      }
-    } catch { return { error: "Неверные данные" }; }
-  } else {
-    if (value.length > 500) return { error: "Слишком длинный ответ" };
-    parsedValues = [value];
+      parsedValues = JSON.parse(value);
+    } catch {
+      return { error: "Неверные данные" };
+    }
+    if (!Array.isArray(parsedValues) || parsedValues.length === 0 || parsedValues.some((v) => typeof v !== "string" || v.length > 200)) {
+      return { error: "Неверные данные" };
+    }
+    return { pollId, voterToken, value, parsedValues: parsedValues as string[] };
   }
 
+  if (value.length > 500) return { error: "Слишком длинный ответ" };
+  return { pollId, voterToken, value, parsedValues: [value] };
+}
+
+type PollVoteSettings = { allow_revote?: boolean; vote_limit?: number; max_answers?: number };
+type LoadedPollForVote = { sessionId: string | null; settings: PollVoteSettings | null; maxAnswers: number };
+
+async function loadPollForVote(
+  admin: ReturnType<typeof createAdminClient>,
+  pollId: string,
+  parsedValues: string[]
+): Promise<{ error: string } | LoadedPollForVote> {
   const { data: pollData } = await admin
     .from("polls")
     .select("type, settings, session_id")
     .eq("id", pollId)
     .single();
 
-  const settings = pollData?.settings as {
-    allow_revote?: boolean;
-    vote_limit?: number;
-    max_answers?: number;
-  } | null;
-
+  const settings = pollData?.settings as PollVoteSettings | null;
   const maxAnswers = settings?.max_answers ?? 1;
   if (parsedValues.length > maxAnswers) return { error: `Можно выбрать не более ${maxAnswers} вариантов` };
 
@@ -378,50 +353,63 @@ export async function submitVote(formData: FormData) {
     return { error: "Слишком длинное слово" };
   }
 
-  // Participant limit check: only for new voters entering the session for the first time
-  if (pollData?.session_id) {
-    const { data: sessionPolls } = await admin
-      .from("polls")
-      .select("id")
-      .eq("session_id", pollData.session_id);
-    const sessionPollIds = (sessionPolls ?? []).map((p) => p.id);
+  return { sessionId: pollData?.session_id ?? null, settings, maxAnswers };
+}
 
-    if (sessionPollIds.length > 0) {
-      const { data: priorVote } = await admin
-        .from("votes")
-        .select("id")
-        .in("poll_id", sessionPollIds)
-        .eq("voter_token", voterToken)
-        .limit(1)
-        .maybeSingle();
+// Only new voters entering the session for the first time count against
+// the plan's participant limit — returning voters (already have a vote on
+// any poll in the session) are exempt.
+async function checkParticipantLimit(
+  admin: ReturnType<typeof createAdminClient>,
+  sessionId: string,
+  voterToken: string
+): Promise<{ error: string } | null> {
+  const { data: sessionPolls } = await admin
+    .from("polls")
+    .select("id")
+    .eq("session_id", sessionId);
+  const sessionPollIds = (sessionPolls ?? []).map((p) => p.id);
+  if (sessionPollIds.length === 0) return null;
 
-      if (!priorVote) {
-        // New voter — check org plan limit
-        const { data: sess } = await admin
-          .from("sessions")
-          .select("organization_id")
-          .eq("id", pollData.session_id)
-          .single();
-        if (sess) {
-          const limits = await getPlanLimits(admin, sess.organization_id);
-          if (limits && isFinite(limits.maxParticipants)) {
-            const { data: tokens } = await admin
-              .from("votes")
-              .select("voter_token")
-              .in("poll_id", sessionPollIds);
-            const uniqueCount = new Set((tokens ?? []).map((v) => v.voter_token)).size;
-            if (uniqueCount >= limits.maxParticipants) {
-              return { error: `Достигнут лимит участников для текущего тарифа (${limits.maxParticipants})` };
-            }
-          }
-        }
-      }
-    }
+  const { data: priorVote } = await admin
+    .from("votes")
+    .select("id")
+    .in("poll_id", sessionPollIds)
+    .eq("voter_token", voterToken)
+    .limit(1)
+    .maybeSingle();
+  if (priorVote) return null;
+
+  const { data: sess } = await admin
+    .from("sessions")
+    .select("organization_id")
+    .eq("id", sessionId)
+    .single();
+  if (!sess) return null;
+
+  const limits = await getPlanLimits(admin, sess.organization_id);
+  if (!limits || !isFinite(limits.maxParticipants)) return null;
+
+  const { data: tokens } = await admin
+    .from("votes")
+    .select("voter_token")
+    .in("poll_id", sessionPollIds);
+  const uniqueCount = new Set((tokens ?? []).map((v) => v.voter_token)).size;
+  if (uniqueCount >= limits.maxParticipants) {
+    return { error: `Достигнут лимит участников для текущего тарифа (${limits.maxParticipants})` };
   }
+  return null;
+}
 
-  let isRevote = false;
-
-  if (settings?.allow_revote && maxAnswers === 1) {
+async function recordVote(
+  admin: ReturnType<typeof createAdminClient>,
+  pollId: string,
+  voterToken: string,
+  value: string,
+  allowRevote: boolean,
+  maxAnswers: number
+): Promise<{ error: string } | { isRevote: boolean }> {
+  if (allowRevote && maxAnswers === 1) {
     const { data: existing } = await admin
       .from("votes")
       .select("value")
@@ -442,64 +430,98 @@ export async function submitVote(formData: FormData) {
         event: "revote",
         payload: { old_value: existing.value, new_value: value },
       }]);
-      isRevote = true;
-    } else {
-      const { error } = await admin.from("votes").insert({ poll_id: pollId, voter_token: voterToken, value });
-      if (error) return { error: error.message };
-      await realtimeBroadcast([{ channel: "pollVotes", id: pollId, event: "vote", payload: { value, ts: voterToken.slice(0, 6) } }]);
+      return { isRevote: true };
     }
-  } else {
+
     const { error } = await admin.from("votes").insert({ poll_id: pollId, voter_token: voterToken, value });
-    if (error?.code === "23505") return { error: "Вы уже проголосовали" };
     if (error) return { error: error.message };
     await realtimeBroadcast([{ channel: "pollVotes", id: pollId, event: "vote", payload: { value, ts: voterToken.slice(0, 6) } }]);
+    return { isRevote: false };
   }
 
-  // Broadcast unique voter count for this session (skip for revotes — count unchanged)
-  if (!isRevote && pollData?.session_id) {
-    const { data: sessionPolls } = await admin
-      .from("polls")
-      .select("id")
-      .eq("session_id", pollData.session_id);
-    const pollIds = (sessionPolls ?? []).map((p) => p.id);
-    if (pollIds.length > 0) {
-      const { data: allVoterTokens } = await admin
-        .from("votes")
-        .select("voter_token")
-        .in("poll_id", pollIds);
-      const uniqueCount = new Set((allVoterTokens ?? []).map((v) => v.voter_token)).size;
+  const { error } = await admin.from("votes").insert({ poll_id: pollId, voter_token: voterToken, value });
+  if (error?.code === "23505") return { error: "Вы уже проголосовали" };
+  if (error) return { error: error.message };
+  await realtimeBroadcast([{ channel: "pollVotes", id: pollId, event: "vote", payload: { value, ts: voterToken.slice(0, 6) } }]);
+  return { isRevote: false };
+}
+
+// Revotes leave the total vote count unchanged, so neither the voter-count
+// broadcast nor the vote-limit auto-close applies to them.
+async function broadcastVoteEffects(
+  admin: ReturnType<typeof createAdminClient>,
+  pollId: string,
+  sessionId: string,
+  isRevote: boolean,
+  voteLimit: number | undefined
+): Promise<void> {
+  if (isRevote) return;
+
+  const { data: sessionPolls } = await admin
+    .from("polls")
+    .select("id")
+    .eq("session_id", sessionId);
+  const pollIds = (sessionPolls ?? []).map((p) => p.id);
+  if (pollIds.length > 0) {
+    const { data: allVoterTokens } = await admin
+      .from("votes")
+      .select("voter_token")
+      .in("poll_id", pollIds);
+    const uniqueCount = new Set((allVoterTokens ?? []).map((v) => v.voter_token)).size;
+    await realtimeBroadcast([{
+      channel: "sessionPolls",
+      id: sessionId,
+      event: "voter_count",
+      payload: { count: uniqueCount },
+    }]);
+  }
+
+  if (voteLimit && voteLimit > 0) {
+    const { count } = await admin
+      .from("votes")
+      .select("*", { count: "exact", head: true })
+      .eq("poll_id", pollId);
+
+    if (count !== null && count >= voteLimit) {
+      await admin
+        .from("polls")
+        .update({ status: "closed", closed_at: new Date().toISOString() } as never)
+        .eq("id", pollId);
+
       await realtimeBroadcast([{
         channel: "sessionPolls",
-        id: pollData.session_id,
-        event: "voter_count",
-        payload: { count: uniqueCount },
+        id: sessionId,
+        event: "poll_change",
+        payload: { type: "closed", poll_id: pollId },
       }]);
     }
   }
+}
 
-  // Vote limit check — skip for revotes (total count unchanged)
-  if (!isRevote) {
-    const voteLimit = settings?.vote_limit;
-    if (voteLimit && voteLimit > 0 && pollData?.session_id) {
-      const { count } = await admin
-        .from("votes")
-        .select("*", { count: "exact", head: true })
-        .eq("poll_id", pollId);
+export async function submitVote(formData: FormData): Promise<{ error: string } | { success: true }> {
+  const ip = ((await headers()).get("x-forwarded-for") ?? "").split(",")[0].trim() || "unknown";
+  if (!checkRateLimit(`vote:${ip}`, 30, 60_000)) return { error: "Слишком много запросов. Подождите немного." };
 
-      if (count !== null && count >= voteLimit) {
-        await admin
-          .from("polls")
-          .update({ status: "closed", closed_at: new Date().toISOString() })
-          .eq("id", pollId);
+  const admin = createAdminClient();
 
-        await realtimeBroadcast([{
-          channel: "sessionPolls",
-          id: pollData.session_id,
-          event: "poll_change",
-          payload: { type: "closed", poll_id: pollId },
-        }]);
-      }
-    }
+  const input = parseVoteInput(formData);
+  if ("error" in input) return input;
+  const { pollId, voterToken, value, parsedValues } = input;
+
+  const loaded = await loadPollForVote(admin, pollId, parsedValues);
+  if ("error" in loaded) return loaded;
+  const { sessionId, settings, maxAnswers } = loaded;
+
+  if (sessionId) {
+    const limitError = await checkParticipantLimit(admin, sessionId, voterToken);
+    if (limitError) return limitError;
+  }
+
+  const recorded = await recordVote(admin, pollId, voterToken, value, !!settings?.allow_revote, maxAnswers);
+  if ("error" in recorded) return recorded;
+
+  if (sessionId) {
+    await broadcastVoteEffects(admin, pollId, sessionId, recorded.isRevote, settings?.vote_limit);
   }
 
   return { success: true };

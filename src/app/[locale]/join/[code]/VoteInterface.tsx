@@ -249,7 +249,7 @@ export function VoteInterface({
     fd.append("value", value);
     const result = await submitVote(fd);
     setIsPending(false);
-    if (result?.error) {
+    if ("error" in result) {
       setError(result.error === "Вы уже проголосовали" ? t("alreadyVoted") : t("errorRetry"));
     } else {
       setVoted(true);

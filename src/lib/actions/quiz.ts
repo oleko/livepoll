@@ -7,6 +7,7 @@ import { revalidatePath } from "next/cache";
 import { isUuid } from "@/core/domain/ids";
 import { toPublicPoll } from "@/core/domain/poll";
 import { broadcast } from "@/core/realtime/broadcast.server";
+import { closeActivePoll, activateTargetPoll } from "@/server/polls/lifecycle";
 
 function isValidUUID(s: string) { return isUuid(s); }
 
@@ -50,71 +51,30 @@ async function activateNextQuizPollInternal(
   sessionId: string,
   admin: ReturnType<typeof createAdminClient>
 ): Promise<AdvanceResult> {
-  type PollRow = { id: string; settings: Record<string, unknown> | null; sort_order: number };
+  // Closing whatever's still active is not race-sensitive: by the time
+  // this runs the poll has usually already been closed by its own
+  // duration timer (DisplayScreen closes any poll — quiz or not — when
+  // its countdown hits zero), so finding nothing "active" here is the
+  // normal case, not a race. The actual race is in activateTargetPoll's
+  // compare-and-set below, where two open display screens can both try
+  // to claim the same next-draft poll.
+  await closeActivePoll(admin, sessionId);
 
-  // Close whatever's still active, if anything. Not race-sensitive: by the
-  // time this runs the poll has usually already been closed by its own
-  // duration timer (DisplayScreen closes any poll — quiz or not — when its
-  // countdown hits zero), so finding nothing "active" here is the normal
-  // case, not a race. A plain unconditional close is correct either way.
-  await admin
-    .from("polls")
-    .update({ status: "closed", closed_at: new Date().toISOString() } as never)
-    .eq("session_id", sessionId)
-    .eq("status", "active");
+  const outcome = await activateTargetPoll(admin, sessionId, {
+    kind: "nextDraft",
+    type: "multiple_choice",
+    requireQuizMode: true,
+  });
 
-  // Find next draft quiz poll by sort_order
-  const { data: nextPoll } = await admin
-    .from("polls")
-    .select("id, settings, sort_order")
-    .eq("session_id", sessionId)
-    .eq("status", "draft")
-    .eq("type", "multiple_choice")
-    .order("sort_order")
-    .limit(1)
-    .maybeSingle() as { data: PollRow | null };
+  if (outcome.status === "not_found") return "finished";
+  if (outcome.status === "raced") return "raced";
 
-  if (!nextPoll) return "finished";
-
-  // Only activate if it's a quiz poll
-  const settings = (nextPoll.settings ?? {}) as Record<string, unknown>;
-  if (!settings.quiz_mode) {
-    // Skip non-quiz polls recursively (shouldn't happen in championship but be safe)
-    await admin.from("polls").update({ status: "closed", closed_at: new Date().toISOString() } as never).eq("id", nextPoll.id);
-    return activateNextQuizPollInternal(sessionId, admin);
-  }
-
-  // Compare-and-set: this is the actual race — two open display screens
-  // can both select the same "next draft" poll before either commits. The
-  // `.eq("status", "draft")` is re-checked atomically by Postgres at
-  // UPDATE time; only the first caller's write matches, the second gets
-  // zero affected rows back and knows it lost.
-  const updatedSettings = { ...settings, activated_at: new Date().toISOString() };
-  const { data: activatedRows } = await admin
-    .from("polls")
-    .update({ status: "active", settings: updatedSettings } as never)
-    .eq("id", nextPoll.id)
-    .eq("status", "draft")
-    .select("id");
-
-  if ((activatedRows ?? []).length === 0) {
-    return "raced";
-  }
-
-  const { data: activatedPoll } = await admin
-    .from("polls")
-    .select("id, title, type, options, status, settings")
-    .eq("id", nextPoll.id)
-    .single();
-
-  if (activatedPoll) {
-    await broadcast([{
-      channel: "sessionPolls",
-      id: sessionId,
-      event: "poll_change",
-      payload: { type: "activated", poll: toPublicPoll(activatedPoll) },
-    }]);
-  }
+  await broadcast([{
+    channel: "sessionPolls",
+    id: sessionId,
+    event: "poll_change",
+    payload: { type: "activated", poll: toPublicPoll(outcome.poll) },
+  }]);
 
   return "activated";
 }
