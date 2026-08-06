@@ -804,19 +804,6 @@ export function DisplayScreen({
                 </div>
               )}
 
-              {poll.type === "like_dislike" && (
-                <div className="flex justify-center gap-24">
-                  {[["👍", "like"], ["👎", "dislike"]].map(([emoji, val]) => (
-                    <div key={val} className="text-center">
-                      <div className="text-8xl mb-4">{emoji}</div>
-                      <div className="text-6xl font-bold text-slate-900 dark:text-white">
-                        {votes.filter((v) => v.value === val).length}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
               {poll.type === "idea_wall" && (
                 visibleQuestions.length === 0 ? (
                   <p className="text-slate-500 text-xl text-center py-12">Ожидаем идеи от участников...</p>

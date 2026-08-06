@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { pollRegistry, pollModule } from "../polls";
 
 describe("pollRegistry", () => {
-  it("has multiple_choice, word_cloud, emoji_cloud and temperature registered as the migrated poll types so far", () => {
+  it("has multiple_choice, word_cloud, emoji_cloud, temperature and like_dislike registered as the migrated poll types so far", () => {
     expect(pollModule("multiple_choice")).toBeDefined();
     expect(pollModule("multiple_choice")!.id).toBe("multiple_choice");
     expect(pollModule("word_cloud")).toBeDefined();
@@ -11,11 +11,12 @@ describe("pollRegistry", () => {
     expect(pollModule("emoji_cloud")!.id).toBe("emoji_cloud");
     expect(pollModule("temperature")).toBeDefined();
     expect(pollModule("temperature")!.id).toBe("temperature");
+    expect(pollModule("like_dislike")).toBeDefined();
+    expect(pollModule("like_dislike")!.id).toBe("like_dislike");
   });
 
   it("returns undefined for not-yet-migrated types (safe fallback, not a throw)", () => {
     expect(pollModule("qa")).toBeUndefined();
-    expect(pollModule("like_dislike")).toBeUndefined();
     expect(pollModule("planning_poker")).toBeUndefined();
     expect(pollModule("idea_wall")).toBeUndefined();
   });

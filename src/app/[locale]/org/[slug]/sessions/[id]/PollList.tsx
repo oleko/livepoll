@@ -366,21 +366,6 @@ function PollResults({ poll, valueCounts, total }: { poll: PollRow; valueCounts:
     return <m.render.hostResult config={config} agg={agg} total={total} t={tRoot} />;
   }
 
-  if (poll.type === "like_dislike") {
-    const likes = valueCounts["like"] ?? 0;
-    const dislikes = valueCounts["dislike"] ?? 0;
-    const pct = total > 0 ? Math.round((likes / total) * 100) : 0;
-    return (
-      <div className="mt-2 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-        <span className="text-green-500">👍 {likes}</span>
-        <div className="flex-1 h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
-          <div className="h-full rounded-full bg-green-500" style={{ width: `${pct}%` }} />
-        </div>
-        <span className="text-red-400">👎 {dislikes}</span>
-      </div>
-    );
-  }
-
   const sorted = Object.entries(valueCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
   return (
     <div className="mt-2 space-y-1">

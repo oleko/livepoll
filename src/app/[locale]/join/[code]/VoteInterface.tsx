@@ -718,17 +718,6 @@ export function VoteInterface({
           <activePollModule.render.participant key={poll.id} config={activePollConfig} disabled={isPending} onVote={handleVote} t={t} />
         )}
 
-        {poll.type === "like_dislike" && (
-          <div className="flex justify-center gap-10">
-            {[["👍", "like"], ["👎", "dislike"]].map(([emoji, val]) => (
-              <button key={val} onClick={() => handleVote(val)} disabled={isPending}
-                className="flex flex-col items-center gap-2 disabled:opacity-50">
-                <span className="text-7xl hover:scale-110 transition-transform duration-150 active:scale-110 inline-block">{emoji}</span>
-              </button>
-            ))}
-          </div>
-        )}
-
         {poll.type === "planning_poker" && (
           <div className="grid grid-cols-3 gap-3">
             {PLANNING_POKER_VALUES.map((val) => (

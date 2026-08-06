@@ -200,13 +200,6 @@ export function PresenterScreen({
                 return <m.render.presenter config={config} agg={agg} total={totalVotes} />;
               })()}
 
-              {activePoll.type === "like_dislike" && (
-                <div className="flex gap-6 text-2xl font-bold">
-                  <span className="text-green-400">👍 {voteCounts["like"] ?? 0}</span>
-                  <span className="text-red-400">👎 {voteCounts["dislike"] ?? 0}</span>
-                </div>
-              )}
-
               {activePoll.type === "planning_poker" && sortedVotes.length > 0 && (
                 <div className="flex flex-wrap gap-2">
                   {sortedVotes.map(([val, count]) => (
