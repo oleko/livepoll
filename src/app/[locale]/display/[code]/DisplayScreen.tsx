@@ -383,10 +383,6 @@ export function DisplayScreen({
   }, [votes, poll, activePollModule, activePollConfig, sortByPopularity, pollEnded]);
 
   const totalVotes = votes.length;
-  const visibleQuestions = useMemo(
-    () => [...questions].filter((q) => q.status !== "hidden").sort((a, b) => b.upvotes - a.upvotes),
-    [questions]
-  );
 
   return (
     <main
@@ -718,35 +714,6 @@ export function DisplayScreen({
                     </div>
                   )}
                 </div>
-              )}
-
-              {poll.type === "idea_wall" && (
-                visibleQuestions.length === 0 ? (
-                  <p className="text-slate-500 text-xl text-center py-12">Ожидаем идеи от участников...</p>
-                ) : (
-                  <div className="columns-2 lg:columns-3 gap-4 max-h-[55vh] overflow-y-auto p-1">
-                    {[...visibleQuestions]
-                      .sort((a, b) => b.upvotes - a.upvotes)
-                      .map((q, i) => {
-                        const colors = [
-                          "border-indigo-500/30 bg-indigo-500/10",
-                          "border-purple-500/30 bg-purple-500/10",
-                          "border-cyan-500/30 bg-cyan-500/10",
-                          "border-emerald-500/30 bg-emerald-500/10",
-                          "border-amber-500/30 bg-amber-500/10",
-                        ];
-                        return (
-                          <div key={q.id}
-                            className={`break-inside-avoid rounded-2xl border p-5 mb-4 ${colors[i % colors.length]}`}>
-                            <p className="text-white text-lg leading-snug">{q.text}</p>
-                            {q.upvotes > 0 && (
-                              <p className="text-slate-400 text-sm mt-2">▲ {q.upvotes}</p>
-                            )}
-                          </div>
-                        );
-                      })}
-                  </div>
-                )
               )}
 
             </div>

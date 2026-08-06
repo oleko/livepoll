@@ -80,7 +80,6 @@ export function VoteInterface({
       return saved ? new Set(JSON.parse(saved) as string[]) : new Set();
     } catch { return new Set(); }
   });
-  const [ideaText, setIdeaText] = useState("");
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sessionEnded, setSessionEnded] = useState(false);
@@ -161,7 +160,6 @@ export function VoteInterface({
         setPoll(data.poll as unknown as PollData);
         setVoted(false);
         setQuestionsSubmitted(0);
-        setIdeaText("");
         setError(null);
         setActiveSlide(null);
         setQuestions([]);
@@ -295,7 +293,6 @@ export function VoteInterface({
       setError(result.error);
     } else {
       setQuestionsSubmitted((n) => n + 1);
-      setIdeaText("");
     }
   }
 
@@ -533,57 +530,23 @@ export function VoteInterface({
         <p className="text-slate-500 text-sm">{t("waitingHint")}</p>
       </div>
     );
-  } else if (poll.type === "idea_wall") {
-    const submitted = questionsSubmitted > 0;
+  } else if (poll.type === "idea_wall" && activePollModule && activePollConfig) {
     content = (
-      <div className="w-full max-w-sm">
-        <h2 className="text-2xl font-bold text-slate-900 dark:text-white text-center mb-2 leading-snug px-2">
-          {poll.title}
-        </h2>
-        <p className="text-center text-sm text-slate-500 dark:text-slate-400 mb-6">
-          Поделитесь своей идеей — она появится на экране
-        </p>
-        {submitted ? (
-          <div className="text-center">
-            <div className="text-6xl mb-4">💡</div>
-            <p className="text-xl font-semibold text-slate-900 dark:text-white mb-2">Идея отправлена!</p>
-            <p className="text-sm text-slate-400 dark:text-slate-500 mb-5">Ваша идея уже видна на экране</p>
-            <Button
-              variant="secondary"
-              className="text-sm"
-              onClick={() => { setQuestionsSubmitted(0); setIdeaText(""); setError(null); }}
-            >
-              Отправить ещё
-            </Button>
+      <>
+        {error && (
+          <div className="mb-4 rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-red-500 text-center">
+            {error}
           </div>
-        ) : (
-          <>
-            {error && (
-              <div className="mb-4 rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-red-500 text-center">
-                {error}
-              </div>
-            )}
-            <div className="flex flex-col gap-3">
-              <textarea
-                rows={3}
-                maxLength={200}
-                placeholder="Введите вашу идею..."
-                value={ideaText}
-                onChange={(e) => setIdeaText(e.target.value)}
-                className="rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-5 py-4 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none text-base"
-              />
-              <Button
-                className="w-full py-4 text-base"
-                onClick={() => { if (ideaText.trim()) handleSubmitQuestion(ideaText.trim()); }}
-                loading={isPending}
-                disabled={!ideaText.trim()}
-              >
-                Отправить идею
-              </Button>
-            </div>
-          </>
         )}
-      </div>
+        <activePollModule.render.participant
+          config={activePollConfig}
+          disabled={isPending}
+          onVote={(text) => handleSubmitQuestion(text)}
+          title={poll.title}
+          submittedCount={questionsSubmitted}
+          t={t}
+        />
+      </>
     );
   } else if (poll.type === "qa" && activePollModule && activePollConfig) {
     content = (
