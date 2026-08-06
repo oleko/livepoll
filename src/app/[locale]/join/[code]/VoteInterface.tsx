@@ -40,7 +40,6 @@ type QuestionItem = {
   upvotes: number;
 };
 
-const PLANNING_POKER_VALUES = ["1", "2", "3", "5", "8", "13", "21", "?", "☕"];
 
 export function VoteInterface({
   sessionId,
@@ -716,17 +715,6 @@ export function VoteInterface({
 
         {activePollModule && activePollConfig && (
           <activePollModule.render.participant key={poll.id} config={activePollConfig} disabled={isPending} onVote={handleVote} t={t} />
-        )}
-
-        {poll.type === "planning_poker" && (
-          <div className="grid grid-cols-3 gap-3">
-            {PLANNING_POKER_VALUES.map((val) => (
-              <button key={val} onClick={() => handleVote(val)} disabled={isPending}
-                className="aspect-[2/3] rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-3xl font-bold text-slate-900 dark:text-white hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-600/20 transition-colors disabled:opacity-50 active:scale-95">
-                {val}
-              </button>
-            ))}
-          </div>
         )}
       </div>
     );

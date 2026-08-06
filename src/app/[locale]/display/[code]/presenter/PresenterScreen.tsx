@@ -186,8 +186,10 @@ export function PresenterScreen({
 
               {(() => {
                 const m = pollModule(activePoll.type as PollType);
-                if (!m || !m.render.presenter) {
-                  return activePoll.type === "multiple_choice" && sortedVotes.length > 0 ? (
+                if (!m) return null;
+                if (!m.render.presenter) {
+                  // GenericBars fallback for a migrated module that opts out of a presenter view.
+                  return sortedVotes.length > 0 ? (
                     <div className="flex flex-col gap-2">
                       {sortedVotes.map(([opt, count]) => (
                         <PollBar key={opt} label={opt} count={count} total={totalVotes} />
@@ -199,16 +201,6 @@ export function PresenterScreen({
                 const agg = { total: totalVotes, counts: voteCounts, buckets: Object.entries(voteCounts).map(([name, count]) => ({ name, count })) };
                 return <m.render.presenter config={config} agg={agg} total={totalVotes} />;
               })()}
-
-              {activePoll.type === "planning_poker" && sortedVotes.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {sortedVotes.map(([val, count]) => (
-                    <span key={val} className="rounded-lg bg-purple-900/40 border border-purple-700/40 px-3 py-2 text-base font-bold text-purple-300">
-                      {val} <span className="text-xs font-normal text-purple-400">×{count}</span>
-                    </span>
-                  ))}
-                </div>
-              )}
             </div>
           )}
 

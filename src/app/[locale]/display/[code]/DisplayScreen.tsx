@@ -4,7 +4,6 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LabelList } from "recharts";
 import { closePoll } from "@/lib/actions/polls";
 import { activateNextChampionshipPoll } from "@/lib/actions/quiz";
 import type { LeaderboardEntry } from "@/lib/actions/participants";
@@ -15,7 +14,6 @@ import type { BrandingSettings } from "@/lib/actions/branding";
 import type { SlideType } from "@/lib/actions/slides";
 import { useChannel } from "@/core/realtime/useChannel";
 import { useSessionSync } from "@/core/realtime/useSessionSync";
-import { aggregate } from "@/core/votes/aggregate";
 import { pollModule } from "@/core/registry/polls";
 import { PollDisplayHost } from "@/core/screens/PollDisplayHost";
 import { formatClock } from "@/core/format/time";
@@ -78,7 +76,6 @@ type QuestionRow = {
   poll_id?: string | null;
 };
 
-const PLANNING_POKER_VALUES = ["1", "2", "3", "5", "8", "13", "21", "?", "☕"];
 
 type ActiveSlide = { id: string; type: SlideType; content: Record<string, unknown> } | null;
 
@@ -152,7 +149,6 @@ export function DisplayScreen({
   const [champAutoCountdown, setChampAutoCountdown] = useState<number | null>(null);
   const champAutoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const champAutoIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const [pokerRevealed, setPokerRevealed] = useState(false);
   const [pollEnded, setPollEnded] = useState(false);
   const [sortByPopularity, setSortByPopularity] = useState(false);
   const pollRef = useRef(poll);
@@ -202,7 +198,6 @@ export function DisplayScreen({
     poll_change: (data) => {
       if (data.type === "activated") {
         setQuizReveal(null);
-        setPokerRevealed(false);
         setPollEnded(false);
         setSortByPopularity(false);
         setPoll(data.poll as unknown as PollData);
@@ -266,9 +261,6 @@ export function DisplayScreen({
     pulse: () => {
       pulseTimestamps.current.push(Date.now());
       setPulseCount(pulseTimestamps.current.length);
-    },
-    poker_reveal: () => {
-      setPokerRevealed(true);
     },
     announcement: (payload) => {
       if ("clear" in payload && payload.clear) {
@@ -401,12 +393,6 @@ export function DisplayScreen({
       });
     },
   });
-
-  const chartData = useMemo(() => {
-    if (!poll || poll.type !== "planning_poker") return [];
-    const buckets = aggregate(votes, { seedKeys: PLANNING_POKER_VALUES }).buckets;
-    return (sortByPopularity || pollEnded) ? [...buckets].sort((a, b) => b.count - a.count) : buckets;
-  }, [votes, poll, sortByPopularity, pollEnded]);
 
   // Poll-type module dispatch (Phase 3 core+modules) — generic once a type
   // is registered; unmigrated types keep rendering via inline branches below.
@@ -711,13 +697,6 @@ export function DisplayScreen({
                 </div>
               )}
 
-              {poll.type === "planning_poker" && !pokerRevealed && (
-                <div className="flex flex-col items-center justify-center gap-6 py-12">
-                  <p className="text-6xl">🃏</p>
-                  <p className="text-2xl text-slate-500 dark:text-slate-400">{votes.length} карт выбрано</p>
-                  <p className="text-base text-slate-400 dark:text-slate-500">Ведущий раскроет результаты</p>
-                </div>
-              )}
               {activePollModule && activePollConfig && activePollAgg && (
                 <PollDisplayHost
                   type={poll.type}
@@ -728,45 +707,6 @@ export function DisplayScreen({
                   accent={accent}
                   isDark={isDark}
                 />
-              )}
-
-              {poll.type === "planning_poker" && pokerRevealed && chartData.length > 0 && (
-                <ResponsiveContainer width="100%" height={320}>
-                  <BarChart data={chartData} margin={{ top: 36, right: 0, left: 0, bottom: 0 }}>
-                    <XAxis dataKey="name" tick={{ fill: isDark ? "#94a3b8" : "#475569", fontSize: 15 }} axisLine={false} tickLine={false} />
-                    <YAxis hide />
-                    <Tooltip
-                      contentStyle={{ background: isDark ? "#1e293b" : "#ffffff", border: `1px solid ${isDark ? "#334155" : "#e2e8f0"}`, borderRadius: 8 }}
-                      labelStyle={{ color: isDark ? "#f1f5f9" : "#0f172a" }}
-                      itemStyle={{ color: "#818cf8" }}
-                    />
-                    <Bar dataKey="count" radius={[8, 8, 0, 0]}>
-                      {chartData.map((_entry, i) => (
-                        <Cell key={i} fill={accent} />
-                      ))}
-                      <LabelList
-                        dataKey="count"
-                        content={(props) => {
-                          const { x, y, width, value } = props as { x: number; y: number; width: number; value: number };
-                          if (!value) return null;
-                          const pct = totalVotes > 0 ? Math.round((value / totalVotes) * 100) : 0;
-                          return (
-                            <text
-                              x={x + width / 2}
-                              y={y - 8}
-                              textAnchor="middle"
-                              fill={isDark ? "#e2e8f0" : "#1e293b"}
-                              fontSize={14}
-                              fontWeight={600}
-                            >
-                              {value} · {pct}%
-                            </text>
-                          );
-                        }}
-                      />
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
               )}
 
               {quizReveal && poll.type === "multiple_choice" && (
