@@ -207,15 +207,6 @@ export function PresenterScreen({
                 </div>
               )}
 
-              {activePoll.type === "temperature" && totalVotes > 0 && (
-                <div className="flex items-center gap-3">
-                  <span className="text-4xl font-bold text-indigo-400">
-                    {Math.round(Object.entries(voteCounts).reduce((sum, [k, v]) => sum + Number(k) * v, 0) / totalVotes * 10) / 10}
-                  </span>
-                  <span className="text-slate-400">средняя оценка</span>
-                </div>
-              )}
-
               {activePoll.type === "planning_poker" && sortedVotes.length > 0 && (
                 <div className="flex flex-wrap gap-2">
                   {sortedVotes.map(([val, count]) => (

@@ -718,22 +718,6 @@ export function VoteInterface({
           <activePollModule.render.participant key={poll.id} config={activePollConfig} disabled={isPending} onVote={handleVote} t={t} />
         )}
 
-        {poll.type === "temperature" && (
-          <div className="flex flex-col items-center gap-6">
-            <div className="flex gap-4 justify-center">
-              {["❄️", "🥶", "😐", "🌡️", "🔥"].map((emoji, i) => (
-                <button key={i} onClick={() => handleVote(String(i + 1))} disabled={isPending}
-                  className="text-5xl hover:scale-110 transition-transform duration-150 disabled:opacity-50 active:scale-110">
-                  {emoji}
-                </button>
-              ))}
-            </div>
-            <div className="flex justify-between w-full text-sm text-slate-500 px-1">
-              <span>Холодно</span><span>Горячо</span>
-            </div>
-          </div>
-        )}
-
         {poll.type === "like_dislike" && (
           <div className="flex justify-center gap-10">
             {[["👍", "like"], ["👎", "dislike"]].map(([emoji, val]) => (

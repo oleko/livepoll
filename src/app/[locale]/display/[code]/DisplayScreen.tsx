@@ -78,7 +78,6 @@ type QuestionRow = {
   poll_id?: string | null;
 };
 
-const TEMP_LABELS = ["❄️", "🥶", "😐", "🌡️", "🔥"];
 const PLANNING_POKER_VALUES = ["1", "2", "3", "5", "8", "13", "21", "?", "☕"];
 
 type ActiveSlide = { id: string; type: SlideType; content: Record<string, unknown> } | null;
@@ -802,20 +801,6 @@ export function DisplayScreen({
                       </div>
                     </div>
                   )}
-                </div>
-              )}
-
-              {poll.type === "temperature" && (
-                <div className="flex justify-center gap-8">
-                  {TEMP_LABELS.map((emoji, i) => {
-                    const count = votes.filter((v) => v.value === String(i + 1)).length;
-                    return (
-                      <div key={i} className="text-center">
-                        <div className="text-6xl mb-3">{emoji}</div>
-                        <div className="text-4xl font-bold text-slate-900 dark:text-white">{count}</div>
-                      </div>
-                    );
-                  })}
                 </div>
               )}
 
