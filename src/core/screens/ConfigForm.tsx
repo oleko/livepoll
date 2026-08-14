@@ -85,6 +85,17 @@ function ConfigFieldInput({
         />
       );
 
+    case "date":
+      return (
+        <input
+          type="date"
+          value={(value[field.name] as string) ?? ""}
+          onChange={(e) => set(e.target.value)}
+          min={field.minToday ? new Date().toISOString().slice(0, 10) : undefined}
+          className={inputClass}
+        />
+      );
+
     case "select": {
       const current = value[field.name];
       const currentStr = current == null ? (field.options[0]?.value ?? "") : String(current);

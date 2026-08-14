@@ -29,6 +29,10 @@ export function AddSlidePanel({ sessionId, orgSlug, bare = false, allowedTypes }
 
   async function save() {
     setError(null);
+    if (type === "schedule" && !(content.items as unknown[] | undefined)?.length) {
+      setError(t("emptyScheduleError"));
+      return;
+    }
     setSaving(true);
     try {
       const result = await createSlide(sessionId, type, content, orgSlug);

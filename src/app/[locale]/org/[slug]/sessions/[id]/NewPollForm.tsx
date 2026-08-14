@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { createPoll } from "@/lib/actions/polls";
 import { Button } from "@/components/ui/Button";
@@ -45,6 +45,20 @@ export function NewPollForm({
   const [showTemplates, setShowTemplates] = useState(false);
   const [activeCategory, setActiveCategory] = useState(POLL_TEMPLATE_CATEGORIES[0].id);
   const [state, action, isPending] = useActionState(createPoll, null);
+
+  // Start the next poll from a blank slate instead of leaving the last
+  // one's fields behind — matches AddSlidePanel's reset-after-create.
+  useEffect(() => {
+    if (state && "success" in state) {
+      setType("multiple_choice");
+      setOptionsText("");
+      setTitleValue("");
+      setQuizMode(false);
+      setAllowRevote(false);
+      setCorrectOption("");
+      setAdvancedOpen(false);
+    }
+  }, [state]);
 
   const parsedOptions = optionsText.split("\n").map((o) => o.trim()).filter(Boolean);
   const selectedType = POLL_TYPES.find((pt) => pt.value === type)!;

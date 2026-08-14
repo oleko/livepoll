@@ -398,6 +398,7 @@
         "create": "Create screen",
         "creating": "Creating…",
         "errorGeneric": "Error",
+        "emptyScheduleError": "Add at least one schedule item",
         "splash": {
           "title": "Event name *",
           "subtitle": "Subtitle / topic",
