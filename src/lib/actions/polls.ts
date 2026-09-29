@@ -8,11 +8,11 @@ import { getPlanLimits } from "@/core/access/limits";
 import { getAuthUser, assertSessionMember } from "@/lib/actions/guards";
 import { headers } from "next/headers";
 import { checkRateLimit } from "@/lib/rateLimit";
-import { isUuid } from "@/core/domain/ids";
 import { toPublicPoll } from "@/core/domain/poll";
 import { broadcast as realtimeBroadcast, type Message } from "@/core/realtime/broadcast.server";
 import { computeAndBroadcastLeaderboard } from "@/lib/actions/participants";
 import { closeActivePoll, activateTargetPoll } from "@/server/polls/lifecycle";
+import { parseVoteInput, loadPollForVote } from "@/server/polls/vote";
 
 type PollState = { error: string } | { success: true } | null;
 
@@ -299,61 +299,6 @@ export async function clearPollResult(
   }]);
 
   revalidatePath(`/org/${orgSlug}/sessions/${sessionId}`);
-}
-
-type VoteInput = { pollId: string; voterToken: string; value: string; parsedValues: string[] };
-
-function parseVoteInput(formData: FormData): { error: string } | VoteInput {
-  const pollId = formData.get("poll_id") as string;
-  const voterToken = formData.get("voter_token") as string;
-  const value = (formData.get("value") as string)?.trim();
-
-  if (!pollId || !voterToken || !value) return { error: "Неверные данные" };
-  if (!isUuid(voterToken)) return { error: "Неверные данные" };
-  if (value.length > 2000) return { error: "Слишком длинный ответ" };
-
-  // Multi-answer submissions are a JSON array; anything else is a single value.
-  if (value.startsWith("[")) {
-    let parsedValues: unknown;
-    try {
-      parsedValues = JSON.parse(value);
-    } catch {
-      return { error: "Неверные данные" };
-    }
-    if (!Array.isArray(parsedValues) || parsedValues.length === 0 || parsedValues.some((v) => typeof v !== "string" || v.length > 200)) {
-      return { error: "Неверные данные" };
-    }
-    return { pollId, voterToken, value, parsedValues: parsedValues as string[] };
-  }
-
-  if (value.length > 500) return { error: "Слишком длинный ответ" };
-  return { pollId, voterToken, value, parsedValues: [value] };
-}
-
-type PollVoteSettings = { allow_revote?: boolean; vote_limit?: number; max_answers?: number };
-type LoadedPollForVote = { sessionId: string | null; settings: PollVoteSettings | null; maxAnswers: number };
-
-async function loadPollForVote(
-  admin: ReturnType<typeof createAdminClient>,
-  pollId: string,
-  parsedValues: string[]
-): Promise<{ error: string } | LoadedPollForVote> {
-  const { data: pollData } = await admin
-    .from("polls")
-    .select("type, settings, session_id")
-    .eq("id", pollId)
-    .single();
-
-  const settings = pollData?.settings as PollVoteSettings | null;
-  const maxAnswers = settings?.max_answers ?? 1;
-  if (parsedValues.length > maxAnswers) return { error: `Можно выбрать не более ${maxAnswers} вариантов` };
-
-  const pollType = (pollData as unknown as { type?: string })?.type;
-  if (pollType === "word_cloud" && parsedValues.some((v) => v.length > 50)) {
-    return { error: "Слишком длинное слово" };
-  }
-
-  return { sessionId: pollData?.session_id ?? null, settings, maxAnswers };
 }
 
 // Only new voters entering the session for the first time count against

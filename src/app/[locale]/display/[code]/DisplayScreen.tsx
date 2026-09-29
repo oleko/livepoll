@@ -1,8 +1,6 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
-import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { closePoll } from "@/lib/actions/polls";
 import { useTheme } from "@/components/ThemeProvider";
@@ -12,6 +10,7 @@ import type { BrandingSettings } from "@/lib/actions/branding";
 import type { SlideType } from "@/lib/actions/slides";
 import { useChannel } from "@/core/realtime/useChannel";
 import { useSessionSync } from "@/core/realtime/useSessionSync";
+import { useSessionState } from "@/core/realtime/useSessionState";
 import { pollModule } from "@/core/registry/polls";
 import { PollDisplayHost } from "@/core/screens/PollDisplayHost";
 import type { QuestionRow } from "@/core/domain/question";
@@ -111,38 +110,18 @@ export function DisplayScreen({
   const [sortByPopularity, setSortByPopularity] = useState(false);
   const pollRef = useRef(poll);
   useEffect(() => { pollRef.current = poll; }, [poll]);
-  const router = useRouter();
-  const supabase = useRef(createClient());
-  const { connected, handleStatus } = useSessionSync({
-    onFirstConnect: async () => {
-      const sb = supabase.current;
-      const { data: activePoll } = await sb
-        .from("polls")
-        .select("id, title, type, options, status, settings")
-        .eq("session_id", session.id)
-        .eq("status", "active")
-        .maybeSingle();
-      setPoll((activePoll as PollData) ?? null);
-
-      const { data: sessionRow } = await sb
-        .from("sessions")
-        .select("active_slide_id")
-        .eq("id", session.id)
-        .single();
-      const slideId = (sessionRow as unknown as { active_slide_id?: string | null })?.active_slide_id;
-      if (slideId) {
-        const { data: slideData } = await sb
-          .from("session_slides")
-          .select("id, type, content")
-          .eq("id", slideId)
-          .single();
-        setActiveSlide((slideData as ActiveSlide) ?? null);
-      } else {
-        setActiveSlide(null);
-      }
-    },
-    onReconnect: () => router.refresh(),
+  // Everything the projector shows comes back in one call, already stripped
+  // of quiz answers by the database. Votes and questions are re-read too, so
+  // a drop no longer leaves the on-screen tally drifting from the truth.
+  const { resync, stale } = useSessionState(session.join_code, (snapshot) => {
+    setPoll(snapshot.poll as PollData);
+    setVotes(snapshot.votes);
+    setQuestions(snapshot.questions);
+    setActiveSlide(snapshot.slide as ActiveSlide);
+    setTotalAttendees(snapshot.session.total_attendees);
+    setJoinedCount(snapshot.joined_count);
   });
+  const { connected, handleStatus } = useSessionSync({ resync });
   const { theme } = useTheme();
   const isDark = theme === "dark";
   const qrBg = isDark ? "0f172a" : "ffffff";
@@ -317,7 +296,9 @@ export function DisplayScreen({
       }}
     >
 
-      {!connected && (
+      {/* `stale` covers the case the socket is up but the state re-read
+          failed — the screen is then knowingly showing older data. */}
+      {(!connected || stale) && (
         <ConnectionBanner variant="prominent" message="Соединение потеряно — переподключение…" />
       )}
 

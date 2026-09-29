@@ -9,13 +9,18 @@ import { useCallback, useEffect, useRef, useState } from "react";
  * participant who loaded the page while a broadcast was in flight kept stale
  * slide state forever, since VoteInterface's copy only resynced the poll.
  *
- * `onFirstConnect` should resync whatever state this surface owns (poll,
- * slide, ...) directly from the database. `onReconnect` fires after a drop
- * and should refresh anything that can't be losslessly resynced client-side.
+ * `resync` fires on the first successful subscribe AND after every drop.
+ * The earlier split of `onFirstConnect` / `onReconnect` looked like it covered
+ * both, but didn't: `onFirstConnect` sat behind a once-per-mount flag, and both
+ * callers passed `router.refresh()` as `onReconnect` — which cannot restore
+ * anything, because the refreshed props feed `useState` initialisers on a
+ * component that is never remounted (no `key`). So nothing was re-read after a
+ * drop, and every broadcast missed while the socket was down stayed missed:
+ * the projector kept showing a poll that had already been closed, and vote
+ * counts drifted from the database for the rest of the event.
  */
 export function useSessionSync(opts: {
-  onFirstConnect: () => void | Promise<void>;
-  onReconnect: () => void;
+  resync: () => void | Promise<void>;
 }) {
   const hasEverConnected = useRef(false);
   const wasDisconnected = useRef(false);
@@ -26,11 +31,9 @@ export function useSessionSync(opts: {
   const handleStatus = useCallback((status: string) => {
     const isConnected = status === "SUBSCRIBED";
     if (isConnected) {
-      if (!hasEverConnected.current) {
-        void optsRef.current.onFirstConnect();
-      } else if (wasDisconnected.current) {
+      if (!hasEverConnected.current || wasDisconnected.current) {
         wasDisconnected.current = false;
-        optsRef.current.onReconnect();
+        void optsRef.current.resync();
       }
       hasEverConnected.current = true;
     } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {

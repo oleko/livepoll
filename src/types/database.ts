@@ -465,6 +465,14 @@ export type Database = {
         Args: { p_question_id: string }
         Returns: Database["public"]["Tables"]["questions"]["Row"]
       }
+      // Returns the whole live state of one session as json (active poll with
+      // quiz answers stripped, its votes and questions, active slide, unique
+      // voter count). Shaped by SessionStateSnapshot in
+      // core/realtime/useSessionState.ts, which owns the one cast.
+      get_session_state: {
+        Args: { p_join_code: string }
+        Returns: unknown
+      }
     }
     Enums: Record<string, never>
     CompositeTypes: Record<string, never>

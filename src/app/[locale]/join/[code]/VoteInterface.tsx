@@ -1,8 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { useState, useEffect } from "react";
 import { submitVote } from "@/lib/actions/polls";
 import { submitQuestion, upvoteQuestion } from "@/server/questions";
 import type { LeaderboardEntry } from "@/lib/actions/participants";
@@ -10,6 +8,7 @@ import type { PollType } from "@/types/database";
 import { useTranslations } from "next-intl";
 import { useChannel } from "@/core/realtime/useChannel";
 import { useSessionSync } from "@/core/realtime/useSessionSync";
+import { useSessionState } from "@/core/realtime/useSessionState";
 import { getVoterToken } from "@/core/identity/voterToken";
 import { ConnectionBanner } from "@/core/screens/ConnectionBanner";
 import { AnnouncementOverlay } from "@/core/screens/AnnouncementOverlay";
@@ -39,6 +38,7 @@ type QuestionItem = QuestionRow;
 
 export function VoteInterface({
   sessionId,
+  joinCode,
   initialPoll,
   sessionStatus,
   initialQuestions = [],
@@ -91,9 +91,6 @@ export function VoteInterface({
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[] | null>(null);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
 
-  const supabase = useRef(createClient());
-  const router = useRouter();
-
   useEffect(() => {
     try {
       if (localStorage.getItem(`quiz_participant_${sessionId}`)) setRegistered(true);
@@ -112,36 +109,13 @@ export function VoteInterface({
     setTimeout(() => setPulseFlash(false), 200);
   }
 
-  const { connected, handleStatus } = useSessionSync({
-    onFirstConnect: async () => {
-      const sb = supabase.current;
-      const { data: activePoll } = await sb
-        .from("polls")
-        .select("id, title, type, options, status, settings")
-        .eq("session_id", sessionId)
-        .eq("status", "active")
-        .maybeSingle();
-      setPoll(activePoll ? (activePoll as unknown as NonNullable<PollData>) : null);
-
-      const { data: sessionRow } = await sb
-        .from("sessions")
-        .select("active_slide_id")
-        .eq("id", sessionId)
-        .single();
-      const slideId = (sessionRow as unknown as { active_slide_id?: string | null })?.active_slide_id;
-      if (slideId) {
-        const { data: slideData } = await sb
-          .from("session_slides")
-          .select("id, type, content")
-          .eq("id", slideId)
-          .single();
-        setActiveSlide((slideData as { type: string; content: Record<string, unknown> } | null) ?? null);
-      } else {
-        setActiveSlide(null);
-      }
-    },
-    onReconnect: () => router.refresh(),
+  const { resync, stale } = useSessionState(joinCode, (snapshot) => {
+    setPoll(snapshot.poll as PollData);
+    setQuestions(snapshot.questions);
+    setActiveSlide(snapshot.slide);
+    setVoterCount(snapshot.joined_count);
   });
+  const { connected, handleStatus } = useSessionSync({ resync });
 
   const { send: sendPollEvent } = useChannel("sessionPolls", sessionId, {
     poll_change: (data) => {
@@ -496,7 +470,7 @@ export function VoteInterface({
           🔥
         </button>
       )}
-      {!connected && (
+      {(!connected || stale) && (
         <ConnectionBanner variant="compact" message="Нет соединения — пытаемся переподключиться…" />
       )}
       {pollTimeLeft !== null && pollTimeLeft > 0 && !voted && (
