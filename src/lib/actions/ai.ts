@@ -1,8 +1,8 @@
 "use server";
 
-import { createAdminClient } from "@/lib/supabase/admin";
 import { getAuthUser, assertSessionMember } from "@/lib/actions/guards";
 import { callYandex, yandexConfigured } from "@/server/ai/yandex";
+import { limitPerUser } from "@/server/rateLimitKeys";
 
 const TYPE_LABEL: Record<string, string> = {
   multiple_choice: "Множественный выбор",
@@ -20,6 +20,11 @@ export async function generateSessionSummary(
 ): Promise<{ summary?: string; error?: string }> {
   const { user, admin } = await getAuthUser();
   await assertSessionMember(user.id, sessionId, admin);
+
+  // Generating a digest is the most expensive call in the product and had no
+  // limit at all — a host could hold the button and burn the AI quota.
+  const rate = limitPerUser("ai-summary", user.id, 4);
+  if (!rate.ok) return { error: rate.error };
 
   if (!yandexConfigured()) return { error: "AI не настроен" };
 
@@ -106,10 +111,35 @@ export async function generateSessionSummary(
   return { summary };
 }
 
-export async function summarizeQuestions(texts: string[]): Promise<{ summary?: string; error?: string }> {
+/**
+ * Takes a session id, not the texts themselves.
+ *
+ * Previously this accepted `texts: string[]` from the client and had no
+ * authentication of any kind — a server action reachable by anyone, forwarding
+ * arbitrary caller-supplied text to a paid LLM. That is an open proxy to the
+ * YandexGPT quota as well as a way to put any content into our prompts. Now the
+ * questions are read server-side for a session the caller is a member of.
+ */
+export async function summarizeQuestions(sessionId: string): Promise<{ summary?: string; error?: string }> {
+  const { user, admin } = await getAuthUser();
+  await assertSessionMember(user.id, sessionId, admin);
+
+  const rate = limitPerUser("ai-questions", user.id, 6);
+  if (!rate.ok) return { error: rate.error };
+
   if (!yandexConfigured()) {
     return { error: "AI не настроен (отсутствуют YANDEX_API_KEY / YANDEX_FOLDER_ID)" };
   }
+
+  const { data: rows } = await admin
+    .from("questions")
+    .select("text")
+    .eq("session_id", sessionId)
+    .neq("status", "hidden")
+    .order("upvotes", { ascending: false })
+    .limit(200);
+
+  const texts = (rows ?? []).map((r) => r.text);
   if (texts.length === 0) {
     return { error: "Нет вопросов для анализа" };
   }

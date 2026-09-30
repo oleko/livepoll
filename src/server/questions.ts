@@ -3,21 +3,22 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAuthUser, assertSessionMember } from "@/lib/actions/guards";
 import { revalidatePath } from "next/cache";
-import { headers } from "next/headers";
-import { checkRateLimit } from "@/lib/rateLimit";
+import { limitPerVoter } from "@/server/rateLimitKeys";
 import { isUuid } from "@/core/domain/ids";
 import { broadcast as realtimeBroadcast } from "@/core/realtime/broadcast.server";
 import type { QuestionRow } from "@/core/domain/question";
 
 export async function submitQuestion(formData: FormData) {
-  const ip = ((await headers()).get("x-forwarded-for") ?? "").split(",")[0].trim() || "unknown";
-  if (!checkRateLimit(`question:${ip}`, 15, 60_000)) return { error: "Слишком много запросов. Подождите немного." };
-
   const admin = createAdminClient();
 
   const sessionId = formData.get("session_id") as string;
   const pollId = formData.get("poll_id") as string;
   const voterToken = formData.get("voter_token") as string;
+
+  // Was keyed on IP alone, so one shared venue connection capped the whole
+  // room at 15 questions a minute between them.
+  const rate = await limitPerVoter("question", voterToken, 8, 300);
+  if (!rate.ok) return { error: rate.error };
   const text = (formData.get("text") as string)?.trim();
 
   if (!sessionId || !voterToken || !text) return { error: "Неверные данные" };
@@ -76,6 +77,12 @@ export async function pinQuestion(
 }
 
 export async function upvoteQuestion(questionId: string, voterToken: string, sessionId: string) {
+  // Had no authentication and no limit at all: anyone could drive a question
+  // up the Q&A list as fast as requests would go through.
+  if (!isUuid(voterToken)) return { error: "Некорректный запрос" };
+  const rate = await limitPerVoter("upvote", voterToken, 30, 600);
+  if (!rate.ok) return { error: rate.error };
+
   const admin = createAdminClient();
 
   const { error: dupError } = await admin

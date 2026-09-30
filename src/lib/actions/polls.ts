@@ -6,13 +6,13 @@ import { revalidatePath } from "next/cache";
 import type { PollType } from "@/types/database";
 import { getPlanLimits } from "@/core/access/limits";
 import { getAuthUser, assertSessionMember } from "@/lib/actions/guards";
-import { headers } from "next/headers";
-import { checkRateLimit } from "@/lib/rateLimit";
+import { limitPerVoter } from "@/server/rateLimitKeys";
 import { toPublicPoll } from "@/core/domain/poll";
 import { broadcast as realtimeBroadcast, type Message } from "@/core/realtime/broadcast.server";
 import { computeAndBroadcastLeaderboard } from "@/lib/actions/participants";
 import { closeActivePoll, activateTargetPoll, closeExpiredPoll } from "@/server/polls/lifecycle";
 import { parseVoteInput, loadPollForVote } from "@/server/polls/vote";
+import { countSessionVoters, hasVotedInSession } from "@/server/polls/voters";
 
 type PollState = { error: string } | { success: true } | null;
 
@@ -309,21 +309,7 @@ async function checkParticipantLimit(
   sessionId: string,
   voterToken: string
 ): Promise<{ error: string } | null> {
-  const { data: sessionPolls } = await admin
-    .from("polls")
-    .select("id")
-    .eq("session_id", sessionId);
-  const sessionPollIds = (sessionPolls ?? []).map((p) => p.id);
-  if (sessionPollIds.length === 0) return null;
-
-  const { data: priorVote } = await admin
-    .from("votes")
-    .select("id")
-    .in("poll_id", sessionPollIds)
-    .eq("voter_token", voterToken)
-    .limit(1)
-    .maybeSingle();
-  if (priorVote) return null;
+  if (await hasVotedInSession(admin, sessionId, voterToken)) return null;
 
   const { data: sess } = await admin
     .from("sessions")
@@ -335,11 +321,7 @@ async function checkParticipantLimit(
   const limits = await getPlanLimits(admin, sess.organization_id);
   if (!limits || !isFinite(limits.maxParticipants)) return null;
 
-  const { data: tokens } = await admin
-    .from("votes")
-    .select("voter_token")
-    .in("poll_id", sessionPollIds);
-  const uniqueCount = new Set((tokens ?? []).map((v) => v.voter_token)).size;
+  const uniqueCount = await countSessionVoters(admin, sessionId);
   if (uniqueCount >= limits.maxParticipants) {
     return { error: `Достигнут лимит участников для текущего тарифа (${limits.maxParticipants})` };
   }
@@ -402,24 +384,13 @@ async function broadcastVoteEffects(
 ): Promise<void> {
   if (isRevote) return;
 
-  const { data: sessionPolls } = await admin
-    .from("polls")
-    .select("id")
-    .eq("session_id", sessionId);
-  const pollIds = (sessionPolls ?? []).map((p) => p.id);
-  if (pollIds.length > 0) {
-    const { data: allVoterTokens } = await admin
-      .from("votes")
-      .select("voter_token")
-      .in("poll_id", pollIds);
-    const uniqueCount = new Set((allVoterTokens ?? []).map((v) => v.voter_token)).size;
-    await realtimeBroadcast([{
-      channel: "sessionPolls",
-      id: sessionId,
-      event: "voter_count",
-      payload: { count: uniqueCount },
-    }]);
-  }
+  const uniqueCount = await countSessionVoters(admin, sessionId);
+  await realtimeBroadcast([{
+    channel: "sessionPolls",
+    id: sessionId,
+    event: "voter_count",
+    payload: { count: uniqueCount },
+  }]);
 
   if (voteLimit && voteLimit > 0) {
     const { count } = await admin
@@ -444,14 +415,18 @@ async function broadcastVoteEffects(
 }
 
 export async function submitVote(formData: FormData): Promise<{ error: string } | { success: true }> {
-  const ip = ((await headers()).get("x-forwarded-for") ?? "").split(",")[0].trim() || "unknown";
-  if (!checkRateLimit(`vote:${ip}`, 30, 60_000)) return { error: "Слишком много запросов. Подождите немного." };
-
-  const admin = createAdminClient();
-
+  // Parse before limiting: the limit is per voter token, and the token comes
+  // out of the form. Parsing touches no database and cannot be a load vector.
   const input = parseVoteInput(formData);
   if ("error" in input) return input;
   const { pollId, voterToken, value, parsedValues } = input;
+
+  // 20 votes/min is generous for one phone; 600/min per IP still fits a full
+  // hall behind one NAT while stopping a script that cycles through tokens.
+  const rate = await limitPerVoter("vote", voterToken, 20, 600);
+  if (!rate.ok) return { error: rate.error };
+
+  const admin = createAdminClient();
 
   const loaded = await loadPollForVote(admin, pollId, parsedValues);
   if ("error" in loaded) {

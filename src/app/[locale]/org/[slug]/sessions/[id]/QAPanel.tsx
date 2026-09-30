@@ -201,11 +201,12 @@ export function QAPanel({
   }, [pinnedId, sessionId, orgSlug]);
 
   async function handleAiSummary() {
-    const texts = questions.filter((q) => q.status !== "hidden").map((q) => q.text);
-    if (!texts.length) return;
+    // The texts are read server-side now — sending them from here would be
+    // handing a paid LLM whatever the client chose to put in the array.
+    if (!questions.some((q) => q.status !== "hidden")) return;
     setAiLoading(true);
     setAiSummary(null);
-    const result = await summarizeQuestions(texts);
+    const result = await summarizeQuestions(sessionId);
     setAiLoading(false);
     setAiSummary(result.summary ?? result.error ?? t("error"));
   }

@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getAuthUser, assertSessionMember } from "@/lib/actions/guards";
 import { isUuid } from "@/core/domain/ids";
 import { broadcast } from "@/core/realtime/broadcast.server";
+import { limitPerVoter } from "@/server/rateLimitKeys";
 
 function isValidUUID(s: string) { return isUuid(s); }
 
@@ -18,6 +19,10 @@ export async function registerParticipant(
   if (!isValidUUID(sessionId) || !isValidUUID(voterToken)) {
     return { error: "Некорректный запрос" };
   }
+
+  // Unlimited before: a script could flood a championship lobby with names.
+  const rate = await limitPerVoter("register", voterToken, 5, 200);
+  if (!rate.ok) return { error: rate.error };
 
   const trimmedName = name.trim();
   if (trimmedName.length < 2 || trimmedName.length > 20) {

@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { countSessionVoters } from "@/server/polls/voters";
 import { DisplayScreen } from "./DisplayScreen";
 import type { BrandingSettings } from "@/lib/actions/branding";
 
@@ -67,20 +68,7 @@ export default async function DisplayPage({
   }
   const { data: initialQuestionsData } = await questionsQuery;
 
-  // Count unique voters across all session polls
-  const { data: sessionPolls } = await admin
-    .from("polls")
-    .select("id")
-    .eq("session_id", session.id);
-  const pollIds = (sessionPolls ?? []).map((p) => p.id);
-  let initialJoinedCount = 0;
-  if (pollIds.length > 0) {
-    const { data: voterRows } = await admin
-      .from("votes")
-      .select("voter_token")
-      .in("poll_id", pollIds);
-    initialJoinedCount = new Set((voterRows ?? []).map((v) => v.voter_token)).size;
-  }
+  const initialJoinedCount = await countSessionVoters(admin, session.id);
 
   // Championship: load initial participant names for lobby
   let initialChampParticipants: string[] = [];

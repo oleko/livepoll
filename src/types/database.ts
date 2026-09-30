@@ -473,6 +473,14 @@ export type Database = {
         Args: { p_join_code: string }
         Returns: unknown
       }
+      count_session_voters: {
+        Args: { p_session_id: string }
+        Returns: number
+      }
+      has_voted_in_session: {
+        Args: { p_session_id: string; p_voter_token: string }
+        Returns: boolean
+      }
     }
     Enums: Record<string, never>
     CompositeTypes: Record<string, never>
