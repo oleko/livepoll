@@ -9,6 +9,7 @@ import { useTranslations } from "next-intl";
 import { useChannel } from "@/core/realtime/useChannel";
 import { useSessionSync } from "@/core/realtime/useSessionSync";
 import { useSessionState } from "@/core/realtime/useSessionState";
+import { classifyPollChange } from "@/core/realtime/pollChange";
 import { getVoterToken } from "@/core/identity/voterToken";
 import { ConnectionBanner } from "@/core/screens/ConnectionBanner";
 import { AnnouncementOverlay } from "@/core/screens/AnnouncementOverlay";
@@ -119,21 +120,34 @@ export function VoteInterface({
 
   const { send: sendPollEvent } = useChannel("sessionPolls", sessionId, {
     poll_change: (data) => {
-      if (data.type === "activated") {
-        setQuizReveal(null);
-        setMyVote(null);
-        setPoll(data.poll as unknown as PollData);
-        setVoted(false);
-        setQuestionsSubmitted(0);
-        setError(null);
-        setActiveSlide(null);
-        setQuestions([]);
-        setShowLeaderboard(false);
-      } else if (data.type === "closed") {
-        if (data.quiz_reveal) setQuizReveal(data.quiz_reveal);
-        setPoll((prev) => (prev?.id === data.poll_id ? null : prev));
-      } else if (data.type === "poll_updated") {
-        setPoll((prev) => (prev?.id === data.poll.id ? { ...prev, title: data.poll.title, options: data.poll.options } : prev));
+      const action = classifyPollChange(data);
+      switch (action.kind) {
+        case "activated":
+          setQuizReveal(null);
+          setMyVote(null);
+          setPoll(action.poll as unknown as PollData);
+          setVoted(false);
+          setQuestionsSubmitted(0);
+          setError(null);
+          setActiveSlide(null);
+          setQuestions([]);
+          setShowLeaderboard(false);
+          break;
+        case "closed":
+          // Unlike the projector, the phone drops the poll even when the host
+          // keeps results on screen — there is nothing left to vote on.
+          if (action.quizReveal) setQuizReveal(action.quizReveal);
+          setPoll((prev) => (prev?.id === action.pollId ? null : prev));
+          break;
+        case "updated":
+          // Was merging title+options only, so a mid-event settings change
+          // (max_answers, allow_revote) reached the projector but not phones.
+          setPoll((prev) => (prev?.id === action.poll.id ? { ...prev, ...(action.poll as unknown as PollData) } : prev));
+          break;
+        case "hidden":
+          // "Убрать с экрана" takes the poll off the projector only; the
+          // people already voting on it are deliberately left alone.
+          break;
       }
     },
     leaderboard: (payload) => {

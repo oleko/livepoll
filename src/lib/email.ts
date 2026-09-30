@@ -79,6 +79,7 @@ export async function sendFeedbackEmail({
         subject,
         html,
       }),
+      signal: AbortSignal.timeout(10_000),
     });
 
     if (!res.ok) {

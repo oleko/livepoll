@@ -42,6 +42,7 @@ export async function createYookassaPayment({
         description: `Kvoroom — тариф «${PLAN_DISPLAY_NAME[plan as keyof typeof PLAN_DISPLAY_NAME] ?? plan}» (1 месяц)`,
         metadata: { order_id: orderId, org_id: orgId, plan },
       }),
+      signal: AbortSignal.timeout(15_000),
     });
 
     if (!res.ok) return null;
@@ -68,6 +69,7 @@ export async function fetchYookassaPayment(paymentId: string): Promise<{
     const res = await fetch(`${BASE_URL}/payments/${paymentId}`, {
       headers: { "Authorization": authHeader() },
       cache: "no-store",
+      signal: AbortSignal.timeout(15_000),
     });
     if (!res.ok) return null;
     return await res.json() as { id: string; status: string; metadata?: Record<string, string> };

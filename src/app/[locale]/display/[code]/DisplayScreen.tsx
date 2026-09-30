@@ -11,6 +11,8 @@ import type { SlideType } from "@/lib/actions/slides";
 import { useChannel } from "@/core/realtime/useChannel";
 import { useSessionSync } from "@/core/realtime/useSessionSync";
 import { useSessionState } from "@/core/realtime/useSessionState";
+import { classifyPollChange } from "@/core/realtime/pollChange";
+import { pollDeadline, pollSecondsLeft } from "@/core/domain/pollTiming";
 import { pollModule } from "@/core/registry/polls";
 import { PollDisplayHost } from "@/core/screens/PollDisplayHost";
 import type { QuestionRow } from "@/core/domain/question";
@@ -132,31 +134,36 @@ export function DisplayScreen({
   // Broadcast: poll activated / closed
   useChannel("sessionPolls", session.id, {
     poll_change: (data) => {
-      if (data.type === "activated") {
-        setQuizReveal(null);
-        setPollEnded(false);
-        setSortByPopularity(false);
-        setPoll(data.poll as unknown as PollData);
-        setVotes([]);
-        setQuestions([]);
-        setActiveSlide(null);
-      } else if (data.type === "display_hidden") {
-        setPoll(null);
-        setPollEnded(false);
-      } else if (data.type === "closed") {
-        const reveal = data.quiz_reveal;
-        if (reveal) {
-          setQuizReveal(reveal);
-          setShowLeaderboard(true);
-          setTimeout(() => setShowLeaderboard(false), 7000);
-        } else if (data.show_result) {
-          setPollEnded(true);
-        } else {
+      const action = classifyPollChange(data);
+      switch (action.kind) {
+        case "activated":
           setQuizReveal(null);
-          setPoll((prev) => (prev?.id === data.poll_id ? null : prev));
-        }
-      } else if (data.type === "poll_updated") {
-        setPoll((prev) => (prev?.id === data.poll.id ? { ...prev, ...(data.poll as unknown as PollData) } : prev));
+          setPollEnded(false);
+          setSortByPopularity(false);
+          setPoll(action.poll as unknown as PollData);
+          setVotes([]);
+          setQuestions([]);
+          setActiveSlide(null);
+          break;
+        case "hidden":
+          setPoll(null);
+          setPollEnded(false);
+          break;
+        case "closed":
+          if (action.quizReveal) {
+            setQuizReveal(action.quizReveal);
+            setShowLeaderboard(true);
+            setTimeout(() => setShowLeaderboard(false), 7000);
+          } else if (action.showResult) {
+            setPollEnded(true);
+          } else {
+            setQuizReveal(null);
+            setPoll((prev) => (prev?.id === action.pollId ? null : prev));
+          }
+          break;
+        case "updated":
+          setPoll((prev) => (prev?.id === action.poll.id ? { ...prev, ...(action.poll as unknown as PollData) } : prev));
+          break;
       }
     },
     voter_count: (payload) => {
@@ -212,13 +219,12 @@ export function DisplayScreen({
     setTimeLeft(null);
 
     if (!poll) return;
-    const { duration, activated_at } = poll.settings ?? {};
-    if (!duration || !activated_at) return;
-
-    const endTime = new Date(activated_at).getTime() + duration * 1000;
+    if (pollDeadline(poll.settings) === null) return;
 
     const tick = () => {
-      const remaining = Math.max(0, Math.ceil((endTime - Date.now()) / 1000));
+      // Same deadline the server uses to refuse late votes, so the countdown
+      // shown in the room and the cut-off applied to phones agree.
+      const remaining = pollSecondsLeft(poll.settings)!;
       setTimeLeft(remaining);
       if (remaining === 0) {
         clearInterval(timerRef.current!);

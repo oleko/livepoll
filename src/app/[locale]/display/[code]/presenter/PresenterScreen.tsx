@@ -2,6 +2,10 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useChannel } from "@/core/realtime/useChannel";
+import { useSessionSync } from "@/core/realtime/useSessionSync";
+import { useSessionState } from "@/core/realtime/useSessionState";
+import { classifyPollChange } from "@/core/realtime/pollChange";
+import { ConnectionBanner } from "@/core/screens/ConnectionBanner";
 import { parseVoteValue } from "@/core/votes/parse";
 import { pollModule } from "@/core/registry/polls";
 import type { PollType } from "@/types/database";
@@ -77,22 +81,48 @@ export function PresenterScreen({
     return () => clearInterval(id);
   }, []);
 
+  // The host stares at this screen for the whole event, and until now it was
+  // the only live surface with neither a lost-connection banner nor any
+  // resync: one dropped socket and it silently showed a stale programme.
+  const { resync, stale } = useSessionState(session.join_code, (snapshot) => {
+    setActivePollId(snapshot.poll?.id ?? null);
+    currentPollRef.current = snapshot.poll?.id ?? null;
+    setActiveSlideId(snapshot.slide?.id ?? null);
+    setJoinedCount(snapshot.joined_count);
+    setQuestions(snapshot.questions.slice(0, 5));
+    // Counts are rebuilt from the stored votes rather than carried over from
+    // the incremental tally, which is what drifted across a disconnect.
+    const counts: Record<string, number> = {};
+    for (const v of snapshot.votes) {
+      for (const val of parseVoteValue(v.value)) counts[val] = (counts[val] ?? 0) + 1;
+    }
+    setVoteCounts(counts);
+  });
+  const { connected, handleStatus } = useSessionSync({ resync });
+
   useChannel("sessionPolls", session.id, {
     poll_change: (data) => {
-      if (data.type === "activated") {
-        setActivePollId(data.poll.id);
-        currentPollRef.current = data.poll.id;
-        setVoteCounts({});
-      } else if (data.type === "closed" || data.type === "display_hidden") {
-        setActivePollId(null);
-        currentPollRef.current = null;
-        setVoteCounts({});
+      const action = classifyPollChange(data);
+      switch (action.kind) {
+        case "activated":
+          setActivePollId(action.poll.id);
+          currentPollRef.current = action.poll.id;
+          setVoteCounts({});
+          break;
+        case "closed":
+        case "hidden":
+          setActivePollId(null);
+          currentPollRef.current = null;
+          setVoteCounts({});
+          break;
+        case "updated":
+          break;
       }
     },
     voter_count: (payload) => {
       setJoinedCount(payload.count);
     },
-  });
+  }, { onStatus: handleStatus });
 
   useChannel("sessionSlides", session.id, {
     slide_change: (data) => {
@@ -139,7 +169,11 @@ export function PresenterScreen({
   const sortedVotes = Object.entries(voteCounts).sort((a, b) => b[1] - a[1]).slice(0, 6);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white flex flex-col">
+    <div className="relative min-h-screen bg-slate-950 text-white flex flex-col">
+      {(!connected || stale) && (
+        <ConnectionBanner variant="prominent" message="Соединение потеряно — переподключение…" />
+      )}
+
       {/* ── Header ── */}
       <header className="border-b border-slate-800 px-6 py-3 flex items-center justify-between gap-4">
         <div className="flex items-center gap-3 min-w-0">

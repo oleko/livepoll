@@ -1,5 +1,6 @@
 import type { createAdminClient } from "@/lib/supabase/admin";
 import { isUuid } from "@/core/domain/ids";
+import { isPollExpired } from "@/core/domain/pollTiming";
 
 type Admin = ReturnType<typeof createAdminClient>;
 
@@ -38,14 +39,22 @@ export function parseVoteInput(formData: FormData): { error: string } | VoteInpu
   return { pollId, voterToken, value, parsedValues: [value] };
 }
 
-export type PollVoteSettings = { allow_revote?: boolean; vote_limit?: number; max_answers?: number };
+export type PollVoteSettings = {
+  allow_revote?: boolean;
+  vote_limit?: number;
+  max_answers?: number;
+  duration?: number;
+  activated_at?: string;
+};
 export type LoadedPollForVote = { sessionId: string | null; settings: PollVoteSettings | null; maxAnswers: number };
+/** `expired` tells submitVote to close the poll, not just refuse the vote. */
+export type VoteRejection = { error: string; expired?: true };
 
 export async function loadPollForVote(
   admin: Admin,
   pollId: string,
   parsedValues: string[]
-): Promise<{ error: string } | LoadedPollForVote> {
+): Promise<VoteRejection | LoadedPollForVote> {
   const { data: pollData } = await admin
     .from("polls")
     .select("type, status, settings, session_id")
@@ -61,6 +70,11 @@ export async function loadPollForVote(
   if (pollStatus !== "active") return { error: "Голосование завершено" };
 
   const settings = pollData?.settings as PollVoteSettings | null;
+
+  // Still flagged "active" but its time is up — the projector, which used to
+  // be the only thing that closed timed polls, is closed or asleep.
+  if (isPollExpired(settings)) return { error: "Время вышло", expired: true };
+
   const maxAnswers = settings?.max_answers ?? 1;
   if (parsedValues.length > maxAnswers) return { error: `Можно выбрать не более ${maxAnswers} вариантов` };
 

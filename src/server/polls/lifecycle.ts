@@ -39,6 +39,28 @@ export async function closeActivePoll(admin: Admin, sessionId: string): Promise<
   return prevActive ?? null;
 }
 
+/**
+ * Closes one poll whose timer has run out, from wherever we noticed — today
+ * that is a vote arriving after the deadline. Compare-and-set on
+ * `status = "active"` so that the projector's own countdown, the host's
+ * "завершить" button and this path cannot close the same poll twice and
+ * broadcast two `closed` events for it.
+ *
+ * Returns the session id when this call is the one that closed it, so the
+ * caller knows whether to broadcast.
+ */
+export async function closeExpiredPoll(admin: Admin, pollId: string): Promise<string | null> {
+  const { data: closedRows } = await admin
+    .from("polls")
+    .update({ status: "closed", closed_at: new Date().toISOString() } as never)
+    .eq("id", pollId)
+    .eq("status", "active")
+    .select("session_id");
+
+  const row = (closedRows ?? [])[0] as { session_id?: string } | undefined;
+  return row?.session_id ?? null;
+}
+
 export type ActivateTarget =
   | { kind: "id"; pollId: string }
   | { kind: "nextDraft"; type: PollType; requireQuizMode?: boolean };

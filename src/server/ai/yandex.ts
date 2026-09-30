@@ -37,6 +37,10 @@ export async function callYandex(
           { role: "user", text: userText },
         ],
       }),
+      // Generation is slow by nature, but a hung connection must not hold a
+      // server action open indefinitely — every caller already treats null as
+      // "no summary available".
+      signal: AbortSignal.timeout(20_000),
     });
     if (!res.ok) return null;
     const data = await res.json() as { result?: { alternatives?: { message?: { text?: string } }[] } };

@@ -11,7 +11,7 @@ import { checkRateLimit } from "@/lib/rateLimit";
 import { toPublicPoll } from "@/core/domain/poll";
 import { broadcast as realtimeBroadcast, type Message } from "@/core/realtime/broadcast.server";
 import { computeAndBroadcastLeaderboard } from "@/lib/actions/participants";
-import { closeActivePoll, activateTargetPoll } from "@/server/polls/lifecycle";
+import { closeActivePoll, activateTargetPoll, closeExpiredPoll } from "@/server/polls/lifecycle";
 import { parseVoteInput, loadPollForVote } from "@/server/polls/vote";
 
 type PollState = { error: string } | { success: true } | null;
@@ -454,7 +454,23 @@ export async function submitVote(formData: FormData): Promise<{ error: string } 
   const { pollId, voterToken, value, parsedValues } = input;
 
   const loaded = await loadPollForVote(admin, pollId, parsedValues);
-  if ("error" in loaded) return loaded;
+  if ("error" in loaded) {
+    // The poll's time ran out while nothing was watching. Close it here rather
+    // than leaving it "active" until someone reopens the projector, and tell
+    // the room so every screen moves on together.
+    if (loaded.expired) {
+      const expiredSessionId = await closeExpiredPoll(admin, pollId);
+      if (expiredSessionId) {
+        await realtimeBroadcast([{
+          channel: "sessionPolls",
+          id: expiredSessionId,
+          event: "poll_change",
+          payload: { type: "closed", poll_id: pollId, show_result: true },
+        }]);
+      }
+    }
+    return { error: loaded.error };
+  }
   const { sessionId, settings, maxAnswers } = loaded;
 
   if (sessionId) {

@@ -116,6 +116,32 @@ describe("loadPollForVote", () => {
       .toMatchObject({ sessionId: "s1", maxAnswers: 2 });
   });
 
+  // The projector used to be the only thing that closed a timed poll, so with
+  // it shut the poll stayed "active" and kept taking votes indefinitely.
+  it("refuses a vote after the timer has run out and asks for a close", async () => {
+    const expired = {
+      ...active,
+      settings: { duration: 30, activated_at: new Date(Date.now() - 60_000).toISOString() },
+    };
+    expect(await loadPollForVote(fakeAdmin([expired]), "p1", ["A"]))
+      .toEqual({ error: "Время вышло", expired: true });
+  });
+
+  it("still accepts a vote while the timer is running", async () => {
+    const running = {
+      ...active,
+      settings: { duration: 300, activated_at: new Date(Date.now() - 5_000).toISOString() },
+    };
+    expect(await loadPollForVote(fakeAdmin([running]), "p1", ["A"]))
+      .toMatchObject({ sessionId: "s1" });
+  });
+
+  it("never expires an untimed poll", async () => {
+    const untimed = { ...active, settings: { activated_at: new Date(0).toISOString() } };
+    expect(await loadPollForVote(fakeAdmin([untimed]), "p1", ["A"]))
+      .toMatchObject({ sessionId: "s1" });
+  });
+
   it("caps word length for word_cloud only", async () => {
     const cloud = { ...active, type: "word_cloud" };
     expect(await loadPollForVote(fakeAdmin([cloud]), "p1", ["w".repeat(51)]))
