@@ -84,13 +84,19 @@ jobs:
             pm2 reload livepoll --update-env || pm2 start ecosystem.config.js
             pm2 save
 
+      # Hits /api/health, not "/": the landing page renders fine while the
+      # database is unreachable, so it cannot tell a working release from a
+      # broken one. The endpoint answers 503 when the database does not.
+      # The window is generous because the box is memory-tight and the first
+      # requests after a reload are slow while the process warms up.
       - name: Health check
         run: |
-          for i in 1 2 3 4 5 6; do
-            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 https://kvoroom.ru/ || echo 000)
-            if [ "$code" = "200" ]; then echo "healthy (attempt $i)"; exit 0; fi
-            echo "attempt $i: HTTP $code"
-            sleep 10
+          for i in $(seq 1 10); do
+            body=$(curl -s --max-time 30 https://kvoroom.ru/api/health || echo '{}')
+            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 https://kvoroom.ru/api/health || echo 000)
+            if [ "$code" = "200" ]; then echo "healthy on attempt $i: $body"; exit 0; fi
+            echo "attempt $i: HTTP $code $body"
+            sleep 15
           done
-          echo "Site did not return 200 after deploy"
+          echo "Health check never returned 200 after deploy"
           exit 1
