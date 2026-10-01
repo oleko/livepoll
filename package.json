@@ -9,7 +9,10 @@
     "lint": "eslint",
     "test:unit": "vitest run",
     "test:e2e": "playwright test",
-    "db:types": "npx supabase gen types typescript --project-id $SUPABASE_PROJECT_ID > src/types/database.ts"
+    "db:types": "npx supabase gen types typescript --project-id $SUPABASE_PROJECT_ID > src/types/database.ts",
+    "qa:e2e": "playwright test --config playwright.qa.config.ts",
+    "typecheck": "tsc --noEmit",
+    "check:migrations": "node scripts/check-migrations.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
