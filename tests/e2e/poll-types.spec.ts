@@ -51,13 +51,15 @@ test.afterAll(async () => {
 /** Opens the participant screen and waits for the active poll to appear. */
 async function openParticipant(page: Page, title: string) {
   await page.goto(`/join/${fx.joinCode}`);
-  await expect(page.getByText(title, { exact: false })).toBeVisible({ timeout: 15_000 });
+  // Именно heading: подпись типа опроса на этих экранах содержит тот же
+  // текст, и getByText попадал в два элемента сразу.
+  await expect(page.getByRole("heading", { name: title })).toBeVisible({ timeout: 15_000 });
 }
 
 /** Opens the projector and waits for the active poll to appear. */
 async function openDisplay(page: Page, title: string) {
   await page.goto(`/display/${fx.joinCode}`);
-  await expect(page.getByText(title, { exact: false })).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByRole("heading", { name: title })).toBeVisible({ timeout: 15_000 });
 }
 
 test.describe("типы опросов — участник голосует, голос доходит до БД", () => {
@@ -66,7 +68,7 @@ test.describe("типы опросов — участник голосует, г
   // конкретном типе.
   test("multiple_choice принимает голос", async ({ page }) => {
     await activatePoll(admin, fx.sessionId, fx.polls.multiple_choice);
-    await openParticipant(page, "Множественный выбор");
+    await openParticipant(page, "[QA] Множественный выбор");
 
     await page.getByRole("button", { name: "Альфа" }).click();
 
@@ -76,7 +78,7 @@ test.describe("типы опросов — участник голосует, г
   // #17 — «облако слов не работает вообще»
   test("word_cloud принимает слово", async ({ page }) => {
     await activatePoll(admin, fx.sessionId, fx.polls.word_cloud);
-    await openParticipant(page, "Облако слов");
+    await openParticipant(page, "[QA] Облако слов");
 
     await page.getByPlaceholder("Введите слово или фразу...").fill("синергия");
     await page.getByRole("button", { name: "Отправить" }).click();
@@ -86,7 +88,7 @@ test.describe("типы опросов — участник голосует, г
 
   test("emoji_cloud принимает эмодзи", async ({ page }) => {
     await activatePoll(admin, fx.sessionId, fx.polls.emoji_cloud);
-    await openParticipant(page, "Облако эмодзи");
+    await openParticipant(page, "[QA] Облако эмодзи");
 
     await page.locator("button").filter({ hasText: /\p{Emoji}/u }).first().click();
 
@@ -97,10 +99,13 @@ test.describe("типы опросов — участник голосует, г
   // участникам без ручного обновления страницы»
   test("temperature принимает оценку", async ({ page }) => {
     await activatePoll(admin, fx.sessionId, fx.polls.temperature);
-    await openParticipant(page, "Шкала температуры");
+    await openParticipant(page, "[QA] Шкала температуры");
 
     await expect(page.getByText("Холодно")).toBeVisible();
-    await page.getByRole("button", { name: "5", exact: true }).click();
+    // Шкала — пять кнопок с эмодзи (TEMP_LABELS), а не с цифрами;
+    // значение 1..5 уходит из индекса кнопки. Берём ❄️: 🔥 на этом же
+    // экране занят кнопкой «Пульс конференции».
+    await page.getByRole("button", { name: "❄️" }).click();
 
     await expect.poll(() => countVotes(admin, fx.polls.temperature), { timeout: 15_000 }).toBe(1);
   });
@@ -108,7 +113,7 @@ test.describe("типы опросов — участник голосует, г
   // #14 — «экран на телефоне не меняется после голоса»
   test("like_dislike принимает голос", async ({ page }) => {
     await activatePoll(admin, fx.sessionId, fx.polls.like_dislike);
-    await openParticipant(page, "Лайк и дизлайк");
+    await openParticipant(page, "[QA] Лайк и дизлайк");
 
     await page.locator("button").filter({ hasText: "👍" }).first().click();
 
@@ -118,7 +123,7 @@ test.describe("типы опросов — участник голосует, г
   // #20 — «карту выбрать можно, дальше не реагирует на команды»
   test("planning_poker принимает карту", async ({ page }) => {
     await activatePoll(admin, fx.sessionId, fx.polls.planning_poker);
-    await openParticipant(page, "Planning Poker");
+    await openParticipant(page, "[QA] Planning Poker");
 
     await page.getByRole("button", { name: "8", exact: true }).click();
 
@@ -128,7 +133,7 @@ test.describe("типы опросов — участник голосует, г
   // #10 — «Q&A в целом работает плохо». Пишет в questions, не в votes.
   test("qa принимает вопрос", async ({ page }) => {
     await activatePoll(admin, fx.sessionId, fx.polls.qa);
-    await openParticipant(page, "Вопросы аудитории");
+    await openParticipant(page, "[QA] Вопросы аудитории");
 
     await page.getByPlaceholder("Введите ваш вопрос...").fill("Будет ли запись доклада?");
     await page.getByRole("button", { name: "Задать вопрос" }).click();
@@ -139,7 +144,7 @@ test.describe("типы опросов — участник голосует, г
   // #18 — «стена идей работает только в начале»
   test("idea_wall принимает идею", async ({ page }) => {
     await activatePoll(admin, fx.sessionId, fx.polls.idea_wall);
-    await openParticipant(page, "Стена идей");
+    await openParticipant(page, "[QA] Стена идей");
 
     await page.getByPlaceholder("Введите вашу идею...").fill("Ставить кофемашину ближе к залу");
     await page.getByRole("button", { name: "Отправить идею" }).click();
@@ -153,10 +158,10 @@ test.describe("проектор — показывает активный эле
   // актуального экрана». Ни одна активация здесь не рассылает событие, так
   // что пройти может только ресинк.
   for (const [type, title] of [
-    ["multiple_choice", "Множественный выбор"],
-    ["word_cloud", "Облако слов"],
-    ["temperature", "Шкала температуры"],
-    ["idea_wall", "Стена идей"],
+    ["multiple_choice", "[QA] Множественный выбор"],
+    ["word_cloud", "[QA] Облако слов"],
+    ["temperature", "[QA] Шкала температуры"],
+    ["idea_wall", "[QA] Стена идей"],
   ] as const) {
     test(`проектор поднимает активный ${type}`, async ({ page }) => {
       await activatePoll(admin, fx.sessionId, fx.polls[type]);
@@ -169,7 +174,7 @@ test.describe("проектор — показывает активный эле
   // присоединения вместо результатов»
   test("закрытый опрос не возвращает проектор к заставке с QR", async ({ page }) => {
     await activatePoll(admin, fx.sessionId, fx.polls.multiple_choice);
-    await openDisplay(page, "Множественный выбор");
+    await openDisplay(page, "[QA] Множественный выбор");
 
     await closePoll(admin, fx.polls.multiple_choice);
     await page.reload();
@@ -183,14 +188,23 @@ test.describe("проектор — показывает активный эле
 test.describe("отказ в голосовании", () => {
   test("голос в закрытый опрос не принимается", async ({ page }) => {
     await activatePoll(admin, fx.sessionId, fx.polls.multiple_choice);
-    await openParticipant(page, "Множественный выбор");
+    await openParticipant(page, "[QA] Множественный выбор");
+
+    // Опросы в наборе переиспользуются, и к этому моменту в этом уже есть
+    // голос из первого теста — сравниваем с тем, что было, а не с нулём.
+    const before = await countVotes(admin, fx.polls.multiple_choice);
 
     // Опрос закрывается, когда телефон этого уже не узнает — ровно тот
     // случай, который раньше дописывал голос в подведённый опрос.
     await closePoll(admin, fx.polls.multiple_choice);
     await page.getByRole("button", { name: "Бета" }).click();
 
-    await expect(page.getByText("Голосование завершено", { exact: false })).toBeVisible({ timeout: 15_000 });
-    await expect.poll(() => countVotes(admin, fx.polls.multiple_choice)).toBe(0);
+    // Жёсткий контракт: голос не должен попасть в закрытый опрос.
+    await expect.poll(() => countVotes(admin, fx.polls.multiple_choice), { timeout: 15_000 }).toBe(before);
+
+    // И участник не должен получить «попробуйте снова» — повторять
+    // здесь нечего, опрос закрыт. Именно это сообщение показывалось
+    // раньше на любой отказ, кроме «вы уже проголосовали».
+    await expect(page.getByText("попробуйте снова", { exact: false })).toHaveCount(0);
   });
 });

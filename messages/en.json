@@ -32,17 +32,29 @@
       "poll": {
         "title": "Engage the room",
         "desc": "8 real-time poll formats: from mood temperature to Planning Poker. Participants vote by QR code without installing any app.",
-        "tags": ["8 formats", "Quiz + leaderboard", "Moderated Q&A"]
+        "tags": [
+          "8 formats",
+          "Quiz + leaderboard",
+          "Moderated Q&A"
+        ]
       },
       "screen": {
         "title": "Control the screen",
         "desc": "Splash slides, speaker cards, schedules, Spin Wheel, and announcements — all displayed on the projector with one click from the host panel.",
-        "tags": ["7 screen types", "Spin Wheel", "Announcements"]
+        "tags": [
+          "7 screen types",
+          "Spin Wheel",
+          "Announcements"
+        ]
       },
       "ai": {
         "title": "Analyse the results",
         "desc": "YandexGPT surfaces key themes from hundreds of questions in seconds. After the event, hit 'AI Summary': 3–5 sentences with insights from all polls.",
-        "tags": ["AI Q&A analysis", "AI summary", "PDF/CSV export"]
+        "tags": [
+          "AI Q&A analysis",
+          "AI summary",
+          "PDF/CSV export"
+        ]
       }
     },
     "ai": {
@@ -79,19 +91,49 @@
       "heading2": "and prize giveaways",
       "desc": "Control what the room sees without leaving the host panel. Slides launch with one click next to polls in a unified lineup.",
       "items": [
-        { "title": "Splash screen", "desc": "Event name, date and venue while the audience gathers" },
-        { "title": "Speaker card", "desc": "Photo, title, topic — automatically displayed before they take the stage" },
-        { "title": "Schedule", "desc": "Current block highlighted, past blocks crossed out" },
-        { "title": "Spin Wheel", "desc": "Prize draw or random participant selection in 3 seconds" }
+        {
+          "title": "Splash screen",
+          "desc": "Event name, date and venue while the audience gathers"
+        },
+        {
+          "title": "Speaker card",
+          "desc": "Photo, title, topic — automatically displayed before they take the stage"
+        },
+        {
+          "title": "Schedule",
+          "desc": "Current block highlighted, past blocks crossed out"
+        },
+        {
+          "title": "Spin Wheel",
+          "desc": "Prize draw or random participant selection in 3 seconds"
+        }
       ],
       "lineupTitle": "Event lineup",
       "lineupItems": [
-        { "label": "Splash screen", "badge": "screen" },
-        { "label": "How would you rate the talk?", "badge": "poll" },
-        { "label": "Next speaker", "badge": "screen" },
-        { "label": "Questions for the speaker", "badge": "Q&A" },
-        { "label": "Prize draw", "badge": "wheel" },
-        { "label": "Final screen", "badge": "screen" }
+        {
+          "label": "Splash screen",
+          "badge": "screen"
+        },
+        {
+          "label": "How would you rate the talk?",
+          "badge": "poll"
+        },
+        {
+          "label": "Next speaker",
+          "badge": "screen"
+        },
+        {
+          "label": "Questions for the speaker",
+          "badge": "Q&A"
+        },
+        {
+          "label": "Prize draw",
+          "badge": "wheel"
+        },
+        {
+          "label": "Final screen",
+          "badge": "screen"
+        }
       ]
     },
     "quiz": {
@@ -130,14 +172,38 @@
       "heading": "8 poll formats",
       "desc": "For any scenario: from room mood to team planning",
       "types": [
-        { "label": "Multiple choice", "desc": "Live bar chart, quiz mode, up to 5 answer options" },
-        { "label": "Word cloud", "desc": "Free-text answers: popular words appear larger" },
-        { "label": "Temperature scale", "desc": "Audience mood from cold to hot" },
-        { "label": "Emoji cloud", "desc": "One-tap emotional reaction from the room" },
-        { "label": "Like / Dislike", "desc": "Quick binary reaction: yes or no" },
-        { "label": "Planning Poker", "desc": "Estimate tasks without authority bias" },
-        { "label": "Q&A", "desc": "Moderated questions with upvotes and AI analysis" },
-        { "label": "Idea wall", "desc": "Colorful idea cards in real time" }
+        {
+          "label": "Multiple choice",
+          "desc": "Live bar chart, quiz mode, up to 5 answer options"
+        },
+        {
+          "label": "Word cloud",
+          "desc": "Free-text answers: popular words appear larger"
+        },
+        {
+          "label": "Temperature scale",
+          "desc": "Audience mood from cold to hot"
+        },
+        {
+          "label": "Emoji cloud",
+          "desc": "One-tap emotional reaction from the room"
+        },
+        {
+          "label": "Like / Dislike",
+          "desc": "Quick binary reaction: yes or no"
+        },
+        {
+          "label": "Planning Poker",
+          "desc": "Estimate tasks without authority bias"
+        },
+        {
+          "label": "Q&A",
+          "desc": "Moderated questions with upvotes and AI analysis"
+        },
+        {
+          "label": "Idea wall",
+          "desc": "Colorful idea cards in real time"
+        }
       ]
     },
     "howItWorks": {
@@ -169,7 +235,13 @@
           "price": "₽0",
           "period": "forever",
           "desc": "For getting started",
-          "features": ["Up to 30 participants", "3 events per month", "5 polls per session", "All 8 poll formats", "QR code + display screen"],
+          "features": [
+            "Up to 30 participants",
+            "3 events per month",
+            "5 polls per session",
+            "All 8 poll formats",
+            "QR code + display screen"
+          ],
           "cta": "Get started free"
         },
         {
@@ -177,7 +249,13 @@
           "price": "₽490",
           "period": "/month",
           "desc": "For one-off talks",
-          "features": ["Up to 100 participants", "Unlimited events", "10 polls per session", "CSV / PNG export", "Event templates"],
+          "features": [
+            "Up to 100 participants",
+            "Unlimited events",
+            "10 polls per session",
+            "CSV / PNG export",
+            "Event templates"
+          ],
           "cta": "Choose Starter"
         },
         {
@@ -185,7 +263,13 @@
           "price": "₽990",
           "period": "/month",
           "desc": "For regular events",
-          "features": ["Up to 500 participants", "Unlimited polls", "✨ AI analysis & AI summary", "Slides & presentations", "Timer & vote limits"],
+          "features": [
+            "Up to 500 participants",
+            "Unlimited polls",
+            "✨ AI analysis & AI summary",
+            "Slides & presentations",
+            "Timer & vote limits"
+          ],
           "cta": "Try Pro"
         },
         {
@@ -193,7 +277,13 @@
           "price": "₽2,490",
           "period": "/month",
           "desc": "For agencies & enterprises",
-          "features": ["Unlimited participants", "Up to 5 hosts", "White label", "Everything in Pro", "Priority support"],
+          "features": [
+            "Unlimited participants",
+            "Up to 5 hosts",
+            "White label",
+            "Everything in Pro",
+            "Priority support"
+          ],
           "cta": "Contact us"
         }
       ]
@@ -284,7 +374,12 @@
       "yourScore": "Your score",
       "pts": "pts",
       "correct": "correct"
-    }
+    },
+    "votingClosed": "Voting has ended",
+    "timeUp": "Time is up",
+    "participantLimit": "Participant limit reached",
+    "tooManyRequests": "Too fast — please wait a moment",
+    "questionLimit": "You have already asked a question"
   },
   "Display": {
     "joinLink": "Go to:",

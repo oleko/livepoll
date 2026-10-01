@@ -5,10 +5,11 @@ import { getAuthUser, assertSessionMember } from "@/lib/actions/guards";
 import { revalidatePath } from "next/cache";
 import { limitPerVoter } from "@/server/rateLimitKeys";
 import { isUuid } from "@/core/domain/ids";
+import { voteError, type VoteError } from "@/core/domain/voteErrors";
 import { broadcast as realtimeBroadcast } from "@/core/realtime/broadcast.server";
 import type { QuestionRow } from "@/core/domain/question";
 
-export async function submitQuestion(formData: FormData) {
+export async function submitQuestion(formData: FormData): Promise<VoteError | { success: true }> {
   const admin = createAdminClient();
 
   const sessionId = formData.get("session_id") as string;
@@ -18,20 +19,26 @@ export async function submitQuestion(formData: FormData) {
   // Was keyed on IP alone, so one shared venue connection capped the whole
   // room at 15 questions a minute between them.
   const rate = await limitPerVoter("question", voterToken, 8, 300);
-  if (!rate.ok) return { error: rate.error };
+  if (!rate.ok) return voteError(rate.code, rate.error);
   const text = (formData.get("text") as string)?.trim();
 
-  if (!sessionId || !voterToken || !text) return { error: "Неверные данные" };
-  if (!isUuid(voterToken)) return { error: "Неверные данные" };
-  if (text.length > 300) return { error: "Вопрос слишком длинный (максимум 300 символов)" };
+  if (!sessionId || !voterToken || !text) return voteError("invalid", "Неверные данные");
+  if (!isUuid(voterToken)) return voteError("invalid", "Неверные данные");
+  if (text.length > 300) return voteError("invalid", "Вопрос слишком длинный (максимум 300 символов)");
 
   // Check per-voter question limit (idea_wall is exempt — unlimited ideas per voter)
   if (pollId) {
     const { data: pollData } = await admin
       .from("polls")
-      .select("settings, type")
+      .select("settings, type, status")
       .eq("id", pollId)
       .single();
+    if (!pollData) return voteError("not_found", "Опрос не найден");
+    // Same gap submitVote had: a phone that missed the close broadcast could
+    // keep adding questions to a poll the host had already finished with.
+    if ((pollData as unknown as { status?: string }).status !== "active") {
+      return voteError("closed", "Приём вопросов завершён");
+    }
     if (pollData?.type !== "idea_wall") {
       const maxQ = (pollData?.settings as { max_questions?: number } | null)?.max_questions ?? 1;
       const { count } = await admin
@@ -39,7 +46,7 @@ export async function submitQuestion(formData: FormData) {
         .select("id", { count: "exact", head: true })
         .eq("session_id", sessionId)
         .eq("voter_token", voterToken);
-      if ((count ?? 0) >= maxQ) return { error: "Лимит вопросов исчерпан" };
+      if ((count ?? 0) >= maxQ) return voteError("question_limit", "Лимит вопросов исчерпан");
     }
   }
 
@@ -49,7 +56,10 @@ export async function submitQuestion(formData: FormData) {
     .select("id, text, status, upvotes, poll_id")
     .single();
 
-  if (error) return { error: error.message };
+  if (error) {
+    console.error("[submitQuestion]", error.code, error.message);
+    return voteError("failed", "Не удалось отправить");
+  }
 
   await realtimeBroadcast([{
     channel: "sessionQuestions",

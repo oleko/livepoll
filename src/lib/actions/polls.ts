@@ -13,6 +13,7 @@ import { computeAndBroadcastLeaderboard } from "@/lib/actions/participants";
 import { closeActivePoll, activateTargetPoll, closeExpiredPoll } from "@/server/polls/lifecycle";
 import { parseVoteInput, loadPollForVote } from "@/server/polls/vote";
 import { countSessionVoters, hasVotedInSession } from "@/server/polls/voters";
+import { voteError, type VoteError } from "@/core/domain/voteErrors";
 
 type PollState = { error: string } | { success: true } | null;
 
@@ -308,7 +309,7 @@ async function checkParticipantLimit(
   admin: ReturnType<typeof createAdminClient>,
   sessionId: string,
   voterToken: string
-): Promise<{ error: string } | null> {
+): Promise<VoteError | null> {
   if (await hasVotedInSession(admin, sessionId, voterToken)) return null;
 
   const { data: sess } = await admin
@@ -323,7 +324,7 @@ async function checkParticipantLimit(
 
   const uniqueCount = await countSessionVoters(admin, sessionId);
   if (uniqueCount >= limits.maxParticipants) {
-    return { error: `Достигнут лимит участников для текущего тарифа (${limits.maxParticipants})` };
+    return voteError("participant_limit", `Достигнут лимит участников для текущего тарифа (${limits.maxParticipants})`);
   }
   return null;
 }
@@ -335,7 +336,7 @@ async function recordVote(
   value: string,
   allowRevote: boolean,
   maxAnswers: number
-): Promise<{ error: string } | { isRevote: boolean }> {
+): Promise<VoteError | { isRevote: boolean }> {
   if (allowRevote && maxAnswers === 1) {
     const { data: existing } = await admin
       .from("votes")
@@ -361,14 +362,20 @@ async function recordVote(
     }
 
     const { error } = await admin.from("votes").insert({ poll_id: pollId, voter_token: voterToken, value });
-    if (error) return { error: error.message };
+    if (error) {
+      console.error("[recordVote/revote-insert]", error.code, error.message);
+      return voteError("failed", "Не удалось сохранить голос");
+    }
     await realtimeBroadcast([{ channel: "pollVotes", id: pollId, event: "vote", payload: { value, ts: voterToken.slice(0, 6) } }]);
     return { isRevote: false };
   }
 
   const { error } = await admin.from("votes").insert({ poll_id: pollId, voter_token: voterToken, value });
-  if (error?.code === "23505") return { error: "Вы уже проголосовали" };
-  if (error) return { error: error.message };
+  if (error?.code === "23505") return voteError("already_voted", "Вы уже проголосовали");
+  if (error) {
+    console.error("[recordVote/insert]", error.code, error.message);
+    return voteError("failed", "Не удалось сохранить голос");
+  }
   await realtimeBroadcast([{ channel: "pollVotes", id: pollId, event: "vote", payload: { value, ts: voterToken.slice(0, 6) } }]);
   return { isRevote: false };
 }
@@ -414,7 +421,7 @@ async function broadcastVoteEffects(
   }
 }
 
-export async function submitVote(formData: FormData): Promise<{ error: string } | { success: true }> {
+export async function submitVote(formData: FormData): Promise<VoteError | { success: true }> {
   // Parse before limiting: the limit is per voter token, and the token comes
   // out of the form. Parsing touches no database and cannot be a load vector.
   const input = parseVoteInput(formData);
@@ -424,7 +431,7 @@ export async function submitVote(formData: FormData): Promise<{ error: string } 
   // 20 votes/min is generous for one phone; 600/min per IP still fits a full
   // hall behind one NAT while stopping a script that cycles through tokens.
   const rate = await limitPerVoter("vote", voterToken, 20, 600);
-  if (!rate.ok) return { error: rate.error };
+  if (!rate.ok) return voteError(rate.code, rate.error);
 
   const admin = createAdminClient();
 
@@ -444,7 +451,7 @@ export async function submitVote(formData: FormData): Promise<{ error: string } 
         }]);
       }
     }
-    return { error: loaded.error };
+    return voteError(loaded.code, loaded.error);
   }
   const { sessionId, settings, maxAnswers } = loaded;
 

@@ -15,7 +15,7 @@ export async function clientIp(): Promise<string> {
   return ((await headers()).get("x-forwarded-for") ?? "").split(",")[0].trim() || "unknown";
 }
 
-export type RateVerdict = { ok: true } | { ok: false; error: string };
+export type RateVerdict = { ok: true } | { ok: false; error: string; code: "rate_limited" };
 
 const TOO_MANY = "Слишком много запросов. Подождите немного.";
 
@@ -26,11 +26,11 @@ export async function limitPerVoter(
   perIpPerMinute: number
 ): Promise<RateVerdict> {
   if (!checkRateLimit(`${action}:token:${voterToken}`, perVoterPerMinute, 60_000)) {
-    return { ok: false, error: TOO_MANY };
+    return { ok: false, error: TOO_MANY, code: "rate_limited" as const };
   }
   const ip = await clientIp();
   if (!checkRateLimit(`${action}:ip:${ip}`, perIpPerMinute, 60_000)) {
-    return { ok: false, error: TOO_MANY };
+    return { ok: false, error: TOO_MANY, code: "rate_limited" as const };
   }
   return { ok: true };
 }
@@ -38,7 +38,7 @@ export async function limitPerVoter(
 /** For authenticated actions: the account is the natural budget holder. */
 export function limitPerUser(action: string, userId: string, perMinute: number): RateVerdict {
   if (!checkRateLimit(`${action}:user:${userId}`, perMinute, 60_000)) {
-    return { ok: false, error: TOO_MANY };
+    return { ok: false, error: TOO_MANY, code: "rate_limited" as const };
   }
   return { ok: true };
 }

@@ -49,35 +49,35 @@ describe("parseVoteInput", () => {
 
   it("rejects a non-uuid voter token", () => {
     expect(parseVoteInput(fd({ poll_id: "p1", voter_token: "not-a-uuid", value: "Да" })))
-      .toEqual({ error: "Неверные данные" });
+      .toEqual({ error: "Неверные данные", code: "invalid" });
   });
 
   it("rejects missing fields", () => {
     expect(parseVoteInput(fd({ poll_id: "p1", voter_token: TOKEN, value: "   " })))
-      .toEqual({ error: "Неверные данные" });
+      .toEqual({ error: "Неверные данные", code: "invalid" });
   });
 
   it("rejects malformed JSON that looks like an array", () => {
     expect(parseVoteInput(fd({ poll_id: "p1", voter_token: TOKEN, value: '["A"' })))
-      .toEqual({ error: "Неверные данные" });
+      .toEqual({ error: "Неверные данные", code: "invalid" });
   });
 
   it("rejects an empty array", () => {
     expect(parseVoteInput(fd({ poll_id: "p1", voter_token: TOKEN, value: "[]" })))
-      .toEqual({ error: "Неверные данные" });
+      .toEqual({ error: "Неверные данные", code: "invalid" });
   });
 
   it("caps scalar length at 500 and payload length at 2000", () => {
     expect(parseVoteInput(fd({ poll_id: "p1", voter_token: TOKEN, value: "x".repeat(501) })))
-      .toEqual({ error: "Слишком длинный ответ" });
+      .toEqual({ error: "Слишком длинный ответ", code: "invalid" });
     expect(parseVoteInput(fd({ poll_id: "p1", voter_token: TOKEN, value: "x".repeat(2001) })))
-      .toEqual({ error: "Слишком длинный ответ" });
+      .toEqual({ error: "Слишком длинный ответ", code: "invalid" });
   });
 
   it("caps each element of a multi-answer array at 200", () => {
     const value = JSON.stringify(["ok", "y".repeat(201)]);
     expect(parseVoteInput(fd({ poll_id: "p1", voter_token: TOKEN, value })))
-      .toEqual({ error: "Неверные данные" });
+      .toEqual({ error: "Неверные данные", code: "invalid" });
   });
 });
 
@@ -94,24 +94,24 @@ describe("loadPollForVote", () => {
   it("refuses a closed poll", async () => {
     const closed = { ...active, status: "closed" };
     expect(await loadPollForVote(fakeAdmin([closed]), "p1", ["A"]))
-      .toEqual({ error: "Голосование завершено" });
+      .toEqual({ error: "Голосование завершено", code: "closed" });
   });
 
   it("refuses a draft poll", async () => {
     const draft = { ...active, status: "draft" };
     expect(await loadPollForVote(fakeAdmin([draft]), "p1", ["A"]))
-      .toEqual({ error: "Голосование завершено" });
+      .toEqual({ error: "Голосование завершено", code: "closed" });
   });
 
   it("refuses a poll that does not exist", async () => {
     expect(await loadPollForVote(fakeAdmin([]), "missing", ["A"]))
-      .toEqual({ error: "Опрос не найден" });
+      .toEqual({ error: "Опрос не найден", code: "not_found" });
   });
 
   it("enforces max_answers", async () => {
     const multi = { ...active, settings: { max_answers: 2 } };
     expect(await loadPollForVote(fakeAdmin([multi]), "p1", ["A", "B", "C"]))
-      .toEqual({ error: "Можно выбрать не более 2 вариантов" });
+      .toEqual({ error: "Можно выбрать не более 2 вариантов", code: "too_many_answers" });
     expect(await loadPollForVote(fakeAdmin([multi]), "p1", ["A", "B"]))
       .toMatchObject({ sessionId: "s1", maxAnswers: 2 });
   });
@@ -124,7 +124,7 @@ describe("loadPollForVote", () => {
       settings: { duration: 30, activated_at: new Date(Date.now() - 60_000).toISOString() },
     };
     expect(await loadPollForVote(fakeAdmin([expired]), "p1", ["A"]))
-      .toEqual({ error: "Время вышло", expired: true });
+      .toEqual({ error: "Время вышло", code: "expired", expired: true });
   });
 
   it("still accepts a vote while the timer is running", async () => {
@@ -145,7 +145,7 @@ describe("loadPollForVote", () => {
   it("caps word length for word_cloud only", async () => {
     const cloud = { ...active, type: "word_cloud" };
     expect(await loadPollForVote(fakeAdmin([cloud]), "p1", ["w".repeat(51)]))
-      .toEqual({ error: "Слишком длинное слово" });
+      .toEqual({ error: "Слишком длинное слово", code: "invalid" });
     expect(await loadPollForVote(fakeAdmin([active]), "p1", ["w".repeat(51)]))
       .toMatchObject({ sessionId: "s1" });
   });

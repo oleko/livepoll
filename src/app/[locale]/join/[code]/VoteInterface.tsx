@@ -9,6 +9,7 @@ import { useTranslations } from "next-intl";
 import { useChannel } from "@/core/realtime/useChannel";
 import { useSessionSync } from "@/core/realtime/useSessionSync";
 import { useSessionState } from "@/core/realtime/useSessionState";
+import type { VoteErrorCode } from "@/core/domain/voteErrors";
 import { classifyPollChange } from "@/core/realtime/pollChange";
 import { getVoterToken } from "@/core/identity/voterToken";
 import { ConnectionBanner } from "@/core/screens/ConnectionBanner";
@@ -83,6 +84,21 @@ export function VoteInterface({
   });
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Один перевод отказа на оба пути отправки. Раньше голос показывал
+  // «попробуйте снова» на всё, кроме «уже проголосовали» — то есть
+  // участнику закрытого опроса предлагали повторить попытку, — а вопрос
+  // наоборот отрисовывал сообщение сервера как есть.
+  const errorText = (code: VoteErrorCode): string => {
+    switch (code) {
+      case "already_voted":     return t("alreadyVoted");
+      case "closed":            return t("votingClosed");
+      case "expired":           return t("timeUp");
+      case "participant_limit": return t("participantLimit");
+      case "rate_limited":      return t("tooManyRequests");
+      case "question_limit":    return t("questionLimit");
+      default:                  return t("errorRetry");
+    }
+  };
   const [sessionEnded, setSessionEnded] = useState(false);
   const [farewell, setFarewell] = useState<string | null>(null);
   const [pulseFlash, setPulseFlash] = useState(false);
@@ -238,7 +254,7 @@ export function VoteInterface({
     const result = await submitVote(fd);
     setIsPending(false);
     if ("error" in result) {
-      setError(result.error === "Вы уже проголосовали" ? t("alreadyVoted") : t("errorRetry"));
+      setError(errorText(result.code));
     } else {
       setVoted(true);
       try { localStorage.setItem(`voted_${poll.id}`, "1"); } catch {}
@@ -259,8 +275,10 @@ export function VoteInterface({
     fd.append("text", text);
     const result = await submitQuestion(fd);
     setIsPending(false);
-    if (result?.error) {
-      setError(result.error);
+    if ("error" in result) {
+      // Was rendering result.error verbatim, which on the insert path was the
+      // raw Postgres message.
+      setError(errorText(result.code));
     } else {
       setQuestionsSubmitted((n) => n + 1);
     }
