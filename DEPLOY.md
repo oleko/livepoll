@@ -164,3 +164,68 @@ systemctl reload nginx
 - [ ] Добавить production URL в Supabase Auth: Dashboard → Authentication → URL Configuration → Site URL + Redirect URLs
 - [ ] Настроить Яндекс OAuth: добавить `https://ваш-домен/auth/callback` в OAuth-приложение (см. `YANDEX_OAUTH.md`)
 - [ ] Проверить что `NEXT_PUBLIC_SITE_URL` совпадает с реальным URL
+
+---
+
+## 10. Миграции БД: учёт и автоприменение
+
+До сих пор миграции применялись вручную через Supabase Dashboard → SQL Editor, а учёта применённого не было. Из-за этого состояние прода нельзя проверить по репозиторию — и за одну сессию нашлись **две RLS-политики, которые существуют в проде и не описаны ни одной миграцией**. Ещё два случая: миграция 018 отработала вхолостую (искала условие, которого не было), а в 020 `grant execute` ничего не сузил, потому что в Postgres EXECUTE на новую функцию по умолчанию принадлежит `PUBLIC` — нужен явный `REVOKE`. Оба раза ошибку выдала только внешняя проверка, не сам факт «миграция применилась без ошибок».
+
+Ниже — разовая настройка, после которой GitHub Actions применяет недостающие миграции сам.
+
+### 10.1. Разовая настройка (локально, один раз)
+
+```bash
+# 1. Токен доступа: Supabase Dashboard → Account → Access Tokens
+export SUPABASE_ACCESS_TOKEN=sbp_...
+
+# 2. Связать репозиторий с проектом (project-ref виден в URL дашборда)
+npx supabase link --project-ref ikucuostgfsmetztzzup
+
+# 3. Посмотреть, что CLI считает применённым (на чистом проекте — ничего)
+npx supabase migration list
+```
+
+**Критический шаг.** Прод получил миграции 001–021 вручную, поэтому в журнале их нет. Если этого не исправить, `db push` попытается применить их заново и упадёт. Отметить все как применённые, НЕ выполняя их:
+
+```bash
+npx supabase migration repair --status applied 001 002 003 004 005 006 007 008 009 010 \
+                                                011 012 013 014 015 016 017 018 019 020 021
+npx supabase migration list   # теперь все должны быть помечены applied
+```
+
+### 10.2. Включить автоприменение в CI
+
+Добавить в **Settings → Secrets and variables → Actions**:
+
+| Секрет | Значение |
+|---|---|
+| `SUPABASE_ACCESS_TOKEN` | токен из шага 10.1 |
+| `SUPABASE_PROJECT_ID` | `ikucuostgfsmetztzzup` |
+| `SUPABASE_DB_PASSWORD` | пароль БД (Dashboard → Settings → Database) |
+| `SUPABASE_MIGRATIONS_ENABLED` | `true` |
+
+Шаг `Apply database migrations` в `.github/workflows/deploy.yml` пропускается, пока последнего секрета нет — то есть до завершения шага 10.1 ничего не произойдёт. После включения он выполняется **до** деплоя: упавшая миграция остановит релиз.
+
+### 10.3. Правила для новых миграций
+
+- **Миграция должна применяться повторно без ошибок.** Это проверяет `node scripts/check-migrations.mjs`, он же шаг CI: `create table/index if not exists`, `add column if not exists`, `create or replace function`, `drop ... if exists`, а перед `create policy` — обязательный `drop policy if exists`.
+- 15 старых файлов в этот список не входят: в них 57 неповторяемых операций, и переписывать их без тестовой БД — значит получить нерабочий сценарий восстановления ровно в тот момент, когда он понадобится. Задача отдельная, делать её вместе с подъёмом staging.
+- **Выдавая права на функцию, сначала `revoke ... from public`.** Иначе `grant to service_role` не сужает ничего (см. `021_revoke_public_execute.sql`).
+- **После применения — проверять снаружи, а не доверять «ошибок не было».** Быстрый способ увидеть реальные права анонима:
+
+```bash
+# таблицы: ожидаем пустой ответ
+curl -s "$NEXT_PUBLIC_SUPABASE_URL/rest/v1/sessions?select=id&limit=1" \
+  -H "apikey: $NEXT_PUBLIC_SUPABASE_ANON_KEY"
+
+# функции: вызывать с ПРАВИЛЬНЫМИ именованными параметрами —
+# иначе PostgREST отвечает PGRST202 и для существующей функции тоже
+curl -s -X POST "$NEXT_PUBLIC_SUPABASE_URL/rest/v1/rpc/count_session_voters" \
+  -H "apikey: $NEXT_PUBLIC_SUPABASE_ANON_KEY" -H "Content-Type: application/json" \
+  -d '{"p_session_id":"<uuid>"}'   # ожидаем 42501 permission denied
+```
+
+### 10.4. Чего `config.toml` не делает
+
+Файл сгенерирован `supabase init` и описывает **локальный** стек (порты, auth, storage). `db push` использует из него только `project_id` и каталог миграций. Не запускать `supabase config push` — он перезапишет настройки боевого проекта значениями из этого файла, которых никто не сверял с продом.

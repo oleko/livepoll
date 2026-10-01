@@ -61,6 +61,7 @@ drop policy if exists "Кто угодно видит и добавляет upvo
 -- 2. Ветка «любой в активной сессии» в polls-политике 001.
 --    Пересоздаём политику, оставив только членов организации.
 drop policy if exists "Видят опросы члены org или участники активной сессии" on public.polls;
+drop policy if exists "Члены org видят опросы" on public.polls;
 create policy "Члены org видят опросы"
   on public.polls for select
   using (
