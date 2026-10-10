@@ -6,6 +6,7 @@ import Link from "next/link";
 import { PollList } from "./PollList";
 import { CreationTabs } from "./CreationTabs";
 import { QAPanel } from "./QAPanel";
+import { ActiveItemPanel } from "./ActiveItemPanel";
 import type { SlideRow } from "@/lib/actions/slides";
 import type { Poll } from "@/types/database";
 
@@ -99,10 +100,12 @@ export function SessionLayout({
             role="tab"
             aria-selected={activeTab === tab.id}
             onClick={() => switchTab(tab.id)}
+            // Inactive label was slate-400 on white — 2.6:1, below AA. A tab
+            // label is not decoration: you have to read it to navigate.
             className={`mr-6 pb-2.5 pt-0.5 text-sm font-bold whitespace-nowrap border-b-2 -mb-px transition-colors duration-150 ${
               activeTab === tab.id
                 ? "text-slate-900 dark:text-white border-indigo-500"
-                : "text-slate-400 dark:text-slate-500 border-transparent hover:text-slate-600 dark:hover:text-slate-300"
+                : "text-slate-500 dark:text-slate-400 border-transparent hover:text-slate-700 dark:hover:text-slate-200"
             }`}
           >
             {tab.label}
@@ -142,19 +145,15 @@ export function SessionLayout({
             )}
           </div>
 
-          {/* Right: empty state panel */}
-          <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 flex flex-col gap-3 items-start h-fit">
-            <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 flex items-center justify-center shrink-0">
-              <div className="w-3.5 h-3.5 rounded border-2 border-indigo-400 dark:border-indigo-500" />
-            </div>
-            <div>
-              <p className="text-sm font-bold text-slate-900 dark:text-white">{t("emptyTitle")}</p>
-              <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{t("emptyDesc")}</p>
-            </div>
-            <p className="text-xs font-semibold text-slate-400 dark:text-slate-600 mt-1">
-              {t("totalVotes", { count: totalVotes })}
-            </p>
-          </div>
+          {/* Right: whatever the room is looking at right now */}
+          <ActiveItemPanel
+            polls={polls}
+            slides={slides}
+            activeSlideId={activeSlideId}
+            votesByPoll={votesByPoll}
+            votesDataByPoll={votesDataByPoll}
+            totalVotes={totalVotes}
+          />
 
         </div>
       )}
@@ -193,10 +192,17 @@ export function SessionLayout({
           )}
 
           {/* Slide-in panel */}
+          {/* Closed, it was only moved off-screen: still in the tab order and
+              still announced by screen readers, so a keyboard user walking the
+              page fell into a form that is not on screen. `inert` takes the
+              whole subtree out of focus and the accessibility tree, while
+              keeping the slide-out transition (unmounting would cut it). */}
           <div
             role="dialog"
             aria-modal="true"
             aria-label={t("drawerTitle")}
+            aria-hidden={!drawerOpen}
+            inert={!drawerOpen}
             className={`fixed top-0 right-0 h-full w-full max-w-[440px] z-50 flex flex-col bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 shadow-2xl transition-transform duration-300 ease-in-out ${
               drawerOpen ? "translate-x-0 animate-drawer-in" : "translate-x-full pointer-events-none"
             }`}

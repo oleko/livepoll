@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { createPoll } from "@/lib/actions/polls";
 import { Button } from "@/components/ui/Button";
@@ -45,6 +45,7 @@ export function NewPollForm({
   const [showTemplates, setShowTemplates] = useState(false);
   const [activeCategory, setActiveCategory] = useState(POLL_TEMPLATE_CATEGORIES[0].id);
   const [state, action, isPending] = useActionState(createPoll, null);
+  const typeRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   // Start the next poll from a blank slate instead of leaving the last
   // one's fields behind — matches AddSlidePanel's reset-after-create.
@@ -62,6 +63,24 @@ export function NewPollForm({
 
   const parsedOptions = optionsText.split("\n").map((o) => o.trim()).filter(Boolean);
   const selectedType = POLL_TYPES.find((pt) => pt.value === type)!;
+
+  function selectType(value: PollType) {
+    setType(value);
+    // Quiz mode only exists for multiple_choice; leaving it set while the type
+    // changes would submit a correct answer for a poll that has no options.
+    if (value !== "multiple_choice") setQuizMode(false);
+  }
+
+  // Two-column grid: left/right step by one, up/down by two, both wrapping.
+  function onTypeKeyDown(e: React.KeyboardEvent, index: number) {
+    const step = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: 2, ArrowUp: -2 }[e.key];
+    if (step === undefined) return;
+    e.preventDefault();
+    const n = POLL_TYPES.length;
+    const next = (index + step + n) % n;
+    selectType(POLL_TYPES[next].value);
+    typeRefs.current[next]?.focus();
+  }
 
   function applyTemplate(tpl: typeof POLL_TEMPLATE_CATEGORIES[number]["templates"][number]) {
     setType(tpl.type);
@@ -150,27 +169,34 @@ export function NewPollForm({
         </DialogContent>
       </Dialog>
 
-      {/* — Type picker: icon grid — */}
+      {/* — Type picker: icon grid as a real radio group —
+          Eight plain buttons meant eight tab stops before the question field,
+          and nothing told assistive tech that the choice is exclusive. As a
+          radiogroup it is one stop, arrows move within it (the grid is two
+          columns, so left/right step by one and up/down by two), and the
+          selected cell reports itself. */}
       <div className="flex flex-col gap-1.5">
-        <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+        <span id="poll-type-label" className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
           {t("typeLabel")}
-        </label>
-        <div className="grid grid-cols-2 gap-1.5">
-          {POLL_TYPES.map((pt) => (
+        </span>
+        <div role="radiogroup" aria-labelledby="poll-type-label" className="grid grid-cols-2 gap-1.5">
+          {POLL_TYPES.map((pt, i) => (
             <button
               key={pt.value}
               type="button"
-              onClick={() => {
-                setType(pt.value);
-                if (pt.value !== "multiple_choice") setQuizMode(false);
-              }}
+              role="radio"
+              aria-checked={type === pt.value}
+              tabIndex={type === pt.value ? 0 : -1}
+              ref={(el) => { typeRefs.current[i] = el; }}
+              onKeyDown={(e) => onTypeKeyDown(e, i)}
+              onClick={() => selectType(pt.value)}
               className={`flex items-center gap-2 px-2.5 py-2 rounded-lg border text-left transition-colors ${
                 type === pt.value
                   ? "border-indigo-600 bg-indigo-50 dark:bg-indigo-950/30 text-slate-900 dark:text-white"
                   : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-600 hover:text-slate-900 dark:hover:text-white"
               }`}
             >
-              <span className="text-base leading-none shrink-0">{pt.icon}</span>
+              <span className="text-base leading-none shrink-0" aria-hidden="true">{pt.icon}</span>
               <span className="text-xs font-semibold leading-tight">{tShared(`pollTypeLabel.${pt.value}`)}</span>
             </button>
           ))}

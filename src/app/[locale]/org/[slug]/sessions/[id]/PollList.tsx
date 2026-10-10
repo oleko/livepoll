@@ -352,7 +352,7 @@ const EDIT_WINDOW_MS = 10 * 60 * 1000;
 
 // ─── PollResults ─────────────────────────────────────────────────────────────
 
-function PollResults({ poll, valueCounts, total }: { poll: PollRow; valueCounts: Record<string, number>; total: number }) {
+export function PollResults({ poll, valueCounts, total }: { poll: PollRow; valueCounts: Record<string, number>; total: number }) {
   const t = useTranslations("Org.session.pollList");
   const tRoot = useTranslations() as unknown as Translator;
   if (total === 0) return <p className="text-xs text-slate-400 dark:text-slate-600 mt-2">{t("noVotes")}</p>;
