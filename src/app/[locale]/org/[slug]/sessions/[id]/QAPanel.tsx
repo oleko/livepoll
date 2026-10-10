@@ -315,7 +315,7 @@ export function QAPanel({
             </DialogTitle>
             <DialogClose
               className="rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 w-8 h-8 flex items-center justify-center transition-colors text-lg"
-              title={t("closeTitle")}
+              aria-label={t("closeTitle")} title={t("closeTitle")}
             >
               ×
             </DialogClose>

@@ -159,7 +159,7 @@ function SlideLineupCard({
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
         {/* info row */}
         <div className="flex items-center gap-3 flex-1 min-w-0">
-          <DotsSixVertical size={16} weight="bold" className="text-slate-300 dark:text-slate-600 shrink-0 select-none" aria-hidden="true" />
+          <DotsSixVertical size={16} weight="bold" className="text-slate-500 dark:text-slate-400 shrink-0 select-none" aria-hidden="true" />
           <SlideTypeIcon type={slide.type} size={20} weight="duotone" className="shrink-0 text-indigo-500 dark:text-indigo-400" />
           <div className="flex-1 min-w-0">
             <p className="font-medium text-sm truncate text-slate-900 dark:text-white">{m.content.preview(slide.content, tRoot)}</p>
@@ -189,13 +189,13 @@ function SlideLineupCard({
               {sections.map(s => <option key={s.id} value={s.id}>{s.title}</option>)}
             </select>
           )}
-          <Button variant="ghost" size="sm" onClick={() => setPreviewOpen(true)} disabled={pending} title={t("previewTitle")}>
+          <Button variant="ghost" size="sm" onClick={() => setPreviewOpen(true)} disabled={pending} aria-label={t("previewTitle")} title={t("previewTitle")}>
             <Eye size={15} weight="bold" aria-hidden="true" />
           </Button>
-          <Button variant="ghost" size="sm" onClick={() => setEditing(v => !v)} disabled={pending} title={t("editTitle")}>
+          <Button variant="ghost" size="sm" onClick={() => setEditing(v => !v)} aria-expanded={editing} disabled={pending} aria-label={t("editTitle")} title={t("editTitle")}>
             <PencilSimple size={15} weight="bold" aria-hidden="true" />
           </Button>
-          <Button variant="ghost" size="sm" disabled={pending} title={t("duplicateTitle")} onClick={async () => {
+          <Button variant="ghost" size="sm" disabled={pending} aria-label={t("duplicateTitle")} title={t("duplicateTitle")} onClick={async () => {
             setPending(true);
             await duplicateSlide(slide.id, sessionId, orgSlug);
             router.refresh();
@@ -273,7 +273,7 @@ function CopyPollButton({
 
   return (
     <div className="relative" ref={ref}>
-      <button type="button" onClick={() => setOpen(v => !v)} title={t("copyToOtherEvent")}
+      <button type="button" onClick={() => setOpen(v => !v)} aria-expanded={open} aria-label={t("copyToOtherEvent")} title={t("copyToOtherEvent")}
         className="rounded-lg border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 bg-white dark:bg-slate-900 px-2 py-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors text-xs"
       ><Copy size={14} weight="bold" aria-hidden="true" /></button>
       {open && (
@@ -466,7 +466,7 @@ function PollCard({
             {/* info row */}
             <div className="flex items-center gap-3 flex-1 min-w-0">
               {!isEnded && (
-                <span className="text-slate-300 dark:text-slate-600 text-base leading-none shrink-0 cursor-grab select-none" title={t("dragToSection")}>
+                <span className="text-slate-500 dark:text-slate-400 text-base leading-none shrink-0 cursor-grab select-none" title={t("dragToSection")}>
                   
                 </span>
               )}
@@ -489,7 +489,7 @@ function PollCard({
             {/* actions row */}
             <div className="flex items-center gap-1.5 flex-wrap shrink-0">
               {canEdit && (
-                <Button variant="ghost" size="sm" onClick={() => onStartEdit(poll)} title={t("editWindowTitle")}>
+                <Button variant="ghost" size="sm" onClick={() => onStartEdit(poll)} aria-label={t("editWindowTitle")} title={t("editWindowTitle")}>
                   <PencilSimple size={15} weight="bold" aria-hidden="true" />
                 </Button>
               )}
@@ -533,7 +533,7 @@ function PollCard({
                 </Button>
               )}
               {isClosed && voteCount > 0 && (
-                <Button variant="ghost" size="sm" title={t("downloadCsvTitle")} onClick={() => downloadPollCSV(poll, valueCounts, voteCount)}>
+                <Button variant="ghost" size="sm" aria-label={t("downloadCsvTitle")} title={t("downloadCsvTitle")} onClick={() => downloadPollCSV(poll, valueCounts, voteCount)}>
                   {t("downloadCsv")}
                 </Button>
               )}
@@ -640,7 +640,7 @@ function SectionHeader({
             <button
               type="button"
               onClick={() => setCopyOpen(v => !v)}
-              title={t("copySectionTitle")}
+              aria-label={t("copySectionTitle")} title={t("copySectionTitle")}
               className="text-[11px] text-slate-300 dark:text-slate-600 hover:text-indigo-500 dark:hover:text-indigo-400 px-0.5 shrink-0 transition-colors"
             ><Copy size={14} weight="bold" aria-hidden="true" /></button>
             {copyOpen && (
@@ -672,10 +672,10 @@ function SectionHeader({
               </div>
             )}
           </div>
-          <button type="button" onClick={() => setEditing(true)} title={t("renameSectionTitle")}
+          <button type="button" onClick={() => setEditing(true)} aria-label={t("renameSectionTitle")} title={t("renameSectionTitle")}
             className="text-slate-300 dark:text-slate-600 hover:text-slate-500 dark:hover:text-slate-400 px-0.5 shrink-0 transition-colors"
           ><PencilSimple size={13} weight="bold" aria-hidden="true" /></button>
-          <button type="button" onClick={handleDelete} disabled={isPending} title={t("deleteSectionTitle")}
+          <button type="button" onClick={handleDelete} disabled={isPending} aria-label={t("deleteSectionTitle")} title={t("deleteSectionTitle")}
             className="text-[11px] text-slate-300 dark:text-slate-600 hover:text-red-400 dark:hover:text-red-500 px-0.5 shrink-0 transition-colors disabled:opacity-40"
           ><X size={13} weight="bold" aria-hidden="true" /></button>
         </>
