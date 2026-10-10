@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
+import { BookOpen, X } from "@phosphor-icons/react";
 import { useTranslations } from "next-intl";
 import { createPoll } from "@/lib/actions/polls";
 import { Button } from "@/components/ui/Button";
@@ -116,7 +117,7 @@ export function NewPollForm({
         onClick={() => setShowTemplates(true)}
         className="flex items-center gap-1.5 text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-300 transition-colors self-start"
       >
-        <span>📚</span>
+        <BookOpen size={14} weight="bold" aria-hidden="true" />
         {t("templateTrigger")}
       </button>
 
@@ -126,7 +127,7 @@ export function NewPollForm({
           <DialogHeader>
             <DialogTitle>{t("templateModalTitle")}</DialogTitle>
             <DialogClose className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 text-lg leading-none w-7 h-7 flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-              ✕
+              <X size={14} weight="bold" aria-hidden="true" />
             </DialogClose>
           </DialogHeader>
 

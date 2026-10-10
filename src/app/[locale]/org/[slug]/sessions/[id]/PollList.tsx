@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition, useEffect, useRef } from "react";
-import { SlideTypeIcon } from "@/core/screens/TypeIcon";
+import { PollTypeIcon, SlideTypeIcon } from "@/core/screens/TypeIcon";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { activatePoll, closePoll, clearPollResult, copyPoll, updatePoll, showPollOnDisplay, hidePollFromDisplay, reorderPolls } from "@/lib/actions/polls";
@@ -10,7 +10,7 @@ import { movePollSection, createSection, deleteSection, renameSection, copySecti
 import { showSlide, hideSlide, deleteSlide, duplicateSlide, updateSlide, reorderSlides, moveSlideToSection } from "@/lib/actions/slides";
 import { revealPoker } from "@/lib/actions/sessions";
 import { Button } from "@/components/ui/Button";
-import { EditIcon } from "@/components/icons";
+import { DotsSixVertical, Eye, PencilSimple, Copy, X, Check } from "@phosphor-icons/react";
 import { Dialog, DialogRawContent } from "@/components/ui/Dialog";
 import { SlideView } from "@/app/[locale]/display/[code]/SlideView";
 import { slideRegistry } from "@/core/registry/slides";
@@ -90,7 +90,7 @@ function SlidePreviewModal({ slide, onClose }: { slide: SlideRow; onClose: () =>
           <button
             onClick={onClose}
             className="absolute -top-3 -right-3 h-7 w-7 rounded-full bg-slate-700 text-white text-xs flex items-center justify-center hover:bg-slate-600 transition-colors"
-          >✕</button>
+          ><X size={13} weight="bold" aria-hidden="true" /></button>
           <p className="mt-2 text-center text-xs text-slate-400">
             {t(m.meta.labelKey)} — {m.content.preview(slide.content, t)}
           </p>
@@ -159,7 +159,7 @@ function SlideLineupCard({
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
         {/* info row */}
         <div className="flex items-center gap-3 flex-1 min-w-0">
-          <span className="text-slate-300 dark:text-slate-600 text-base leading-none shrink-0 select-none">⠿</span>
+          <DotsSixVertical size={16} weight="bold" className="text-slate-300 dark:text-slate-600 shrink-0 select-none" aria-hidden="true" />
           <SlideTypeIcon type={slide.type} size={20} weight="duotone" className="shrink-0 text-indigo-500 dark:text-indigo-400" />
           <div className="flex-1 min-w-0">
             <p className="font-medium text-sm truncate text-slate-900 dark:text-white">{m.content.preview(slide.content, tRoot)}</p>
@@ -190,17 +190,17 @@ function SlideLineupCard({
             </select>
           )}
           <Button variant="ghost" size="sm" onClick={() => setPreviewOpen(true)} disabled={pending} title={t("previewTitle")}>
-            👁
+            <Eye size={15} weight="bold" aria-hidden="true" />
           </Button>
           <Button variant="ghost" size="sm" onClick={() => setEditing(v => !v)} disabled={pending} title={t("editTitle")}>
-            <EditIcon size={13} />
+            <PencilSimple size={15} weight="bold" aria-hidden="true" />
           </Button>
           <Button variant="ghost" size="sm" disabled={pending} title={t("duplicateTitle")} onClick={async () => {
             setPending(true);
             await duplicateSlide(slide.id, sessionId, orgSlug);
             router.refresh();
             setPending(false);
-          }}>⎘</Button>
+          }}><Copy size={15} weight="bold" aria-hidden="true" /></Button>
           {m.hostActions?.filter(a => !a.whenActive || isActive).map((action) => (
             <Button key={action.id} size="sm" className="bg-indigo-600 hover:bg-indigo-500" disabled={pending} onClick={async () => {
               setPending(true);
@@ -214,7 +214,7 @@ function SlideLineupCard({
             <Button size="sm" onClick={handleShow} disabled={pending}>{t("show")}</Button>
           )}
           <Button variant="ghost" size="sm" onClick={handleDelete} disabled={pending} className="hover:text-red-500 dark:hover:text-red-400">
-            ✕
+            <X size={13} weight="bold" aria-hidden="true" />
           </Button>
         </div>
       </div>
@@ -275,7 +275,7 @@ function CopyPollButton({
     <div className="relative" ref={ref}>
       <button type="button" onClick={() => setOpen(v => !v)} title={t("copyToOtherEvent")}
         className="rounded-lg border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 bg-white dark:bg-slate-900 px-2 py-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors text-xs"
-      >⎘</button>
+      ><Copy size={14} weight="bold" aria-hidden="true" /></button>
       {open && (
         <div className="absolute right-0 top-full mt-1 z-20 w-60 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl overflow-hidden">
           <p className="px-3 py-2 text-[11px] font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800">{t("copyTo")}</p>
@@ -290,7 +290,7 @@ function CopyPollButton({
                 className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors disabled:opacity-50"
               >
                 <span className="text-sm text-slate-700 dark:text-slate-300 truncate pr-2">{t("noSection")}</span>
-                {done === sessionId ? <span className="text-xs font-semibold text-green-500 shrink-0">✓</span>
+                {done === sessionId ? <Check size={13} weight="bold" className="text-green-500 shrink-0" aria-hidden="true" />
                   : pending === sessionId ? <span className="text-xs text-slate-400 shrink-0">…</span> : null}
               </button>
               {sections.map(s => {
@@ -299,8 +299,8 @@ function CopyPollButton({
                   <button key={s.id} type="button" disabled={!!pending} onClick={() => handle(sessionId, s.id)}
                     className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors disabled:opacity-50 pl-5"
                   >
-                    <span className="text-sm text-slate-700 dark:text-slate-300 truncate pr-2">↳ {s.title}</span>
-                    {done === key ? <span className="text-xs font-semibold text-green-500 shrink-0">✓</span>
+                    <span className="text-sm text-slate-700 dark:text-slate-300 truncate pr-2">{s.title}</span>
+                    {done === key ? <Check size={13} weight="bold" className="text-green-500 shrink-0" aria-hidden="true" />
                       : pending === key ? <span className="text-xs text-slate-400 shrink-0">…</span> : null}
                   </button>
                 );
@@ -315,7 +315,7 @@ function CopyPollButton({
               className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors disabled:opacity-50"
             >
               <span className="text-sm text-slate-700 dark:text-slate-300 truncate pr-2">{t("copyToThisEvent")}</span>
-              {done === sessionId ? <span className="text-xs font-semibold text-green-500 shrink-0">✓</span>
+              {done === sessionId ? <Check size={13} weight="bold" className="text-green-500 shrink-0" aria-hidden="true" />
                 : pending === sessionId ? <span className="text-xs text-slate-400 shrink-0">…</span> : null}
             </button>
           )}
@@ -328,7 +328,7 @@ function CopyPollButton({
                   className="w-full flex items-center justify-between px-3 py-2.5 text-left hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors disabled:opacity-50"
                 >
                   <span className="text-sm text-slate-700 dark:text-slate-300 truncate pr-2">{target.title}</span>
-                  {done === target.id ? <span className="text-xs font-semibold text-green-500 shrink-0">✓</span>
+                  {done === target.id ? <Check size={13} weight="bold" className="text-green-500 shrink-0" aria-hidden="true" />
                     : pending === target.id ? <span className="text-xs text-slate-400 shrink-0">…</span>
                     : <span className="text-[11px] text-slate-400 shrink-0">{tShared(`sessionStatus.${target.status}`)}</span>}
                 </button>
@@ -342,12 +342,6 @@ function CopyPollButton({
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-
-const TYPE_ICON: Record<Poll["type"], string> = {
-  multiple_choice: "📊", temperature: "🌡️", qa: "❓",
-  like_dislike: "👍", word_cloud: "☁️", emoji_cloud: "😊", planning_poker: "🃏",
-  idea_wall: "💡",
-};
 
 const EDIT_WINDOW_MS = 10 * 60 * 1000;
 
@@ -473,10 +467,10 @@ function PollCard({
             <div className="flex items-center gap-3 flex-1 min-w-0">
               {!isEnded && (
                 <span className="text-slate-300 dark:text-slate-600 text-base leading-none shrink-0 cursor-grab select-none" title={t("dragToSection")}>
-                  ⠿
+                  
                 </span>
               )}
-              <span className="text-xl shrink-0">{TYPE_ICON[poll.type]}</span>
+                <PollTypeIcon type={poll.type} size={20} weight="duotone" className="shrink-0 text-indigo-500 dark:text-indigo-400" />
               <div className="flex-1 min-w-0">
                 <p className={`font-medium text-sm truncate ${isClosed && !isEnded ? "text-slate-400 dark:text-slate-500" : "text-slate-900 dark:text-white"}`}>
                   {poll.title}
@@ -496,7 +490,7 @@ function PollCard({
             <div className="flex items-center gap-1.5 flex-wrap shrink-0">
               {canEdit && (
                 <Button variant="ghost" size="sm" onClick={() => onStartEdit(poll)} title={t("editWindowTitle")}>
-                  <EditIcon size={13} />
+                  <PencilSimple size={15} weight="bold" aria-hidden="true" />
                 </Button>
               )}
               {sessionStatus === "active" && (
@@ -632,8 +626,8 @@ function SectionHeader({
             autoFocus
             className="flex-1 min-w-0 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 py-0.5 text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wide focus:outline-none focus:ring-1 focus:ring-indigo-500"
           />
-          <button type="button" onClick={save} className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline shrink-0">✓</button>
-          <button type="button" onClick={() => { setTitle(section.title); setEditing(false); }} className="text-xs text-slate-400 hover:text-slate-600 shrink-0">✕</button>
+          <button type="button" onClick={save} className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline shrink-0"><Check size={14} weight="bold" aria-hidden="true" /></button>
+          <button type="button" onClick={() => { setTitle(section.title); setEditing(false); }} className="text-xs text-slate-400 hover:text-slate-600 shrink-0"><X size={13} weight="bold" aria-hidden="true" /></button>
         </>
       ) : (
         <>
@@ -648,7 +642,7 @@ function SectionHeader({
               onClick={() => setCopyOpen(v => !v)}
               title={t("copySectionTitle")}
               className="text-[11px] text-slate-300 dark:text-slate-600 hover:text-indigo-500 dark:hover:text-indigo-400 px-0.5 shrink-0 transition-colors"
-            >⎘</button>
+            ><Copy size={14} weight="bold" aria-hidden="true" /></button>
             {copyOpen && (
               <div className="absolute right-0 top-full mt-1 z-30 w-52 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl overflow-hidden">
                 <p className="px-3 py-2 text-[11px] font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800">
@@ -667,7 +661,7 @@ function SectionHeader({
                   >
                     <span className="text-sm text-slate-700 dark:text-slate-300 truncate pr-2">{target.title}</span>
                     {copyDone === target.id
-                      ? <span className="text-xs font-semibold text-green-500 shrink-0">✓</span>
+                      ? <Check size={13} weight="bold" className="text-green-500 shrink-0" aria-hidden="true" />
                       : copyPending === target.id
                         ? <span className="text-xs text-slate-400 shrink-0">…</span>
                         : target.status === "current"
@@ -680,10 +674,10 @@ function SectionHeader({
           </div>
           <button type="button" onClick={() => setEditing(true)} title={t("renameSectionTitle")}
             className="text-slate-300 dark:text-slate-600 hover:text-slate-500 dark:hover:text-slate-400 px-0.5 shrink-0 transition-colors"
-          ><EditIcon size={12} /></button>
+          ><PencilSimple size={13} weight="bold" aria-hidden="true" /></button>
           <button type="button" onClick={handleDelete} disabled={isPending} title={t("deleteSectionTitle")}
             className="text-[11px] text-slate-300 dark:text-slate-600 hover:text-red-400 dark:hover:text-red-500 px-0.5 shrink-0 transition-colors disabled:opacity-40"
-          >✕</button>
+          ><X size={13} weight="bold" aria-hidden="true" /></button>
         </>
       )}
     </div>
@@ -768,7 +762,7 @@ function AddSectionBar({
             </button>
             <button type="button" onClick={() => setOpen(false)}
               className="rounded-lg border border-slate-200 dark:border-slate-700 px-2 py-1.5 text-xs text-slate-400 hover:text-slate-600 transition-colors"
-            >✕</button>
+            ><X size={13} weight="bold" aria-hidden="true" /></button>
           </div>
         </div>
       )}

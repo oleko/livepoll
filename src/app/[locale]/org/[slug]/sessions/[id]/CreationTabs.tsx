@@ -1,6 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { ChartBar, Monitor, Trophy } from "@phosphor-icons/react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/Tabs";
 import { NewPollForm } from "./NewPollForm";
 import { AddSlidePanel } from "./AddSlidePanel";
@@ -38,9 +39,20 @@ export function CreationTabs({
   return (
     <Tabs defaultValue={isQuiz ? "slide" : "poll"}>
       <TabsList className="mb-5">
-        {!isQuiz && <TabsTrigger value="poll">{t("pollTab")}</TabsTrigger>}
-        <TabsTrigger value="slide">{t("slideTab")}</TabsTrigger>
-        <TabsTrigger value="quiz">{t("quizTab")}</TabsTrigger>
+        {!isQuiz && (
+          <TabsTrigger value="poll">
+            <ChartBar size={15} weight="bold" aria-hidden="true" />
+            {t("pollTab")}
+          </TabsTrigger>
+        )}
+        <TabsTrigger value="slide">
+          <Monitor size={15} weight="bold" aria-hidden="true" />
+          {t("slideTab")}
+        </TabsTrigger>
+        <TabsTrigger value="quiz">
+          <Trophy size={15} weight="bold" aria-hidden="true" />
+          {t("quizTab")}
+        </TabsTrigger>
       </TabsList>
 
       {!isQuiz && (

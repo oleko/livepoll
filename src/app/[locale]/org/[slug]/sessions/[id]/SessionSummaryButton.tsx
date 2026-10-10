@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { X } from "@phosphor-icons/react";
 import { useTranslations } from "next-intl";
 import { generateSessionSummary } from "@/lib/actions/ai";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/Dialog";
@@ -36,8 +37,8 @@ export function SessionSummaryButton({ sessionId }: { sessionId: string }) {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{t("title")}</DialogTitle>
-            <DialogClose className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 w-7 h-7 flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-lg">
-              ✕
+            <DialogClose className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 w-7 h-7 flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+              <X size={14} weight="bold" aria-hidden="true" />
             </DialogClose>
           </DialogHeader>
 

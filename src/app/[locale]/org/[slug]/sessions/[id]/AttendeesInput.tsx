@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { Users } from "@phosphor-icons/react";
 import { setAttendees } from "@/lib/actions/sessions";
 
 export function AttendeesInput({
@@ -38,7 +39,7 @@ export function AttendeesInput({
 
   return (
     <div className="flex items-center gap-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-1 py-0.5">
-      <span className="text-[11px] text-slate-400 dark:text-slate-500 pl-1.5 pr-0.5 select-none">👥</span>
+      <Users size={13} weight="bold" className="text-slate-400 dark:text-slate-500 ml-1.5 mr-0.5 shrink-0" aria-hidden="true" />
       <button
         onClick={() => update(count - 1)}
         className="w-5 h-5 rounded text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 text-xs flex items-center justify-center transition-colors"

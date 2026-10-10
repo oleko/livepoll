@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { FilePdf, Printer } from "@phosphor-icons/react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/Button";
 
@@ -283,7 +284,7 @@ ${questionsHtml}
             onClick={exportCSV}
             className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-left"
           >
-            <span>📄</span>
+            <FilePdf size={14} weight="bold" aria-hidden="true" />
             <div>
               <p className="font-medium leading-tight">{t("csvLabel")}</p>
               <p className="text-xs text-slate-400">{t("csvDesc")}</p>
@@ -294,7 +295,7 @@ ${questionsHtml}
             onClick={exportPDF}
             className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-left border-t border-slate-100 dark:border-slate-800"
           >
-            <span>🖨️</span>
+            <Printer size={14} weight="bold" aria-hidden="true" />
             <div>
               <p className="font-medium leading-tight">{t("pdfLabel")}</p>
               <p className="text-xs text-slate-400">{t("pdfDesc")}</p>

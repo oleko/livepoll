@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Monitor, Microphone, DeviceMobile } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { MaxIcon } from "@/components/icons";
@@ -113,7 +114,7 @@ export function SessionConnectPanel({
   const screens = [
     {
       href: displayUrl,
-      icon: "🖥",
+      Icon: Monitor,
       label: t("projector"),
       desc: t("projectorDesc"),
       accent: "group-hover:border-indigo-300 dark:group-hover:border-indigo-700 group-hover:bg-indigo-50/60 dark:group-hover:bg-indigo-900/20",
@@ -121,7 +122,7 @@ export function SessionConnectPanel({
     },
     {
       href: presenterUrl,
-      icon: "🎤",
+      Icon: Microphone,
       label: t("presenter"),
       desc: t("presenterDesc"),
       accent: "group-hover:border-indigo-300 dark:group-hover:border-indigo-700 group-hover:bg-indigo-50/60 dark:group-hover:bg-indigo-900/20",
@@ -129,7 +130,7 @@ export function SessionConnectPanel({
     },
     {
       href: joinUrl,
-      icon: "📱",
+      Icon: DeviceMobile,
       label: t("participant"),
       desc: t("participantDesc"),
       accent: "group-hover:border-emerald-300 dark:group-hover:border-emerald-700 group-hover:bg-emerald-50/60 dark:group-hover:bg-emerald-900/20",
@@ -177,7 +178,7 @@ export function SessionConnectPanel({
               title={s.label}
               className="flex items-center justify-center w-7 h-7 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-base hover:border-slate-300 dark:hover:border-slate-600 hover:bg-white dark:hover:bg-slate-700 transition-colors"
             >
-              {s.icon}
+              <s.Icon size={15} weight="bold" className="text-slate-600 dark:text-slate-300" aria-hidden="true" />
             </Link>
           ))}
         </div>
@@ -232,7 +233,7 @@ export function SessionConnectPanel({
                     target="_blank"
                     className={`group flex flex-col items-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 px-2 py-3.5 text-center transition-all duration-150 ${s.accent}`}
                   >
-                    <span className="text-xl">{s.icon}</span>
+                    <s.Icon size={22} weight="duotone" className="text-slate-500 dark:text-slate-400" aria-hidden="true" />
                     <div className="flex items-center gap-1">
                       <span className={`text-[11px] font-semibold text-slate-700 dark:text-slate-200 transition-colors ${s.labelColor}`}>
                         {s.label}

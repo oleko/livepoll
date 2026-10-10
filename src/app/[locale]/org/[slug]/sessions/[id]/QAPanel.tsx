@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { Monitor, Question, X } from "@phosphor-icons/react";
 import { useTranslations } from "next-intl";
 import { createClient } from "@/lib/supabase/client";
 import { updateQuestionStatus, pinQuestion, deleteQuestion } from "@/server/questions";
@@ -47,7 +48,7 @@ function QuestionCard({
     >
       {isPinned && (
         <p className="text-[11px] font-semibold text-indigo-500 dark:text-indigo-400 mb-2 flex items-center gap-1">
-          <span>📺</span> {t("onScreen")}
+          <Monitor size={13} weight="bold" aria-hidden="true" /> {t("onScreen")}
         </p>
       )}
       <p className="text-sm text-slate-900 dark:text-white leading-relaxed mb-3">{q.text}</p>
@@ -90,7 +91,7 @@ function QuestionCard({
             </ActionBtn>
           )}
           <ActionBtn onClick={() => onDelete(q)} className="text-red-400 hover:bg-red-500/10">
-            ✕
+            <X size={13} weight="bold" aria-hidden="true" />
           </ActionBtn>
         </div>
       </div>
@@ -240,7 +241,7 @@ export function QAPanel({
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <h2 className="text-sm font-semibold text-slate-900 dark:text-white">
-              ❓ Q&A
+              <Question size={15} weight="bold" aria-hidden="true" /> Q&A
               <span className="ml-1.5 text-slate-400 dark:text-slate-500 font-normal">
                 ({questions.length})
               </span>
@@ -282,7 +283,7 @@ export function QAPanel({
 
         {pinnedQ && (
           <div className="mb-3 rounded-lg border border-indigo-400/30 bg-indigo-500/5 dark:bg-indigo-500/10 px-3 py-2.5">
-            <p className="text-[11px] font-semibold text-indigo-500 dark:text-indigo-400 mb-1">📺 {t("onScreen")}</p>
+            <p className="text-[11px] font-semibold text-indigo-500 dark:text-indigo-400 mb-1"><Monitor size={12} weight="bold" aria-hidden="true" /> {t("onScreen")}</p>
             <p className="text-xs text-slate-700 dark:text-slate-300 line-clamp-2">{pinnedQ.text}</p>
             <button
               type="button"
