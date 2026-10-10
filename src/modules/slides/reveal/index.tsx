@@ -1,5 +1,6 @@
 "use client";
 
+import { Question } from "@phosphor-icons/react";
 import { useEffect, useRef, useState } from "react";
 import { useChannel } from "@/core/realtime/useChannel";
 import { getVoterToken } from "@/core/identity/voterToken";
@@ -130,7 +131,7 @@ export function RevealParticipant({ content, live }: { content: Record<string, u
 
 export const reveal: SlideTypeModule<RevealLive> = {
   id: "reveal",
-  meta: { icon: "❓", labelKey: "Org.shared.slideTypeLabel.reveal", order: 7 },
+  meta: { Icon: Question, labelKey: "Org.shared.slideTypeLabel.reveal", order: 7 },
   content: {
     defaults: () => ({}),
     fromRow: (raw) => (raw && typeof raw === "object" ? raw as Record<string, unknown> : {}),

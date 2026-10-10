@@ -1,4 +1,5 @@
 import type { PollType } from "@/types/database";
+import type { TypeMeta } from "./icon";
 import type { QuizReveal } from "@/core/domain/poll";
 import type { QuestionRow } from "@/core/domain/question";
 import type { Translator } from "@/core/settings/field";
@@ -67,7 +68,7 @@ export type PollPresenterProps<Config, Agg> = {
  */
 export interface PollTypeModule<Config = unknown, Agg = unknown, Live = void> {
   readonly id: PollType;
-  readonly meta: { icon: string; labelKey: string; order: number };
+  readonly meta: TypeMeta;
   /** Where a participant's response lands. qa and idea_wall write to `questions`, everything else to `votes`. */
   readonly storage: "votes" | "questions";
 

@@ -1,4 +1,5 @@
 import type { SlideTypeModule } from "@/core/modules/slide";
+import { Confetti } from "@phosphor-icons/react";
 
 function Display({ content }: { content: Record<string, unknown> }) {
   const c = content as Record<string, string>;
@@ -19,7 +20,7 @@ function Display({ content }: { content: Record<string, unknown> }) {
 
 export const final: SlideTypeModule = {
   id: "final",
-  meta: { icon: "🎉", labelKey: "Org.shared.slideTypeLabel.final", order: 4 },
+  meta: { Icon: Confetti, labelKey: "Org.shared.slideTypeLabel.final", order: 4 },
   content: {
     defaults: () => ({}),
     fromRow: (raw) => (raw && typeof raw === "object" ? raw as Record<string, unknown> : {}),

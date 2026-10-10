@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { SlideTypeIcon } from "@/core/screens/TypeIcon";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { createSlide } from "@/lib/actions/slides";
@@ -57,7 +58,7 @@ export function AddSlidePanel({ sessionId, orgSlug, bare = false, allowedTypes }
                 : "border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-indigo-300 dark:hover:border-indigo-700"
             }`}
           >
-            <span className="shrink-0">{slideRegistry[st].meta.icon}</span>
+            <SlideTypeIcon type={st} size={15} weight="bold" />
             {tShared(`slideTypeLabel.${st}`)}
           </button>
         ))}

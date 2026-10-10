@@ -1,5 +1,6 @@
 "use client";
 
+import { Thermometer } from "@phosphor-icons/react";
 import { aggregate, type Aggregate } from "@/core/votes/aggregate";
 import type {
   PollTypeModule, PollParticipantProps, PollDisplayProps, PollHostResultProps, PollPresenterProps,
@@ -80,7 +81,7 @@ function Presenter({ agg, total }: PollPresenterProps<Config, Aggregate>) {
 
 export const temperature: PollTypeModule<Config, Aggregate, void> = {
   id: "temperature",
-  meta: { icon: "🌡", labelKey: "Org.shared.pollTypeLabel.temperature", order: 3 },
+  meta: { Icon: Thermometer, labelKey: "Org.shared.pollTypeLabel.temperature", order: 3 },
   storage: "votes",
   config: { fromSettings },
   aggregate: aggregateVotes,

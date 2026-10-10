@@ -1,5 +1,6 @@
 "use client";
 
+import { Lightbulb } from "@phosphor-icons/react";
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { aggregate, type Aggregate } from "@/core/votes/aggregate";
@@ -115,7 +116,7 @@ function HostResult({ total, t }: PollHostResultProps<Config, Aggregate>) {
 
 export const idea_wall: PollTypeModule<Config, Aggregate, Live> = {
   id: "idea_wall",
-  meta: { icon: "💡", labelKey: "Org.shared.pollTypeLabel.idea_wall", order: 7 },
+  meta: { Icon: Lightbulb, labelKey: "Org.shared.pollTypeLabel.idea_wall", order: 7 },
   storage: "questions",
   config: { fromSettings },
   aggregate: aggregateVotes,

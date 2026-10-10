@@ -1,4 +1,5 @@
 import type { SlideTypeModule } from "@/core/modules/slide";
+import { ChatCircleDots } from "@phosphor-icons/react";
 
 function Display({ content }: { content: Record<string, unknown> }) {
   const c = content as Record<string, string>;
@@ -15,7 +16,7 @@ function Display({ content }: { content: Record<string, unknown> }) {
 
 export const quote: SlideTypeModule = {
   id: "quote",
-  meta: { icon: "💬", labelKey: "Org.shared.slideTypeLabel.quote", order: 3 },
+  meta: { Icon: ChatCircleDots, labelKey: "Org.shared.slideTypeLabel.quote", order: 3 },
   content: {
     defaults: () => ({}),
     fromRow: (raw) => (raw && typeof raw === "object" ? raw as Record<string, unknown> : {}),

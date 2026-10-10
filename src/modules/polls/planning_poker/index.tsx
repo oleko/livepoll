@@ -1,5 +1,6 @@
 "use client";
 
+import { Cards } from "@phosphor-icons/react";
 import { useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LabelList } from "recharts";
 import { useChannel } from "@/core/realtime/useChannel";
@@ -122,7 +123,7 @@ function Presenter({ agg }: PollPresenterProps<Config, Aggregate>) {
 
 export const planning_poker: PollTypeModule<Config, Aggregate, Live> = {
   id: "planning_poker",
-  meta: { icon: "🃏", labelKey: "Org.shared.pollTypeLabel.planning_poker", order: 5 },
+  meta: { Icon: Cards, labelKey: "Org.shared.pollTypeLabel.planning_poker", order: 5 },
   storage: "votes",
   config: { fromSettings },
   aggregate: aggregateVotes,

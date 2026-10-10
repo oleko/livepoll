@@ -1,5 +1,6 @@
 "use client";
 
+import { ThumbsUp } from "@phosphor-icons/react";
 import { aggregate, type Aggregate } from "@/core/votes/aggregate";
 import type {
   PollTypeModule, PollParticipantProps, PollDisplayProps, PollHostResultProps, PollPresenterProps,
@@ -67,7 +68,7 @@ function Presenter({ agg }: PollPresenterProps<Config, Aggregate>) {
 
 export const like_dislike: PollTypeModule<Config, Aggregate, void> = {
   id: "like_dislike",
-  meta: { icon: "👍", labelKey: "Org.shared.pollTypeLabel.like_dislike", order: 4 },
+  meta: { Icon: ThumbsUp, labelKey: "Org.shared.pollTypeLabel.like_dislike", order: 4 },
   storage: "votes",
   config: { fromSettings },
   aggregate: aggregateVotes,

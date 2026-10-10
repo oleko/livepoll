@@ -1,5 +1,6 @@
 "use client";
 
+import { Smiley } from "@phosphor-icons/react";
 import { aggregate, type Aggregate } from "@/core/votes/aggregate";
 import type {
   PollTypeModule, PollParticipantProps, PollDisplayProps, PollHostResultProps, PollPresenterProps,
@@ -88,7 +89,7 @@ function Presenter({ agg, total }: PollPresenterProps<Config, Aggregate>) {
 
 export const emoji_cloud: PollTypeModule<Config, Aggregate, void> = {
   id: "emoji_cloud",
-  meta: { icon: "😊", labelKey: "Org.shared.pollTypeLabel.emoji_cloud", order: 2 },
+  meta: { Icon: Smiley, labelKey: "Org.shared.pollTypeLabel.emoji_cloud", order: 2 },
   storage: "votes",
   config: { fromSettings },
   aggregate: aggregateVotes,

@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { createElement, isValidElement } from "react";
 import { pollRegistry, pollModule } from "../polls";
 
 const ALL_TYPES = [
@@ -17,11 +18,14 @@ describe("pollRegistry", () => {
     }
   });
 
-  it("every module declares storage, an icon and a label key", () => {
+  it("every module declares storage, an icon component and a label key", () => {
     for (const type of ALL_TYPES) {
       const m = pollModule(type);
       expect(["votes", "questions"]).toContain(m.storage);
-      expect(m.meta.icon.length).toBeGreaterThan(0);
+      // Phosphor-иконки — forwardRef-компоненты, то есть typeof у них "object".
+      // Проверяем не тип, а то, что из иконки создаётся элемент: createElement
+      // не рендерит, поэтому работает и без DOM.
+      expect(isValidElement(createElement(m.meta.Icon))).toBe(true);
       expect(m.meta.labelKey).toMatch(/^Org\./);
     }
   });

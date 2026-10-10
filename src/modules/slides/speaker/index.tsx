@@ -1,4 +1,5 @@
 import type { SlideTypeModule } from "@/core/modules/slide";
+import { Microphone } from "@phosphor-icons/react";
 
 function Display({ content }: { content: Record<string, unknown> }) {
   const c = content as Record<string, string>;
@@ -32,7 +33,7 @@ function Display({ content }: { content: Record<string, unknown> }) {
 
 export const speaker: SlideTypeModule = {
   id: "speaker",
-  meta: { icon: "🎤", labelKey: "Org.shared.slideTypeLabel.speaker", order: 1 },
+  meta: { Icon: Microphone, labelKey: "Org.shared.slideTypeLabel.speaker", order: 1 },
   content: {
     defaults: () => ({}),
     fromRow: (raw) => (raw && typeof raw === "object" ? raw as Record<string, unknown> : {}),

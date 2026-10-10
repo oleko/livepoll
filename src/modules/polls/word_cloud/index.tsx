@@ -1,5 +1,6 @@
 "use client";
 
+import { Cloud } from "@phosphor-icons/react";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { aggregate, type Aggregate } from "@/core/votes/aggregate";
@@ -106,7 +107,7 @@ function Presenter({ agg }: PollPresenterProps<Config, Aggregate>) {
 
 export const word_cloud: PollTypeModule<Config, Aggregate, Live> = {
   id: "word_cloud",
-  meta: { icon: "☁️", labelKey: "Org.shared.pollTypeLabel.word_cloud", order: 1 },
+  meta: { Icon: Cloud, labelKey: "Org.shared.pollTypeLabel.word_cloud", order: 1 },
   storage: "votes",
   config: { fromSettings },
   aggregate: aggregateVotes,

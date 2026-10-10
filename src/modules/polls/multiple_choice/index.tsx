@@ -1,5 +1,6 @@
 "use client";
 
+import { ChartBar } from "@phosphor-icons/react";
 import { useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LabelList } from "recharts";
 import { aggregate, type Aggregate } from "@/core/votes/aggregate";
@@ -181,7 +182,7 @@ function Presenter({ agg, total }: PollPresenterProps<Config, Aggregate>) {
 
 export const multiple_choice: PollTypeModule<Config, Aggregate, Live> = {
   id: "multiple_choice",
-  meta: { icon: "📊", labelKey: "Org.shared.pollTypeLabel.multiple_choice", order: 0 },
+  meta: { Icon: ChartBar, labelKey: "Org.shared.pollTypeLabel.multiple_choice", order: 0 },
   storage: "votes",
   config: { fromSettings },
   aggregate: aggregateVotes,

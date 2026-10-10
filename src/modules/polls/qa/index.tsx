@@ -1,5 +1,6 @@
 "use client";
 
+import { Question } from "@phosphor-icons/react";
 import { useState } from "react";
 import { useChannel } from "@/core/realtime/useChannel";
 import { aggregate, type Aggregate } from "@/core/votes/aggregate";
@@ -160,7 +161,7 @@ function HostResult({ total, t }: PollHostResultProps<Config, Aggregate>) {
 
 export const qa: PollTypeModule<Config, Aggregate, Live> = {
   id: "qa",
-  meta: { icon: "❓", labelKey: "Org.shared.pollTypeLabel.qa", order: 6 },
+  meta: { Icon: Question, labelKey: "Org.shared.pollTypeLabel.qa", order: 6 },
   storage: "questions",
   config: { fromSettings },
   aggregate: aggregateVotes,

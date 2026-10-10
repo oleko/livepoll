@@ -1,4 +1,5 @@
 import type { SlideType } from "@/core/domain/slide";
+import type { TypeMeta } from "./icon";
 import type { ConfigField, Translator } from "@/core/settings/field";
 
 export type SlideLiveCtx = {
@@ -31,7 +32,7 @@ export type HostActionCtx = { slideId: string; sessionId: string; orgSlug: strin
  */
 export interface SlideTypeModule<Live = void> {
   readonly id: SlideType;
-  readonly meta: { icon: string; labelKey: string; order: number };
+  readonly meta: TypeMeta;
 
   readonly content: {
     defaults(): Record<string, unknown>;

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition, useEffect, useRef } from "react";
+import { SlideTypeIcon } from "@/core/screens/TypeIcon";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { activatePoll, closePoll, clearPollResult, copyPoll, updatePoll, showPollOnDisplay, hidePollFromDisplay, reorderPolls } from "@/lib/actions/polls";
@@ -159,7 +160,7 @@ function SlideLineupCard({
         {/* info row */}
         <div className="flex items-center gap-3 flex-1 min-w-0">
           <span className="text-slate-300 dark:text-slate-600 text-base leading-none shrink-0 select-none">⠿</span>
-          <span className="text-xl shrink-0">{m.meta.icon}</span>
+          <SlideTypeIcon type={slide.type} size={20} weight="duotone" className="shrink-0 text-indigo-500 dark:text-indigo-400" />
           <div className="flex-1 min-w-0">
             <p className="font-medium text-sm truncate text-slate-900 dark:text-white">{m.content.preview(slide.content, tRoot)}</p>
             <p className="text-xs text-indigo-500 dark:text-indigo-400 mt-0.5">{tShared(`slideTypeLabel.${slide.type}`)}</p>

@@ -1,5 +1,6 @@
 "use client";
 
+import { Megaphone } from "@phosphor-icons/react";
 import { useEffect, useState } from "react";
 import { formatClock } from "@/core/format/time";
 import type { SlideTypeModule } from "@/core/modules/slide";
@@ -47,7 +48,7 @@ function Display({ content }: { content: Record<string, unknown> }) {
 
 export const announcement: SlideTypeModule = {
   id: "announcement",
-  meta: { icon: "📢", labelKey: "Org.shared.slideTypeLabel.announcement", order: 6 },
+  meta: { Icon: Megaphone, labelKey: "Org.shared.slideTypeLabel.announcement", order: 6 },
   content: {
     defaults: () => ({ duration: 0 }),
     fromRow: (raw) => (raw && typeof raw === "object" ? raw as Record<string, unknown> : { duration: 0 }),

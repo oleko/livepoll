@@ -1,4 +1,5 @@
 import type { SlideTypeModule } from "@/core/modules/slide";
+import { Calendar } from "@phosphor-icons/react";
 import type { Translator } from "@/core/settings/field";
 
 type ScheduleItem = { time: string; title: string; active?: boolean };
@@ -77,7 +78,7 @@ function Editor({ value, onChange, t }: {
 
 export const schedule: SlideTypeModule = {
   id: "schedule",
-  meta: { icon: "🗓", labelKey: "Org.shared.slideTypeLabel.schedule", order: 2 },
+  meta: { Icon: Calendar, labelKey: "Org.shared.slideTypeLabel.schedule", order: 2 },
   content: {
     defaults: () => ({ items: [] }),
     fromRow: (raw) => (raw && typeof raw === "object" ? raw as Record<string, unknown> : { items: [] }),

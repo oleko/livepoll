@@ -10,18 +10,22 @@ import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/component
 import { Checkbox } from "@/components/ui/Checkbox";
 import type { PollType } from "@/types/database";
 import { POLL_TEMPLATE_CATEGORIES } from "@/lib/poll-templates";
+import { PollTypeIcon } from "@/core/screens/TypeIcon";
 
 type SectionItem = { id: string; title: string };
 
-const POLL_TYPES: { value: PollType; hasOptions: boolean; icon: string }[] = [
-  { value: "multiple_choice", hasOptions: true,  icon: "📊" },
-  { value: "temperature",     hasOptions: false, icon: "🌡️" },
-  { value: "like_dislike",    hasOptions: false, icon: "👍" },
-  { value: "word_cloud",      hasOptions: false, icon: "☁️" },
-  { value: "emoji_cloud",     hasOptions: false, icon: "😊" },
-  { value: "planning_poker",  hasOptions: false, icon: "🃏" },
-  { value: "qa",              hasOptions: false, icon: "❓" },
-  { value: "idea_wall",       hasOptions: false, icon: "💡" },
+// Иконки больше не дублируются здесь — четвёртая копия эмодзи уже успела
+// разойтись с реестром. Остаётся только то, чего в реестре нет: какой тип
+// требует список вариантов и в каком порядке их показывать в этой сетке.
+const POLL_TYPES: { value: PollType; hasOptions: boolean }[] = [
+  { value: "multiple_choice", hasOptions: true  },
+  { value: "temperature",     hasOptions: false },
+  { value: "like_dislike",    hasOptions: false },
+  { value: "word_cloud",      hasOptions: false },
+  { value: "emoji_cloud",     hasOptions: false },
+  { value: "planning_poker",  hasOptions: false },
+  { value: "qa",              hasOptions: false },
+  { value: "idea_wall",       hasOptions: false },
 ];
 
 export function NewPollForm({
@@ -147,7 +151,6 @@ export function NewPollForm({
           {/* Templates list */}
           <div className="overflow-y-auto flex-1">
             {POLL_TEMPLATE_CATEGORIES.find((c) => c.id === activeCategory)?.templates.map((tpl) => {
-              const pt = POLL_TYPES.find(p => p.value === tpl.type);
               return (
                 <button
                   key={tpl.title}
@@ -155,7 +158,7 @@ export function NewPollForm({
                   onClick={() => applyTemplate(tpl)}
                   className="flex items-start gap-3 w-full px-5 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors border-b border-slate-100 dark:border-slate-800 last:border-0"
                 >
-                  <span className="text-xl leading-none mt-0.5 shrink-0">{pt?.icon ?? "📊"}</span>
+                  <PollTypeIcon type={tpl.type} size={20} weight="duotone" className="mt-0.5 shrink-0 text-indigo-500 dark:text-indigo-400" />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-slate-800 dark:text-slate-200 leading-snug">{tpl.title}</p>
                     {tpl.quiz_mode && (
@@ -196,7 +199,7 @@ export function NewPollForm({
                   : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-600 hover:text-slate-900 dark:hover:text-white"
               }`}
             >
-              <span className="text-base leading-none shrink-0" aria-hidden="true">{pt.icon}</span>
+              <PollTypeIcon type={pt.value} size={17} weight="bold" className="shrink-0" />
               <span className="text-xs font-semibold leading-tight">{tShared(`pollTypeLabel.${pt.value}`)}</span>
             </button>
           ))}

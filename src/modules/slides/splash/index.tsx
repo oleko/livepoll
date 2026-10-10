@@ -1,4 +1,5 @@
 import type { SlideTypeModule } from "@/core/modules/slide";
+import { Target } from "@phosphor-icons/react";
 
 // The date field stores an ISO yyyy-mm-dd (native <input type="date">);
 // display it localized rather than as raw ISO text.
@@ -23,7 +24,7 @@ function Display({ content }: { content: Record<string, unknown> }) {
 
 export const splash: SlideTypeModule = {
   id: "splash",
-  meta: { icon: "🎯", labelKey: "Org.shared.slideTypeLabel.splash", order: 0 },
+  meta: { Icon: Target, labelKey: "Org.shared.slideTypeLabel.splash", order: 0 },
   content: {
     defaults: () => ({}),
     fromRow: (raw) => (raw && typeof raw === "object" ? raw as Record<string, unknown> : {}),

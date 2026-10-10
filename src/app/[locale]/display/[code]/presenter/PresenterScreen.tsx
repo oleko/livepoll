@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import type { SlideType } from "@/core/domain/slide";
 import { useChannel } from "@/core/realtime/useChannel";
 import { useSessionSync } from "@/core/realtime/useSessionSync";
 import { useSessionState } from "@/core/realtime/useSessionState";
@@ -8,21 +9,16 @@ import { classifyPollChange } from "@/core/realtime/pollChange";
 import { ConnectionBanner } from "@/core/screens/ConnectionBanner";
 import { parseVoteValue } from "@/core/votes/parse";
 import { pollModule } from "@/core/registry/polls";
+import { PollTypeIcon, SlideTypeIcon } from "@/core/screens/TypeIcon";
 import type { PollType } from "@/types/database";
 
 const SLIDE_LABELS: Record<string, string> = {
   splash: "Заставка", speaker: "Спикер", schedule: "Расписание",
   quote: "Цитата", final: "Финал", spin_wheel: "Колесо", announcement: "Объявление", reveal: "Вопрос-ответ",
 };
-const SLIDE_ICONS: Record<string, string> = {
-  splash: "🎯", speaker: "🎤", schedule: "🗓", quote: "💬",
-  final: "🎉", spin_wheel: "🎡", announcement: "📢", reveal: "❓",
-};
-const POLL_ICONS: Record<string, string> = {
-  multiple_choice: "📊", temperature: "🌡", word_cloud: "☁️",
-  emoji_cloud: "😊", qa: "❓", like_dislike: "👍",
-  planning_poker: "🃏", idea_wall: "💡",
-};
+// Two emoji dictionaries used to live here, duplicating the registry — and
+// they had already drifted from it (🌡 here against 🌡️ elsewhere). Icons now
+// come from the modules via PollTypeIcon/SlideTypeIcon.
 
 type PollItem  = { id: string; title: string; type: string; status: string; sort_order: number; options: string[] };
 type SlideItem = { id: string; type: string; content: Record<string, unknown>; sort_order: number };
@@ -211,7 +207,7 @@ export function PresenterScreen({
           {activePoll && (
             <div className="flex flex-col gap-4">
               <div className="flex items-start gap-3">
-                <span className="text-2xl">{POLL_ICONS[activePoll.type] ?? "📊"}</span>
+                <PollTypeIcon type={activePoll.type as PollType} size={26} weight="duotone" className="text-indigo-400 shrink-0" />
                 <div>
                   <h2 className="text-xl font-semibold text-white">{activePoll.title}</h2>
                   <p className="text-slate-400 text-sm mt-0.5">{totalVotes} голосов</p>
@@ -240,7 +236,7 @@ export function PresenterScreen({
 
           {activeSlide && !activePoll && (
             <div className="flex items-start gap-3">
-              <span className="text-2xl">{SLIDE_ICONS[activeSlide.type] ?? "📄"}</span>
+              <SlideTypeIcon type={activeSlide.type as SlideType} size={26} weight="duotone" className="text-purple-400 shrink-0" />
               <div>
                 <p className="text-xs text-purple-400 font-medium">{SLIDE_LABELS[activeSlide.type] ?? "Слайд"}</p>
                 <h2 className="text-xl font-semibold text-white mt-1">{slideTitle(activeSlide)}</h2>
@@ -263,9 +259,9 @@ export function PresenterScreen({
                   ? "border-slate-700 bg-slate-900"
                   : "border-purple-900/50 bg-purple-950/20"
               }`}>
-                <span className="text-lg shrink-0">
-                  {item.kind === "poll" ? POLL_ICONS[item.data.type] ?? "📊" : SLIDE_ICONS[item.data.type] ?? "📄"}
-                </span>
+                {item.kind === "poll"
+                  ? <PollTypeIcon type={item.data.type as PollType} size={18} weight="bold" className="text-slate-400 shrink-0" />
+                  : <SlideTypeIcon type={item.data.type as SlideType} size={18} weight="bold" className="text-purple-400 shrink-0" />}
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-slate-200 truncate">
                     {item.kind === "poll" ? item.data.title : slideTitle(item.data)}

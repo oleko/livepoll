@@ -1,5 +1,6 @@
 "use client";
 
+import { ArrowsClockwise } from "@phosphor-icons/react";
 import { useEffect, useRef, useState } from "react";
 import { useChannel } from "@/core/realtime/useChannel";
 import { startSpinWheel } from "@/lib/actions/slides";
@@ -173,7 +174,7 @@ const SPIN_OPTION_MAX = 40;
 
 export const spin_wheel: SlideTypeModule<SpinLive> = {
   id: "spin_wheel",
-  meta: { icon: "🎡", labelKey: "Org.shared.slideTypeLabel.spin_wheel", order: 5 },
+  meta: { Icon: ArrowsClockwise, labelKey: "Org.shared.slideTypeLabel.spin_wheel", order: 5 },
   content: {
     defaults: () => ({ options: [] }),
     fromRow: (raw) => (raw && typeof raw === "object" ? raw as Record<string, unknown> : { options: [] }),
