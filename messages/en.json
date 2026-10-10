@@ -450,12 +450,6 @@
         "confirmEnd": "End the event? Voting will be stopped.",
         "leaderboard": "Leaderboard"
       },
-      "creationTabs": {
-        "pollTab": "Poll",
-        "slideTab": "Screen",
-        "quizTab": "Quiz",
-        "qaTab": "Q&A"
-      },
       "connect": {
         "participants": "Participants",
         "code": "Code",
@@ -634,7 +628,7 @@
         "confirmActivateOther": "Poll \"{title}\" is live — it will be closed. Continue?",
         "launch": "Launch",
         "onDisplay": "On screen",
-        "revealPoker": "🃏 Reveal",
+        "revealPoker": "Reveal cards",
         "finalize": "Result",
         "finish": "Close",
         "removeFromDisplay": "Remove from screen",
@@ -663,7 +657,9 @@
         "noSectionDivider": "No section",
         "noVotes": "No votes",
         "questionsReceived": "Questions received: {count}",
-        "voteActivityTitle": "Vote activity over time"
+        "voteActivityTitle": "Vote activity over time",
+        "statusDraft": "Draft",
+        "statusClosed": "Finished"
       },
       "qaPanel": {
         "error": "Error",
@@ -695,6 +691,13 @@
         "footerPending": "{count} awaiting answer",
         "footerAllDone": "All questions handled",
         "escToClose": "Esc — close"
+      },
+      "addToProgram": {
+        "backToTypes": "Back to types",
+        "groupAsk": "Ask the audience",
+        "groupShow": "Show on screen",
+        "groupQuizQuestion": "Quiz question",
+        "quizQuestion": "Question with a correct answer"
       }
     },
     "layout": {

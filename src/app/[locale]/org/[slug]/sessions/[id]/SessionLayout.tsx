@@ -4,7 +4,8 @@ import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { PollList } from "./PollList";
-import { CreationTabs } from "./CreationTabs";
+import { AddToProgram } from "./AddToProgram";
+import { QuizHostPanel } from "@/modules/modes/quiz/HostPanel";
 import { QAPanel } from "./QAPanel";
 import { ActiveItemPanel } from "./ActiveItemPanel";
 import type { SlideRow } from "@/lib/actions/slides";
@@ -169,13 +170,27 @@ export function SessionLayout({
 
       {/* ── Settings tab ─────────────────────────────────────── */}
       {activeTab === "settings" && (
-        <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6">
-          <Link
-            href={`/org/${orgSlug}/settings`}
-            className="text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:underline"
-          >
-            {t("settingsLink")} →
-          </Link>
+        <div className="flex flex-col gap-5">
+          {/* Championship used to sit in the creation drawer next to "add a
+              poll", though it configures the whole session rather than adding
+              anything. It belongs with the other session settings. */}
+          <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6">
+            <QuizHostPanel
+              sessionId={sessionId}
+              orgSlug={orgSlug}
+              quizPolls={quizPolls}
+              initial={championship}
+              sessionStatus={sessionStatus}
+            />
+          </div>
+          <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6">
+            <Link
+              href={`/org/${orgSlug}/settings`}
+              className="text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:underline"
+            >
+              {t("settingsLink")} →
+            </Link>
+          </div>
         </div>
       )}
 
@@ -222,13 +237,11 @@ export function SessionLayout({
               </button>
             </div>
             <div className="flex-1 overflow-auto p-5">
-              <CreationTabs
+              <AddToProgram
                 sessionId={sessionId}
                 orgSlug={orgSlug}
                 sections={sections}
-                quizPolls={quizPolls}
                 championship={championship}
-                sessionStatus={sessionStatus}
               />
             </div>
           </div>

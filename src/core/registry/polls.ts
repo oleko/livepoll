@@ -33,3 +33,8 @@ export const pollRegistry: Record<PollType, PollTypeModule<unknown, unknown, unk
 export function pollModule(type: PollType): PollTypeModule<unknown, unknown, unknown> {
   return pollRegistry[type];
 }
+
+/** Poll types in the order modules declare, mirroring slideTypesInOrder. */
+export const pollTypesInOrder: PollType[] = (Object.values(pollRegistry) as PollTypeModule<unknown, unknown, unknown>[])
+  .sort((a, b) => a.meta.order - b.meta.order)
+  .map((m) => m.id);

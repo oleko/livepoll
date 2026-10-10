@@ -2,6 +2,7 @@
 
 import { useState, useTransition, useEffect, useRef } from "react";
 import { PollTypeIcon, SlideTypeIcon } from "@/core/screens/TypeIcon";
+import { StatusPill, DisplayToggle } from "./ItemControls";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { activatePoll, closePoll, clearPollResult, copyPoll, updatePoll, showPollOnDisplay, hidePollFromDisplay, reorderPolls } from "@/lib/actions/polls";
@@ -429,6 +430,7 @@ function PollCard({
   const isEditing   = editingId === poll.id;
   const isDragging  = draggingId === poll.id;
   const canEdit     = !isEnded && Date.now() - new Date(poll.created_at).getTime() < EDIT_WINDOW_MS;
+  const [pendingDisplay, setPendingDisplay] = useState(false);
 
   return (
     <div
@@ -480,11 +482,12 @@ function PollCard({
                   {voteCount > 0 && <span className="text-slate-300 dark:text-slate-600"> · {t("votesCount", { count: voteCount })}</span>}
                 </p>
               </div>
-              {isActive && (
-                <span className="flex items-center gap-1.5 text-xs font-semibold text-green-600 dark:text-green-400 shrink-0">
-                  <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />{t("active")}
-                </span>
-              )}
+              {/* Status belongs to the item, not to the row of actions —
+                  reading it should not mean decoding which buttons are shown. */}
+              <StatusPill
+                status={isActive ? "live" : isClosed ? "closed" : "draft"}
+                labels={{ draft: t("statusDraft"), live: t("active"), closed: t("statusClosed") }}
+              />
             </div>
             {/* actions row */}
             <div className="flex items-center gap-1.5 flex-wrap shrink-0">
@@ -493,44 +496,54 @@ function PollCard({
                   <PencilSimple size={15} weight="bold" aria-hidden="true" />
                 </Button>
               )}
-              {sessionStatus === "active" && (
-                <>
-                  {!isActive && !isClosed && (
-                    <Button
-                      size="sm"
-                      onClick={async () => {
-                        if (otherActivePollTitle && !confirm(t("confirmActivateOther", { title: otherActivePollTitle }))) return;
-                        await activatePoll(poll.id, sessionId, orgSlug);
-                        router.refresh();
-                      }}
-                    >{t("launch")}</Button>
-                  )}
-                  {isActive && hiddenFromDisplay && (
-                    <Button size="sm" onClick={onShow}>{t("show")}</Button>
-                  )}
-                  {isActive && !hiddenFromDisplay && (
-                    <button type="button" onClick={onHide}
-                      className="flex items-center gap-1.5 rounded-lg border border-green-500/30 bg-green-500/10 px-2.5 py-1.5 text-xs font-medium text-green-600 dark:text-green-400 hover:bg-green-500/20 transition-colors"
-                    >
-                      <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse shrink-0" />
-                      {t("onDisplay")}
-                    </button>
-                  )}
-                  {isActive && poll.type === "planning_poker" && (
-                    <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700" onClick={() => revealPoker(sessionId, orgSlug)}>{t("revealPoker")}</Button>
-                  )}
-                  {isActive && (
-                    <>
-                      <Button size="sm" className="bg-slate-700 hover:bg-slate-600 text-white" onClick={async () => { await closePoll(poll.id, sessionId, orgSlug, true); router.refresh(); }}>{t("finalize")}</Button>
-                      <Button variant="secondary" size="sm" onClick={async () => { await closePoll(poll.id, sessionId, orgSlug); router.refresh(); }}>{t("finish")}</Button>
-                    </>
-                  )}
-                </>
+              {/* ── Ось 1: жизненный цикл. Ровно одна кнопка. ── */}
+              {sessionStatus === "active" && !isActive && !isClosed && (
+                <Button
+                  size="sm"
+                  onClick={async () => {
+                    if (otherActivePollTitle && !confirm(t("confirmActivateOther", { title: otherActivePollTitle }))) return;
+                    await activatePoll(poll.id, sessionId, orgSlug);
+                    router.refresh();
+                  }}
+                >{t("launch")}</Button>
               )}
-              {isClosed && !!poll.settings?.result_on_display && (
-                <Button variant="ghost" size="sm" className="text-slate-400 hover:text-slate-600" onClick={async () => { await clearPollResult(poll.id, sessionId, orgSlug); router.refresh(); }}>
-                  {t("removeFromDisplay")}
-                </Button>
+              {sessionStatus === "active" && isActive && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={async () => {
+                    // The projector keeps whatever the toggle says: a poll that
+                    // is on screen leaves its result up, a hidden one does not.
+                    // That is exactly what the old "Итог" and "Завершить"
+                    // buttons did — without having to remember which was which.
+                    await closePoll(poll.id, sessionId, orgSlug, !hiddenFromDisplay);
+                    router.refresh();
+                  }}
+                >{t("finish")}</Button>
+              )}
+
+              {/* ── Ось 2: что на проекторе. Один тумблер, одно название. ── */}
+              {sessionStatus === "active" && (
+                <DisplayToggle
+                  on={isActive ? !hiddenFromDisplay : !!poll.settings?.result_on_display}
+                  canTurnOn={isActive}
+                  disabled={pendingDisplay}
+                  label={t("onDisplay")}
+                  onToggle={async () => {
+                    if (isClosed) {
+                      setPendingDisplay(true);
+                      await clearPollResult(poll.id, sessionId, orgSlug);
+                      router.refresh();
+                      setPendingDisplay(false);
+                      return;
+                    }
+                    if (hiddenFromDisplay) onShow(); else onHide();
+                  }}
+                />
+              )}
+
+              {sessionStatus === "active" && isActive && poll.type === "planning_poker" && (
+                <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700" onClick={() => revealPoker(sessionId, orgSlug)}>{t("revealPoker")}</Button>
               )}
               {isClosed && voteCount > 0 && (
                 <Button variant="ghost" size="sm" aria-label={t("downloadCsvTitle")} title={t("downloadCsvTitle")} onClick={() => downloadPollCSV(poll, valueCounts, voteCount)}>

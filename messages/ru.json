@@ -450,12 +450,6 @@
         "confirmEnd": "Завершить мероприятие? Голосование будет остановлено.",
         "leaderboard": "Лидерборд"
       },
-      "creationTabs": {
-        "pollTab": "Опрос",
-        "slideTab": "Экран",
-        "quizTab": "Квиз",
-        "qaTab": "Q&A"
-      },
       "connect": {
         "participants": "Участники",
         "code": "Код",
@@ -634,7 +628,7 @@
         "confirmActivateOther": "Запущен опрос «{title}» — он будет завершён. Продолжить?",
         "launch": "Запустить",
         "onDisplay": "На экране",
-        "revealPoker": "🃏 Раскрыть",
+        "revealPoker": "Раскрыть карты",
         "finalize": "Итог",
         "finish": "Завершить",
         "removeFromDisplay": "Убрать с экрана",
@@ -663,7 +657,9 @@
         "noSectionDivider": "Без секции",
         "noVotes": "Голосов нет",
         "questionsReceived": "Вопросов получено: {count}",
-        "voteActivityTitle": "Активность голосования по времени"
+        "voteActivityTitle": "Активность голосования по времени",
+        "statusDraft": "Черновик",
+        "statusClosed": "Завершён"
       },
       "qaPanel": {
         "error": "Ошибка",
@@ -695,6 +691,13 @@
         "footerPending": "{count} ожидают ответа",
         "footerAllDone": "Все вопросы обработаны",
         "escToClose": "Esc — закрыть"
+      },
+      "addToProgram": {
+        "backToTypes": "К выбору типа",
+        "groupAsk": "Спросить аудиторию",
+        "groupShow": "Показать на экране",
+        "groupQuizQuestion": "Вопрос викторины",
+        "quizQuestion": "Вопрос с правильным ответом"
       }
     },
     "layout": {

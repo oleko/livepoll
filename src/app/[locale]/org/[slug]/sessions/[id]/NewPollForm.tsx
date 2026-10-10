@@ -33,14 +33,19 @@ export function NewPollForm({
   sessionId,
   orgSlug,
   sections = [],
+  lockedType,
 }: {
   sessionId: string;
   orgSlug: string;
   sections?: SectionItem[];
+  /** Set when the type was already chosen in the unified programme picker. */
+  lockedType?: PollType;
 }) {
   const t = useTranslations("Org.session.newPollForm");
   const tShared = useTranslations("Org.shared");
-  const [type, setType] = useState<PollType>("multiple_choice");
+  const [ownType, setOwnType] = useState<PollType>("multiple_choice");
+  const type = lockedType ?? ownType;
+  const setType = setOwnType;
   const [optionsText, setOptionsText] = useState("");
   const [titleValue, setTitleValue] = useState("");
   const [quizMode, setQuizMode] = useState(false);
@@ -56,7 +61,9 @@ export function NewPollForm({
   // one's fields behind — matches AddSlidePanel's reset-after-create.
   useEffect(() => {
     if (state && "success" in state) {
-      setType("multiple_choice");
+      // setOwnType, not the `setType` alias: the alias is a plain const, so
+      // the effect would have to list it as a dependency for no benefit.
+      setOwnType("multiple_choice");
       setOptionsText("");
       setTitleValue("");
       setQuizMode(false);
@@ -179,7 +186,7 @@ export function NewPollForm({
           radiogroup it is one stop, arrows move within it (the grid is two
           columns, so left/right step by one and up/down by two), and the
           selected cell reports itself. */}
-      <div className="flex flex-col gap-1.5">
+      {!lockedType && <div className="flex flex-col gap-1.5">
         <span id="poll-type-label" className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
           {t("typeLabel")}
         </span>
@@ -205,8 +212,8 @@ export function NewPollForm({
             </button>
           ))}
         </div>
-        <input type="hidden" name="type" value={type} />
-      </div>
+      </div>}
+      <input type="hidden" name="type" value={type} />
 
       {/* — Content: question + options — */}
       <Input
