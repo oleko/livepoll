@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { Copy } from "@phosphor-icons/react";
 import { duplicateSession } from "@/lib/actions/sessions";
 
 export function DuplicateSessionButton({
@@ -11,6 +13,7 @@ export function DuplicateSessionButton({
   sessionId: string;
   orgSlug: string;
 }) {
+  const t = useTranslations("Org.dashboard");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
@@ -37,10 +40,11 @@ export function DuplicateSessionButton({
         type="button"
         onClick={handle}
         disabled={pending}
-        title="Дублировать мероприятие"
+        aria-label={t("duplicateSession")}
+        title={t("duplicateSession")}
         className="rounded-lg border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 px-2.5 py-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors text-xs font-medium disabled:opacity-40"
       >
-        {pending ? "…" : "⎘"}
+        {pending ? "…" : <Copy size={14} weight="bold" aria-hidden="true" />}
       </button>
       {error && (
         <div className="absolute right-0 top-full mt-1 z-30 w-64 rounded-lg border border-red-200 dark:border-red-800 bg-white dark:bg-slate-900 px-3 py-2 text-xs text-red-600 dark:text-red-400 shadow-lg">

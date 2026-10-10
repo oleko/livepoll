@@ -14,7 +14,12 @@ import type { Poll } from "@/types/database";
 type SectionItem = { id: string; title: string; sort_order: number };
 type CopyTarget = { id: string; title: string; status: string };
 type QuizPoll = { id: string; title: string; settings?: Record<string, unknown> | null };
-type Question = { id: string; text: string; status: "pending" | "answered" | "hidden"; upvotes: number; created_at: string };
+type Question = {
+  id: string; text: string; status: "pending" | "answered" | "hidden"; upvotes: number; created_at: string;
+  /** Опрос, из которого пришёл вопрос: qa или стена идей. */
+  sourceTitle?: string | null;
+  sourceType?: "qa" | "idea_wall" | null;
+};
 type PollRow = Pick<Poll, "id" | "title" | "type" | "status" | "sort_order"> & {
   options: unknown[];
   created_at: string;
@@ -113,6 +118,13 @@ export function SessionLayout({
           </button>
         ))}
       </div>
+
+      {/* Вкладка Q&A скрыта в режиме викторины намеренно (лобби → раунд →
+          рейтинг, вопросов из зала там нет), но молчаливая пропажа читается
+          как поломка. */}
+      {championship.enabled && activeTab === "lineup" && (
+        <p className="-mt-2 text-xs text-slate-500 dark:text-slate-400">{t("quizModeHint")}</p>
+      )}
 
       {/* ── Lineup tab ───────────────────────────────────────── */}
       {activeTab === "lineup" && (

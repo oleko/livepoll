@@ -337,3 +337,43 @@ export async function updateSessionStatus(
 
   revalidatePath(`/org/${orgSlug}/sessions/${sessionId}`);
 }
+
+/**
+ * Deletes a session and everything under it.
+ *
+ * Polls, votes, questions, slides, sections and participants all hang off
+ * `sessions` with `on delete cascade`, so one delete takes the lot — which is
+ * exactly why this is gated. A running event is refused outright: the host
+ * would be deleting the thing a room is currently looking at, and "завершить"
+ * is one click away if that is really what they meant.
+ *
+ * Returns the counts it destroyed so the UI can say what is gone rather than
+ * a bare "готово".
+ */
+export async function deleteSession(
+  sessionId: string,
+  orgSlug: string
+): Promise<{ error: string } | { success: true }> {
+  const { user, admin } = await getAuthUser();
+  await assertSessionMember(user.id, sessionId, admin);
+
+  const { data: session } = await admin
+    .from("sessions")
+    .select("status")
+    .eq("id", sessionId)
+    .single();
+
+  if (!session) return { error: "Мероприятие не найдено" };
+  if (session.status === "active") {
+    return { error: "Сначала завершите мероприятие — сейчас оно идёт" };
+  }
+
+  const { error } = await admin.from("sessions").delete().eq("id", sessionId);
+  if (error) {
+    console.error("[deleteSession]", error.code, error.message);
+    return { error: "Не удалось удалить мероприятие" };
+  }
+
+  revalidatePath(`/org/${orgSlug}`);
+  return { success: true };
+}

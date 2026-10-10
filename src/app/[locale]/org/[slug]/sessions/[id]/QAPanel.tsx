@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Monitor, Question, X } from "@phosphor-icons/react";
+import { Monitor, Question, Lightbulb, X } from "@phosphor-icons/react";
 import { useTranslations } from "next-intl";
 import { createClient } from "@/lib/supabase/client";
 import { updateQuestionStatus, pinQuestion, deleteQuestion } from "@/server/questions";
@@ -14,6 +14,9 @@ type Question = {
   status: "pending" | "answered" | "hidden";
   upvotes: number;
   created_at: string;
+  /** Опрос, из которого пришёл вопрос: qa или стена идей. */
+  sourceTitle?: string | null;
+  sourceType?: "qa" | "idea_wall" | null;
 };
 
 type Filter = "pending" | "all" | "answered" | "hidden";
@@ -49,6 +52,14 @@ function QuestionCard({
       {isPinned && (
         <p className="text-[11px] font-semibold text-indigo-500 dark:text-indigo-400 mb-2 flex items-center gap-1">
           <Monitor size={13} weight="bold" aria-hidden="true" /> {t("onScreen")}
+        </p>
+      )}
+      {q.sourceTitle && (
+        <p className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+          {q.sourceType === "idea_wall"
+            ? <Lightbulb size={12} weight="bold" aria-hidden="true" />
+            : <Question size={12} weight="bold" aria-hidden="true" />}
+          {q.sourceTitle}
         </p>
       )}
       <p className="text-sm text-slate-900 dark:text-white leading-relaxed mb-3">{q.text}</p>
@@ -238,6 +249,11 @@ export function QAPanel({
     <>
       {/* ── Sidebar card ─────────────────────────────────────── */}
       <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
+        {/* Вопросы приходят из двух типов опросов, и раньше это нигде не было
+            сказано: ведущий видел общий список и не знал, откуда он взялся. */}
+        <p className="mb-3 rounded-lg bg-slate-50 px-3 py-2 text-[11px] leading-relaxed text-slate-600 dark:bg-slate-800/60 dark:text-slate-400">
+          {t("sourcesNote")}
+        </p>
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <h2 className="text-sm font-semibold text-slate-900 dark:text-white">

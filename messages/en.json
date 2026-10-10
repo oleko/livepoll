@@ -442,7 +442,8 @@
         "emptyDesc": "Select a program item on the left to see results, or click Add to create a new poll, screen, or quiz.",
         "totalVotes": "Total session votes: {count}",
         "settingsLink": "Go to settings",
-        "onScreenNow": "On screen now"
+        "onScreenNow": "On screen now",
+        "quizModeHint": "Quiz mode: audience questions are off, the leaderboard takes their place. Switch modes in Session settings."
       },
       "controls": {
         "start": "▶ Start",
@@ -690,14 +691,17 @@
         "noResultsEmpty": "Nothing here yet",
         "footerPending": "{count} awaiting answer",
         "footerAllDone": "All questions handled",
-        "escToClose": "Esc — close"
+        "escToClose": "Esc — close",
+        "sourcesNote": "Answers from the \"Audience questions\" and \"Idea wall\" poll types collect here. Each one says which it came from."
       },
       "addToProgram": {
         "backToTypes": "Back to types",
         "groupAsk": "Ask the audience",
         "groupShow": "Show on screen",
         "groupQuizQuestion": "Quiz question",
-        "quizQuestion": "Question with a correct answer"
+        "quizQuestion": "Question with a correct answer",
+        "quizModeNote": "In quiz mode you can add questions with a correct answer and three screen types. Switch modes in the Session settings tab.",
+        "goesToQaTab": "→ to the Q&A tab"
       }
     },
     "layout": {
@@ -715,7 +719,19 @@
       "newSession": "+ New event",
       "emptyTitle": "No events yet",
       "emptyDesc": "Create your first event to start collecting votes",
-      "createSession": "Create event"
+      "createSession": "Create event",
+      "deleteSession": {
+        "trigger": "Delete event",
+        "blockedWhileLive": "A running event cannot be deleted — finish it first",
+        "confirmTitle": "Delete this event?",
+        "confirmBody": "The event <name></name> and all of its data will be permanently deleted.",
+        "willLosePolls": "polls and all their votes: {count}",
+        "willLoseParticipants": "participants: {count}",
+        "irreversible": "This cannot be undone.",
+        "cancel": "Cancel",
+        "confirm": "Delete"
+      },
+      "duplicateSession": "Duplicate event"
     },
     "newSession": {
       "title": "New event",

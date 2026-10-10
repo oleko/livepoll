@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useState } from "react";
+import { Microphone, Trophy } from "@phosphor-icons/react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { createSession } from "@/lib/actions/sessions";
@@ -45,8 +46,8 @@ export function NewSessionForm({ orgId, orgSlug }: { orgId: string; orgSlug: str
         <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">Режим</p>
         <div className="grid grid-cols-2 gap-2">
           {([
-            { value: "conference", icon: "🎤", label: "Конференция", desc: "Опросы, слайды, Q&A" },
-            { value: "quiz",       icon: "🏆", label: "Викторина",   desc: "Вопросы с ответами, таймер, рейтинг" },
+            { value: "conference", Icon: Microphone, label: "Конференция", desc: "Опросы, слайды, Q&A" },
+            { value: "quiz",       Icon: Trophy,     label: "Викторина",   desc: "Вопросы с ответами, таймер, рейтинг" },
           ] as const).map((m) => (
             <button
               key={m.value}
@@ -58,7 +59,7 @@ export function NewSessionForm({ orgId, orgSlug }: { orgId: string; orgSlug: str
                   : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 bg-white dark:bg-slate-900"
               }`}
             >
-              <span className="text-xl block mb-1.5">{m.icon}</span>
+              <m.Icon size={20} weight="duotone" className="mb-1.5 text-indigo-500 dark:text-indigo-400" aria-hidden="true" />
               <p className={`text-xs font-semibold ${mode === m.value ? "text-indigo-700 dark:text-indigo-300" : "text-slate-700 dark:text-slate-300"}`}>
                 {m.label}
               </p>
@@ -66,6 +67,13 @@ export function NewSessionForm({ orgId, orgSlug }: { orgId: string; orgSlug: str
             </button>
           ))}
         </div>
+        {/* Раньше это читалось как необратимая развилка на старте. Режим
+            переключается в настройках мероприятия в обе стороны
+            (saveChampionshipSettings пишет session.mode), и об этом надо
+            сказать здесь, а не оставлять выяснять опытным путём. */}
+        <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">
+          Режим можно сменить позже — во вкладке «Настройки сессии».
+        </p>
       </div>
 
       {state && "error" in state && (

@@ -86,6 +86,13 @@ export function AddToProgram({
 
   return (
     <div className="flex flex-col gap-5">
+      {/* Раньше в режиме викторины вкладка «Опрос» просто исчезала, и ведущий
+          видел только пропажу. Сужение осталось, но теперь оно объяснено. */}
+      {isQuiz && (
+        <p className="rounded-lg bg-slate-50 px-3 py-2.5 text-[11px] leading-relaxed text-slate-600 dark:bg-slate-800/60 dark:text-slate-400">
+          {t("quizModeNote")}
+        </p>
+      )}
       {isQuiz ? (
         <Group title={t("groupQuizQuestion")}>
           <Card onClick={() => setChoice({ kind: "quizQuestion" })}>
@@ -98,7 +105,15 @@ export function AddToProgram({
           {pollTypesInOrder.map((pt) => (
             <Card key={pt} onClick={() => setChoice({ kind: "poll", type: pt })}>
               <PollTypeIcon type={pt} size={17} weight="bold" className="shrink-0 text-indigo-500 dark:text-indigo-400" />
-              {tShared(`pollTypeLabel.${pt}`)}
+              <span className="flex flex-col gap-0.5">
+                {tShared(`pollTypeLabel.${pt}`)}
+                {/* qa и idea_wall пишут не в голоса, а в вопросы — и ответы
+                    на них ведущий потом ищет во вкладке Q&A, а не в карточке
+                    опроса. Это стоит сказать до создания, а не после. */}
+                {(pt === "qa" || pt === "idea_wall") && (
+                  <span className="font-normal text-[10px] text-slate-400 dark:text-slate-500">{t("goesToQaTab")}</span>
+                )}
+              </span>
             </Card>
           ))}
         </Group>

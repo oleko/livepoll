@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getTranslations, getLocale } from "next-intl/server";
 import { Button } from "@/components/ui/Button";
+import { DeleteSessionButton } from "./DeleteSessionButton";
 import { DuplicateSessionButton } from "./DuplicateSessionButton";
 import type { Session } from "@/types/database";
 
@@ -144,8 +145,16 @@ export default async function OrgDashboardPage({
                   {tShared(`sessionStatus.${session.status}`)}
                 </span>
               </Link>
-              <div className="pr-3 shrink-0">
+              <div className="flex items-center gap-1.5 pr-3 shrink-0">
                 <DuplicateSessionButton sessionId={session.id} orgSlug={slug} />
+                <DeleteSessionButton
+                  sessionId={session.id}
+                  orgSlug={slug}
+                  title={session.title}
+                  status={session.status as "draft" | "active" | "ended"}
+                  pollCount={pollCountBySession[session.id] ?? 0}
+                  participantCount={participantCountBySession[session.id] ?? 0}
+                />
               </div>
             </div>
           ))}
